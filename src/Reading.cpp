@@ -32,6 +32,9 @@ namespace PhysicalLetters::Reading {
 
         constexpr auto kPrompt = "physical_letters_read_letter";
         constexpr int kMaxMemories = 8;
+        // Earlier letters passed to the prompt; the template shows as many as it wants of
+        // the newest (max_earlier_letters).
+        constexpr std::size_t kMaxCorrespondence = 20;
         constexpr RE::FormID kPlayer = 0x14;
         constexpr float kDefaultImportance = 0.7f;
 
@@ -184,6 +187,35 @@ namespace PhysicalLetters::Reading {
             return { Result::kRead };
         }
 
+        // The earlier letters between the reader and the writer that the reader knows of in
+        // this timeline, oldest first, at most kMaxCorrespondence.  SkyrimNet's memory
+        // decides, as everywhere: a letter to the reader counts if they remember it, and
+        // their reply counts if they remember the letter it answers (that memory holds the
+        // reply).  Letters from timelines the player left, or still on their way, drop out.
+        // Blocks (a memory query per letter to the reader): not on the game thread.
+        json Correspondence(const Letter& current, RE::FormID readerFormId, double now)
+        {
+            std::vector<std::string> remembered;
+            auto entries = json::array();
+            for (const auto& earlier : LetterDB::GetSingleton()->Between(current.recipientUuid, current.authorUuid)) {
+                if (earlier.id == current.id) continue;
+                bool known = false;
+                if (earlier.recipientUuid == current.recipientUuid) {
+                    known = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(earlier.id));
+                    if (known) remembered.push_back(earlier.id);
+                } else {
+                    known = std::ranges::find(remembered, earlier.inReplyTo) != remembered.end();
+                }
+                if (!known) continue;
+                entries.push_back({ { "from", earlier.authorName },
+                                    { "to", earlier.recipientName },
+                                    { "days_ago", static_cast<int>(std::max(0.0, now - earlier.writtenAt)) },
+                                    { "body", earlier.body } });
+            }
+            if (entries.size() > kMaxCorrespondence) entries.erase(entries.begin(), entries.end() - kMaxCorrespondence);
+            return entries;
+        }
+
         void Report(const std::function<void(Outcome)>& done, Outcome outcome)
         {
             SKSE::GetTaskInterface()->AddTask([done, outcome = std::move(outcome)]() {
@@ -211,8 +243,9 @@ namespace PhysicalLetters::Reading {
         }
 
         const auto generation = Session::Generation();
+        const double now = RE::Calendar::GetSingleton()->GetDaysPassed();
         // Memory queries and the LLM call block: off the game thread.
-        std::thread([letter = std::move(*letter), recipientFormId, generation, done = std::move(done)]() {
+        std::thread([letter = std::move(*letter), recipientFormId, generation, now, done = std::move(done)]() {
             try {
                 // Delivered again after loading an older save: after Keep the memory is
                 // still there, after Clear it was deleted with the rest of that history.
@@ -221,9 +254,10 @@ namespace PhysicalLetters::Reading {
                     return;
                 }
 
+                // Other memories of the writer: the letters themselves are in the correspondence.
                 auto memories = json::array();
                 const auto found = json::parse(
-                    SkyrimNet::Memories(recipientFormId, kMaxMemories, std::format("{} letter", letter.authorName)), nullptr, false);
+                    SkyrimNet::Memories(recipientFormId, kMaxMemories, letter.authorName, "physical_letters"), nullptr, false);
                 if (found.is_array()) {
                     for (const auto& m : found) {
                         if (m.contains("text") && m["text"].is_string()) memories.push_back(m["text"]);
@@ -235,6 +269,7 @@ namespace PhysicalLetters::Reading {
                 const json context = {
                     { "npc", { { "UUID", uuid }, { "name", letter.recipientName } } },
                     { "letter", { { "author", letter.authorName }, { "recipient", letter.recipientName }, { "body", letter.body } } },
+                    { "correspondence", Correspondence(letter, recipientFormId, now) },
                     { "memories", memories },
                 };
 

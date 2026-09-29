@@ -49,8 +49,9 @@ namespace PhysicalLetters::SkyrimNet {
     RE::FormID FormIdForUuid(const std::string& uuid);
     std::string ActorName(const std::string& uuid);
 
-    // JSON array of the actor's memories, most relevant to `query` first ("[]" on error).
-    std::string Memories(RE::FormID formId, int maxCount, const std::string& query);
+    // JSON array of the actor's memories most relevant to `query`, without those tagged
+    // `excludeTag` ("[]" on error).  Blocks: not on the game thread.
+    std::string Memories(RE::FormID formId, int maxCount, const std::string& query, const std::string& excludeTag);
 
     // Whether the actor has an active memory carrying `tag`.  Blocks: not on the game thread.
     bool HasMemoryWithTag(RE::FormID formId, const std::string& tag);

@@ -103,10 +103,15 @@ namespace PhysicalLetters::SkyrimNet {
         return g_available && value != 0 && PublicGetActorNameByUUID ? PublicGetActorNameByUUID(value) : std::string{};
     }
 
-    std::string Memories(RE::FormID formId, int maxCount, const std::string& query)
+    std::string Memories(RE::FormID formId, int maxCount, const std::string& query, const std::string& excludeTag)
     {
-        return g_available && PublicGetMemoriesForActor ? PublicGetMemoriesForActor(formId, maxCount, query.c_str())
-                                                        : std::string{ "[]" };
+        if (!g_available) return "[]";
+        MemoryQuery memoryQuery;
+        memoryQuery.maxCount = maxCount;
+        memoryQuery.excludeTags = { excludeTag };
+        memoryQuery.contextQuery = query;
+        memoryQuery.orderBy = MemoryOrder::Relevance;
+        return QueryMemoriesForActor(formId, memoryQuery);
     }
 
     bool HasMemoryWithTag(RE::FormID formId, const std::string& tag)

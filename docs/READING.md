@@ -12,7 +12,12 @@ Context variables the plugin sets:
 |---|---|
 | `npc` | `{ UUID, name }` of the recipient; the template uses `decnpc(npc.UUID)` and `render_character_profile("full", npc.UUID)` |
 | `letter` | `{ author, recipient, body }` |
-| `memories` | Up to 8 of the recipient's memory texts, most relevant to "<author> letter" (so earlier letters between them come up) |
+| `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it. |
+| `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
+
+**How many earlier letters the prompt shows** is set at the top of the template: `{% set max_earlier_letters = 5 %}`. Edit it there (or in a SkyrimNet overlay of the prompt); up to 20 are passed.
+
+**Which earlier letters count** follows the same rule as the rest of the mod: SkyrimNet's memory decides ([PERSISTENCE.md](PERSISTENCE.md#was-a-letter-read)). A letter to the recipient counts if they have its tagged memory; their own reply counts if they remember the letter it answers (that memory holds the reply). Letters from timelines the player left, and letters still on their way, drop out without any bookkeeping of ours.
 
 The template follows SkyrimNet's prompt guide (`docs/modding/WORKFLOW_PROMPTS.md` in SkyrimNet): the actor is never addressed as "you", names and pronouns come from `decnpc()`.
 

@@ -33,6 +33,7 @@ namespace PhysicalLetters {
         std::string recipientName;
         std::string body;           // plain text, \n line breaks
         double      writtenAt = 0;  // game days
+        std::string inReplyTo;      // a reply: the id of the letter it answers
     };
 
     // SQLite store for letters, one per SkyrimNet save folder:
@@ -51,6 +52,10 @@ namespace PhysicalLetters {
         bool Insert(const Letter& letter);
         std::optional<Letter> Get(const std::string& id);
 
+        // Every letter between the two, either way, oldest first.  From every save of the
+        // character: the caller decides which belong to this one.
+        std::vector<Letter> Between(const std::string& uuidA, const std::string& uuidB);
+
         bool MarkDelivered(const std::string& id, double gameDays);
 
         // The recipient's reading: the LLM's answer (JSON) and the memory it became.  A
@@ -63,6 +68,7 @@ namespace PhysicalLetters {
         LetterDB() = default;
         bool EnsureSchema();
         bool Exec(const char* sql);
+        bool AddColumn(const char* sql);
 
         mutable std::mutex mutex_;
         sqlite3*           db_ = nullptr;

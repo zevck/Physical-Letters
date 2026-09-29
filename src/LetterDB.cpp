@@ -161,9 +161,23 @@ namespace PhysicalLetters {
                 written_at      REAL NOT NULL DEFAULT 0,
                 delivered_at    REAL NOT NULL DEFAULT 0,
                 reading         TEXT NOT NULL DEFAULT '',
-                memory_id       INTEGER NOT NULL DEFAULT 0
+                memory_id       INTEGER NOT NULL DEFAULT 0,
+                in_reply_to     TEXT NOT NULL DEFAULT ''
             );
-        )");
+        )") && AddColumn("ALTER TABLE letters ADD COLUMN in_reply_to TEXT NOT NULL DEFAULT '';");
+    }
+
+    bool LetterDB::AddColumn(const char* sql)
+    {
+        // Databases that already have the column answer "duplicate column name".
+        char* err = nullptr;
+        if (sqlite3_exec(db_, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+            const bool duplicate = err && std::string_view{ err }.starts_with("duplicate column name");
+            if (!duplicate) SKSE::log::error("[LetterDB] SQL error: {}", err ? err : "unknown");
+            sqlite3_free(err);
+            return duplicate;
+        }
+        return true;
     }
 
     bool LetterDB::Insert(const Letter& letter)
@@ -172,7 +186,7 @@ namespace PhysicalLetters {
         if (!db_) return false;
         Statement s{ db_,
                      "INSERT OR REPLACE INTO letters (letter_id, author_uuid, author_name, recipient_uuid, "
-                     "recipient_name, body, written_at) VALUES (?, ?, ?, ?, ?, ?, ?);",
+                     "recipient_name, body, written_at, in_reply_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
                      "Insert" };
         return s.Bind(1, letter.id)
             .Bind(2, letter.authorUuid)
@@ -181,26 +195,51 @@ namespace PhysicalLetters {
             .Bind(5, letter.recipientName)
             .Bind(6, letter.body)
             .Bind(7, letter.writtenAt)
+            .Bind(8, letter.inReplyTo)
             .Run();
+    }
+
+    namespace {
+        constexpr auto kLetterColumns =
+            "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to";
+
+        Letter ReadLetter(const Statement& s)
+        {
+            return Letter{ .id = s.Text(0),
+                           .authorUuid = s.Text(1),
+                           .authorName = s.Text(2),
+                           .recipientUuid = s.Text(3),
+                           .recipientName = s.Text(4),
+                           .body = s.Text(5),
+                           .writtenAt = s.Double(6),
+                           .inReplyTo = s.Text(7) };
+        }
     }
 
     std::optional<Letter> LetterDB::Get(const std::string& id)
     {
         std::lock_guard lock{ mutex_ };
         if (!db_) return std::nullopt;
-        Statement s{ db_,
-                     "SELECT author_uuid, author_name, recipient_uuid, recipient_name, body, written_at "
-                     "FROM letters WHERE letter_id = ?;",
-                     "Get" };
+        const auto sql = std::format("SELECT {} FROM letters WHERE letter_id = ?;", kLetterColumns);
+        Statement s{ db_, sql.c_str(), "Get" };
         s.Bind(1, id);
         if (!s.Next()) return std::nullopt;
-        return Letter{ .id = id,
-                       .authorUuid = s.Text(0),
-                       .authorName = s.Text(1),
-                       .recipientUuid = s.Text(2),
-                       .recipientName = s.Text(3),
-                       .body = s.Text(4),
-                       .writtenAt = s.Double(5) };
+        return ReadLetter(s);
+    }
+
+    std::vector<Letter> LetterDB::Between(const std::string& uuidA, const std::string& uuidB)
+    {
+        std::lock_guard lock{ mutex_ };
+        if (!db_) return {};
+        const auto sql = std::format(
+            "SELECT {} FROM letters WHERE (author_uuid = ?1 AND recipient_uuid = ?2) OR "
+            "(author_uuid = ?2 AND recipient_uuid = ?1) ORDER BY written_at, rowid;",
+            kLetterColumns);
+        Statement s{ db_, sql.c_str(), "Between" };
+        s.Bind(1, uuidA).Bind(2, uuidB);
+        std::vector<Letter> letters;
+        while (s.Next()) letters.push_back(ReadLetter(s));
+        return letters;
     }
 
     bool LetterDB::MarkDelivered(const std::string& id, double gameDays)

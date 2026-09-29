@@ -35,6 +35,7 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `body` | The letter's plain text |
 | `written_at`, `delivered_at` | Game days; `delivered_at` is 0 until delivered |
 | `reading`, `memory_id` | The LLM's answer (JSON) and the SkyrimNet memory it became. A record only; see below |
+| `in_reply_to` | For a reply, the id of the letter it answers ('' otherwise; replies from before this column have '' too, and so don't appear in the correspondence) |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 

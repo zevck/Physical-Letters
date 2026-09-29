@@ -1,14 +1,35 @@
 {# Physical Letters: the recipient reads a delivered letter.  Sent by the plugin with
-   PublicSendCustomPromptToLLM; context variables: npc (UUID, name), letter (author,
-   recipient, body), memories (the recipient's memory texts most relevant to the letter). #}
+   PublicSendCustomPromptToLLM; context variables:
+     npc             UUID, name of the recipient
+     letter          author, recipient, body of the letter being read
+     correspondence  earlier letters between the two that the recipient knows of, oldest
+                     first (up to 20): from, to, days_ago, body
+     memories        the recipient's other memories most relevant to the writer #}
+
+{# How many of the most recent earlier letters to show. #}
+{% set max_earlier_letters = 5 %}
+
 {% set actor = decnpc(npc.UUID) %}
+{% set first_earlier_letter = length(correspondence) - max_earlier_letters %}
 [ system ]
-    You are helping {{ actor.name }} read a letter that has just been delivered to {{ actor.objectivePronoun }}. You capture how {{ actor.name }} truly reacts to it, what {{ actor.subjectivePronoun }} will remember of it, and whether {{ actor.subjectivePronoun }} writes back, staying true to {{ actor.possessivePronoun }} personality, background and speech patterns.
+    You are helping {{ actor.name }} read a letter that has just been delivered to {{ actor.objectivePronoun }}. You capture how {{ actor.name }} truly reacts to it, what {{ actor.subjectivePronoun }} will remember of it, and whether {{ actor.subjectivePronoun }} writes back, staying true to {{ actor.possessiveAdjective }} personality, background and speech patterns.
 
     {{ render_character_profile("full", npc.UUID) }}
 [ end system ]
 
 [ user ]
+    {% if correspondence and length(correspondence) > 0 %}
+    ## Earlier Letters Between {{ actor.name }} and {{ letter.author }}
+    {% for earlier in correspondence %}
+    {% if loop.index >= first_earlier_letter %}
+    From {{ earlier.from }} to {{ earlier.to }}, {% if earlier.days_ago == 0 %}earlier today{% else if earlier.days_ago == 1 %}a day ago{% else %}{{ earlier.days_ago }} days ago{% endif %}:
+    ```
+    {{ earlier.body }}
+    ```
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
     ## The Letter
     From: {{ letter.author }}
     To: {{ letter.recipient }}
@@ -26,11 +47,11 @@
 
     ## Instructions
 
-    1. **React in character.** Decide how {{ actor.name }} feels on reading the letter, given {{ actor.possessivePronoun }} personality and history with {{ letter.author }}: warmly, coldly, with suspicion, indifference or anything in between. Not everyone is glad to receive a letter.
+    1. **React in character.** Decide how {{ actor.name }} feels on reading the letter, given {{ actor.possessiveAdjective }} personality and history with {{ letter.author }}: warmly, coldly, with suspicion, indifference or anything in between. Not everyone is glad to receive a letter.
 
     2. **Decide whether {{ actor.name }} replies.** Someone close to {{ letter.author }}, or with something to say, usually does; a stranger, a busy or proud person, or someone who resents {{ letter.author }} may not.
 
-    3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessivePronoun }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessivePronoun }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessivePronoun }} life.
+    3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessiveAdjective }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessiveAdjective }} life. If there are earlier letters, this is a correspondence: answer what is new, stay consistent with what was already written, and don't repeat it.
 
     4. **Write the memory {{ actor.name }} keeps of this**, in first person as {{ actor.name }}, two to four sentences: that a letter came from {{ letter.author }}, what it said in brief, how {{ actor.subjectivePronoun }} felt about it, and whether {{ actor.subjectivePronoun }} wrote back and what {{ actor.subjectivePronoun }} said.
 

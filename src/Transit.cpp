@@ -160,7 +160,8 @@ namespace PhysicalLetters::Transit {
                                 .recipientUuid = sent ? sent->authorUuid : SkyrimNet::UuidForFormId(0x14),
                                 .recipientName = sent ? sent->authorName : std::string{ player->GetName() },
                                 .body = text,
-                                .writtenAt = Now() };
+                                .writtenAt = Now(),
+                                .inReplyTo = original.letterId };
             if (!Letters::Create(reply)) return std::nullopt;
 
             const double hours = kWritingHours + Travel::Hours(FindActor(original.recipientUuid), player);
