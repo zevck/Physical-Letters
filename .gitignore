@@ -1,0 +1,12 @@
+/build
+/vcpkg_installed
+/.claude
+
+*.dll
+*.pdb
+*.pex
+*.zip
+*.7z
+
+# Machine-specific build settings
+Build_Config_Local.ps1
