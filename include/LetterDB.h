@@ -56,6 +56,8 @@ namespace PhysicalLetters {
         // The recipient's reading: the LLM's answer (JSON) and the memory it became.  A
         // record only: whether a letter was read is SkyrimNet's memory (Reading::LetterTag).
         bool SetReading(const std::string& id, const std::string& readingJson, int memoryId);
+        // The stored reading's JSON, "" if there is none.
+        std::string GetReading(const std::string& id);
 
     private:
         LetterDB() = default;

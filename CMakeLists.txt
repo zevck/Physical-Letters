@@ -43,6 +43,8 @@ set(sources
     src/SkyrimNet.cpp
     src/TextHook.cpp
     src/Transit.cpp
+    src/Travel.cpp
+    src/Courier.cpp
 )
 
 # ---- Generate Plugin.h ----

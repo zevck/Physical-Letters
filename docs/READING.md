@@ -51,5 +51,6 @@ Retries wait 30 s, then double. After 5 failures the letter waits for the next l
 
 ## Not done yet
 
-- Replies are logged, not delivered.
 - The recipient's location and the time are not in the prompt.
+
+A reply becomes a letter to the player and travels to the courier: [DELIVERY.md](DELIVERY.md#replies-and-the-courier).

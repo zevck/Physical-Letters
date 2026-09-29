@@ -219,4 +219,13 @@ namespace PhysicalLetters {
         return s.Bind(1, readingJson).Bind(2, memoryId).Bind(3, id).Run();
     }
 
+    std::string LetterDB::GetReading(const std::string& id)
+    {
+        std::lock_guard lock{ mutex_ };
+        if (!db_) return {};
+        Statement s{ db_, "SELECT reading FROM letters WHERE letter_id = ?;", "GetReading" };
+        s.Bind(1, id);
+        return s.Next() ? s.Text(0) : std::string{};
+    }
+
 } // namespace PhysicalLetters

@@ -32,12 +32,17 @@ namespace PhysicalLetters::Reading {
         kAbandon,  // it can never work (the letter isn't in LetterDB)
     };
 
+    struct Outcome {
+        Result      result = Result::kRetry;
+        std::string reply;  // kRead: the recipient's reply letter, "" if they don't write back
+    };
+
     // The tag on the memory of a letter.  Its presence in SkyrimNet, not our own records,
     // says whether the letter was read: it survives Keep and goes with Clear.
     std::string LetterTag(const std::string& letterId);
 
     // Game thread.  The work runs on other threads; `done` is then called on the game
     // thread, once, unless SkyrimNet drops the LLM task (the caller times out).
-    void Read(const std::string& letterId, RE::FormID recipientFormId, std::function<void(Result)> done);
+    void Read(const std::string& letterId, RE::FormID recipientFormId, std::function<void(Outcome)> done);
 
 } // namespace PhysicalLetters::Reading

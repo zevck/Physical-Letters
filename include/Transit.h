@@ -21,18 +21,18 @@
 
 #include "LetterDB.h"
 
-// Letters on their way, and delivered letters their recipient hasn't read yet.  The
-// queue lives in the co-save, not LetterDB: it must revert with the save, so loading a
-// save from before a letter was sent never delivers it, and loading one made before the
-// reading finished reads it again.  Game thread only.
+// Letters on their way, delivered letters their recipient hasn't read yet, and replies on
+// their way to the courier.  The queue lives in the co-save, not LetterDB: it must revert
+// with the save, so loading a save from before a letter was sent never delivers it, and
+// loading one made before the reading finished reads it again.  Game thread only.
 namespace PhysicalLetters::Transit {
 
-    // Takes the letter from the player and delivers it to its recipient `delayHours`
-    // of game time from now.
-    bool Send(RE::TESObjectBOOK* book, const Letter& letter, double delayHours);
+    // Takes the letter from the player; it reaches its recipient after the travel time
+    // (Travel::Hours).  Returns that time in game hours, nothing if the player hasn't the letter.
+    std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter);
 
-    // Delivers what is due and starts (or retries) the readings owed.  Runs every
-    // heartbeat once the session is ready.
+    // Delivers what is due, starts (or retries) the readings owed, and hands replies to the
+    // courier.  Runs every heartbeat once the session is ready.
     void Tick();
 
     // Debug: makes every letter in transit due now.

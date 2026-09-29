@@ -22,8 +22,10 @@
 #include "Letters.h"
 #include "Reading.h"
 #include "Session.h"
+#include "Courier.h"
 #include "SkyrimNet.h"
 #include "Strings.h"
+#include "Travel.h"
 
 namespace PhysicalLetters::Transit {
 
@@ -31,8 +33,9 @@ namespace PhysicalLetters::Transit {
         using Clock = std::chrono::steady_clock;
 
         enum class State : std::uint8_t {
-            kInTransit = 0,
+            kInTransit = 0,        // a letter to an NPC, on its way
             kAwaitingReading = 1,  // in the recipient's inventory, not yet read
+            kToPlayer = 2,         // an NPC's letter to the player, on its way to the courier
         };
 
         struct Parcel {
@@ -59,6 +62,9 @@ namespace PhysicalLetters::Transit {
         // v1 (dev builds only) had no state: every parcel was in transit.
         constexpr std::uint32_t kRecordVersion = 2;
 
+        // An NPC takes this long to write back, before the travel time.
+        constexpr double kWritingHours = 12.0;
+
         // A reading SkyrimNet never answers (it drops cancelled LLM tasks) counts as failed.
         constexpr auto kReadingTimeout = std::chrono::minutes(5);
         constexpr auto kFirstRetryDelay = std::chrono::seconds(30);  // doubled after each failure
@@ -78,26 +84,34 @@ namespace PhysicalLetters::Transit {
             g_reportedWaiting.push_back(parcel.letterId);
         }
 
-        // The recipient, or nullptr while they can't be reached: a persistent NPC is in
-        // memory wherever they are, anyone else only while their cell is loaded.  The
+        // The actor with this UUID, or nullptr while they can't be reached: a persistent NPC
+        // is in memory wherever they are, anyone else only while their cell is loaded.  The
         // FormID must map back to the same UUID: a runtime FormID can belong to another
         // actor by now.
-        RE::Actor* FindRecipient(const Parcel& parcel)
+        RE::Actor* FindActor(const std::string& uuid, std::string* why = nullptr)
         {
-            const auto formId = SkyrimNet::FormIdForUuid(parcel.recipientUuid);
+            const auto formId = SkyrimNet::FormIdForUuid(uuid);
             auto* actor = formId ? RE::TESForm::LookupByID<RE::Actor>(formId) : nullptr;
             if (!actor) {
-                ReportWaiting(parcel, "not loaded");
+                if (why) *why = "not loaded";
                 return nullptr;
             }
-            if (const auto uuid = SkyrimNet::UuidForFormId(formId); uuid != parcel.recipientUuid) {
-                ReportWaiting(parcel, std::format("0x{:X} is now UUID {}", formId, uuid));
+            if (const auto mapped = SkyrimNet::UuidForFormId(formId); mapped != uuid) {
+                if (why) *why = std::format("0x{:X} is now UUID {}", formId, mapped);
                 return nullptr;
             }
             return actor;
         }
 
-        enum class Delivery { kDelivered, kReturned, kWaiting, kLost };
+        RE::Actor* FindRecipient(const Parcel& parcel)
+        {
+            std::string why;
+            auto* actor = FindActor(parcel.recipientUuid, &why);
+            if (!actor) ReportWaiting(parcel, why);
+            return actor;
+        }
+
+        enum class Delivery { kDelivered, kReturned, kWaiting, kLost, kToCourier };
 
         Delivery Deliver(const Parcel& parcel)
         {
@@ -105,6 +119,15 @@ namespace PhysicalLetters::Transit {
             if (!book) {
                 SKSE::log::error("[Transit] Letter {} has no form in this save: dropped from the queue", parcel.letterId);
                 return Delivery::kLost;
+            }
+            if (parcel.state == State::kToPlayer) {
+                // From here the courier and his container hold it; the engine saves both.
+                if (!Courier::Give(book)) {
+                    ReportWaiting(parcel, "the courier can't be reached");
+                    return Delivery::kWaiting;
+                }
+                SKSE::log::info("[Transit] Letter {} to {} is with the courier", parcel.letterId, parcel.recipientName);
+                return Delivery::kToCourier;
             }
             auto* recipient = FindRecipient(parcel);
             if (!recipient) return Delivery::kWaiting;
@@ -125,13 +148,39 @@ namespace PhysicalLetters::Transit {
             return Delivery::kDelivered;
         }
 
-        void OnReadingDone(const std::string& letterId, std::uint64_t attempt, std::uint32_t generation, Reading::Result result)
+        // The recipient's reply to the player's letter: a new letter form, and a parcel that
+        // goes to the courier once the NPC has written it and it has travelled.
+        std::optional<Parcel> MakeReply(const Parcel& original, const std::string& text)
+        {
+            const auto sent = LetterDB::GetSingleton()->Get(original.letterId);
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            const Letter reply{ .id = Letters::NewId(),
+                                .authorUuid = original.recipientUuid,
+                                .authorName = original.recipientName,
+                                .recipientUuid = sent ? sent->authorUuid : SkyrimNet::UuidForFormId(0x14),
+                                .recipientName = sent ? sent->authorName : std::string{ player->GetName() },
+                                .body = text,
+                                .writtenAt = Now() };
+            if (!Letters::Create(reply)) return std::nullopt;
+
+            const double hours = kWritingHours + Travel::Hours(FindActor(original.recipientUuid), player);
+            SKSE::log::info("[Transit] {} replies to letter {} with letter {}, due at the courier in {:.1f} game hours",
+                            reply.authorName, original.letterId, reply.id, hours);
+            return Parcel{ .letterId = reply.id,
+                           .recipientUuid = reply.recipientUuid,
+                           .recipientName = reply.recipientName,
+                           .dueAt = Now() + hours / 24.0,
+                           .state = State::kToPlayer };
+        }
+
+        void OnReadingDone(const std::string& letterId, std::uint64_t attempt, std::uint32_t generation,
+                           const Reading::Outcome& outcome)
         {
             if (generation != Session::Generation()) return;  // the new session has its own queue
             const auto it = std::ranges::find_if(g_parcels, [&](const Parcel& p) { return p.letterId == letterId; });
             if (it == g_parcels.end() || it->attempt != attempt) return;  // a timed-out attempt answering late
 
-            if (result == Reading::Result::kRetry) {
+            if (outcome.result == Reading::Result::kRetry) {
                 it->reading = false;
                 ++it->failures;
                 if (it->failures >= kMaxFailures) {
@@ -142,7 +191,12 @@ namespace PhysicalLetters::Transit {
                 }
                 return;
             }
-            g_parcels.erase(it);  // read, or it never can be
+            // Read, or it never can be.  The reply is queued in the same step, so no save
+            // holds a finished reading without its reply.
+            std::optional<Parcel> reply;
+            if (outcome.result == Reading::Result::kRead && !outcome.reply.empty()) reply = MakeReply(*it, outcome.reply);
+            g_parcels.erase(it);
+            if (reply) g_parcels.push_back(std::move(*reply));
         }
 
         void StartReading(Parcel& parcel)
@@ -154,23 +208,24 @@ namespace PhysicalLetters::Transit {
             parcel.startedAt = Clock::now();
             Reading::Read(parcel.letterId, recipient->GetFormID(),
                           [letterId = parcel.letterId, attempt = parcel.attempt,
-                           generation = Session::Generation()](Reading::Result result) {
-                              OnReadingDone(letterId, attempt, generation, result);
+                           generation = Session::Generation()](const Reading::Outcome& outcome) {
+                              OnReadingDone(letterId, attempt, generation, outcome);
                           });
         }
     }
 
-    bool Send(RE::TESObjectBOOK* book, const Letter& letter, double delayHours)
+    std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter)
     {
         auto* player = RE::PlayerCharacter::GetSingleton();
-        if (!book || !player || player->GetItemCount(book) <= 0) return false;
+        if (!book || !player || player->GetItemCount(book) <= 0) return std::nullopt;
+        const double hours = Travel::Hours(player, FindActor(letter.recipientUuid));
         player->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
         g_parcels.push_back({ .letterId = letter.id,
                               .recipientUuid = letter.recipientUuid,
                               .recipientName = letter.recipientName,
-                              .dueAt = Now() + delayHours / 24.0 });
-        SKSE::log::info("[Transit] Sent letter {} to {}, due in {:.1f} game hours", letter.id, letter.recipientName, delayHours);
-        return true;
+                              .dueAt = Now() + hours / 24.0 });
+        SKSE::log::info("[Transit] Sent letter {} to {}, due in {:.1f} game hours", letter.id, letter.recipientName, hours);
+        return hours;
     }
 
     void Tick()
@@ -180,7 +235,7 @@ namespace PhysicalLetters::Transit {
         const auto clock = Clock::now();
 
         std::erase_if(g_parcels, [now](Parcel& parcel) {
-            if (parcel.state != State::kInTransit || parcel.dueAt > now) return false;
+            if (parcel.state == State::kAwaitingReading || parcel.dueAt > now) return false;
             switch (Deliver(parcel)) {
             case Delivery::kDelivered:
                 parcel.state = State::kAwaitingReading;
@@ -200,7 +255,7 @@ namespace PhysicalLetters::Transit {
                 if (clock - parcel.startedAt > kReadingTimeout) {
                     SKSE::log::warn("[Transit] No answer for letter {} after {} minutes: counted as failed",
                                     parcel.letterId, std::chrono::duration_cast<std::chrono::minutes>(kReadingTimeout).count());
-                    OnReadingDone(parcel.letterId, parcel.attempt, Session::Generation(), Reading::Result::kRetry);
+                    OnReadingDone(parcel.letterId, parcel.attempt, Session::Generation(), { Reading::Result::kRetry });
                     // Ignore it if it answers after all; the next attempt finds its memory by tag.
                     parcel.attempt = 0;
                 }
@@ -249,11 +304,14 @@ namespace PhysicalLetters::Transit {
                 SKSE::log::error("[Transit] Co-save record is truncated after {} of {} letter(s)", i, count);
                 break;
             }
-            p.state = state == 1 ? State::kAwaitingReading : State::kInTransit;
+            p.state = state <= 2 ? static_cast<State>(state) : State::kInTransit;
             g_parcels.push_back(std::move(p));
         }
-        const auto awaiting = std::ranges::count_if(g_parcels, [](const Parcel& p) { return p.state == State::kAwaitingReading; });
-        SKSE::log::info("[Transit] {} letter(s) in transit, {} awaiting reading", g_parcels.size() - awaiting, awaiting);
+        const auto inState = [](State state) {
+            return std::ranges::count_if(g_parcels, [state](const Parcel& p) { return p.state == state; });
+        };
+        SKSE::log::info("[Transit] {} letter(s) in transit, {} awaiting reading, {} to the player", inState(State::kInTransit),
+                        inState(State::kAwaitingReading), inState(State::kToPlayer));
     }
 
     void Revert()

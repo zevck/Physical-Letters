@@ -30,7 +30,6 @@ namespace PhysicalLetters::DebugKeys {
         constexpr std::uint32_t kCreateKey = 0x40;  // F6
         constexpr std::uint32_t kSendKey = 0x41;    // F7
         constexpr std::uint32_t kDueKey = 0x42;     // F8
-        constexpr double kDelayHours = 2.0;
 
         void Notify(const std::string& text)
         {
@@ -85,6 +84,7 @@ namespace PhysicalLetters::DebugKeys {
         {
             auto* player = RE::PlayerCharacter::GetSingleton();
             auto* db = LetterDB::GetSingleton();
+            const auto playerUuid = SkyrimNet::UuidForFormId(player->GetFormID());
             RE::TESObjectBOOK* newestBook = nullptr;
             std::optional<Letter> newest;
             const auto inventory = player->GetInventory([](RE::TESBoundObject& item) {
@@ -93,7 +93,8 @@ namespace PhysicalLetters::DebugKeys {
             for (const auto& [item, data] : inventory) {
                 if (data.first <= 0) continue;
                 auto letter = db->Get(Letters::IdFor(item->GetFormID()));
-                if (letter && (!newest || letter->writtenAt > newest->writtenAt)) {
+                // Only the player's own letters: not replies they received.
+                if (letter && letter->authorUuid == playerUuid && (!newest || letter->writtenAt > newest->writtenAt)) {
                     newest = std::move(letter);
                     newestBook = item->As<RE::TESObjectBOOK>();
                 }
@@ -102,8 +103,8 @@ namespace PhysicalLetters::DebugKeys {
                 Notify("You carry no letter to send.");
                 return;
             }
-            if (Transit::Send(newestBook, *newest, kDelayHours)) {
-                Notify(std::format("Letter to {} sent; it arrives in {:.0f} hours.", newest->recipientName, kDelayHours));
+            if (const auto hours = Transit::Send(newestBook, *newest)) {
+                Notify(std::format("Letter to {} sent; it arrives in {:.0f} hours.", newest->recipientName, *hours));
             }
         }
 

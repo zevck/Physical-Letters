@@ -19,13 +19,12 @@
 
 #pragma once
 
-// DEV HARNESS until the editor and the hand-over exist.  Outside menus:
-//   F6  gives the player an example letter to the NPC under the crosshair
-//   F7  sends the newest letter the player wrote and carries (arrives after Travel::Hours)
-//   F8  makes every letter in transit due now, replies included (they go to the courier)
-namespace PhysicalLetters::DebugKeys {
+// The vanilla courier brings letters to the player (docs/DELIVERY.md).
+namespace PhysicalLetters::Courier {
 
-    // kDataLoaded.
-    void Register();
+    // Game thread.  Hands the item to the courier, who finds the player in a town and gives
+    // it to them.  Goes through WICourierScript.addItemToContainer, as vanilla quests do,
+    // so mods that change the courier see it too.  False if the courier quest is missing.
+    bool Give(RE::TESBoundObject* a_item);
 
-} // namespace PhysicalLetters::DebugKeys
+} // namespace PhysicalLetters::Courier

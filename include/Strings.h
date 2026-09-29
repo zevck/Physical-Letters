@@ -23,10 +23,16 @@
 // English only for now.  (Dev-key notifications stay in DebugKeys.)
 namespace PhysicalLetters::Strings {
 
-    // The letter's item name.
+    // A letter's item name: the player's letters by their recipient, letters to the player
+    // by their author.
     inline std::string LetterName(const std::string& recipientName)
     {
         return recipientName.empty() ? "Letter" : "Letter to " + recipientName;
+    }
+
+    inline std::string LetterFromName(const std::string& authorName)
+    {
+        return authorName.empty() ? "Letter" : "Letter from " + authorName;
     }
 
     // A letter's page before LetterDB is open (moments after a load).

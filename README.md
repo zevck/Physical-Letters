@@ -2,7 +2,7 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** The send flow works (tested on AE): a letter is delivered to its recipient after a delay, the recipient reads it, and SkyrimNet keeps a memory of it. Writing your own letters, handing them to an innkeeper or courier, and delivering replies are not built yet. Until they are, the plugin has dev keys (below).
+**Status: in development.** The send flow works (tested on AE): a letter reaches its recipient after the travel time, the recipient reads it, and SkyrimNet keeps a memory of it. Replies are built but not tested yet: a reply comes back to you through the vanilla courier. Writing your own letters and handing them to an innkeeper or courier are not built yet. Until they are, the plugin has dev keys (below).
 
 ## Requirements
 
@@ -25,8 +25,8 @@ Outside menus, once the log says `[Session] Ready`:
 | Key | Does |
 |---|---|
 | F6 | Gives you an example letter to the NPC under the crosshair (SkyrimNet must know them) |
-| F7 | Sends the newest letter you carry; it arrives 2 game hours later |
-| F8 | Makes every letter in transit due now |
+| F7 | Sends the newest letter you wrote and carry; it arrives after the travel time (as fast travel would take) |
+| F8 | Makes every letter in transit due now, including replies, which then go to the courier |
 
 ## Building
 

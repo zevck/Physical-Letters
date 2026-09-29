@@ -3,11 +3,10 @@
 ## The flow
 
 1. **A letter is created** (for now by the F6 dev key): `Letters::Create` makes a runtime book form, records the letter in LetterDB, and the player gets it.
-2. **It is sent** (F7): `Transit::Send` takes it from the player and queues it, due a number of game hours later.
+2. **It is sent** (F7): `Transit::Send` takes it from the player and queues it, due after the travel time to the recipient ([DELIVERY.md](DELIVERY.md)).
 3. **It is delivered** when due: `Transit::Tick` puts it in the recipient's inventory. The parcel stays in the queue as *awaiting reading*.
 4. **The recipient reads it**: `Reading::Read` sends one prompt to the LLM through SkyrimNet and stores the NPC's memory of the letter. Only then does the parcel leave the queue. See [READING.md](READING.md).
-
-Replies are generated and logged but not delivered yet.
+5. **If they reply**, the same step creates the reply letter and queues it to the player. When due (writing time plus travel), it goes to the vanilla courier, who brings it to the player in a town.
 
 ## Components
 
@@ -18,8 +17,10 @@ Replies are generated and logged but not delivered yet.
 | SkyrimNet client | `src/SkyrimNet.cpp`, `include/SkyrimNet/PublicAPI.h` (vendored) | SkyrimNet's public API, resolved at run time; requires v11 |
 | Letters | `src/Letters.cpp` | Letter forms, their look, their rendered text (a thread-safe snapshot) |
 | LetterDB | `src/LetterDB.cpp` | SQLite store of each letter's text, per SkyrimNet save folder |
-| Transit | `src/Transit.cpp` | The queue: delivery, then the reading owed, with retries |
+| Transit | `src/Transit.cpp` | The queue: delivery, the reading owed (with retries), replies to the courier |
 | Reading | `src/Reading.cpp` | The LLM call and the SkyrimNet memory |
+| Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula) |
+| Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text |
 | DynamicForms | `src/DynamicForms.cpp` | Runtime forms the engine saves itself (shared with SNPD) |
 | Serialization | `src/Serialization.cpp`, `include/CoSave.h` | The co-save records |

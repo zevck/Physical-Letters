@@ -113,33 +113,41 @@ namespace PhysicalLetters::Reading {
             return false;
         }
 
+        // A letter the recipient already remembers: its reply, from the reading kept in
+        // LetterDB (the save may predate the reply letter).  No reply if that reading was
+        // never recorded (a load while it was stored).
+        Outcome Remembered(const Letter& letter)
+        {
+            SKSE::log::info("[Reading] {} already remembers letter {}", letter.recipientName, letter.id);
+            const auto reading = json::parse(LetterDB::GetSingleton()->GetReading(letter.id), nullptr, false);
+            if (!reading.is_object()) return { Result::kRead, {} };
+            return { Result::kRead, GetBool(reading, "reply") ? GetString(reading, "reply_text") : std::string{} };
+        }
+
         // Its own thread (AddMemory blocks while the memory is embedded): the memory, then
         // the reading kept in LetterDB.
-        Result Store(const Letter& letter, RE::FormID recipientFormId, std::uint32_t generation, const std::string& response)
+        Outcome Store(const Letter& letter, RE::FormID recipientFormId, std::uint32_t generation, const std::string& response)
         {
             const auto reading = ParseResponse(response);
             if (!reading.is_object()) {
                 SKSE::log::error("[Reading] {}'s reading of letter {} isn't valid JSON. Response: {}", letter.recipientName,
                                  letter.id, response.substr(0, 500));
-                return Result::kRetry;
+                return { Result::kRetry };
             }
             const auto memory = GetString(reading, "memory");
             if (memory.empty()) {
                 SKSE::log::error("[Reading] {}'s reading of letter {} has no memory. Response: {}", letter.recipientName,
                                  letter.id, response.substr(0, 500));
-                return Result::kRetry;
+                return { Result::kRetry };
             }
             if (generation != Session::Generation()) {
                 // The new session reads the letter again if its save still owes the reading.
                 SKSE::log::info("[Reading] A load happened while {} read letter {}: not stored", letter.recipientName, letter.id);
-                return Result::kRetry;
+                return { Result::kRetry };
             }
             // An earlier attempt that timed out may have finished after all.
             const auto tag = LetterTag(letter.id);
-            if (SkyrimNet::HasMemoryWithTag(recipientFormId, tag)) {
-                SKSE::log::info("[Reading] {} already remembers letter {}", letter.recipientName, letter.id);
-                return Result::kRead;
-            }
+            if (SkyrimNet::HasMemoryWithTag(recipientFormId, tag)) return Remembered(letter);
 
             const float importance = std::clamp(GetFloat(reading, "importance", kDefaultImportance), 0.0f, 1.0f);
             const auto emotion = GetString(reading, "emotion");
@@ -156,7 +164,7 @@ namespace PhysicalLetters::Reading {
                                                       std::format("[{}]", kPlayer));
             if (memoryId == 0) {
                 SKSE::log::error("[Reading] SkyrimNet didn't store {}'s memory of letter {}", letter.recipientName, letter.id);
-                return Result::kRetry;
+                return { Result::kRetry };
             }
             SKSE::log::info("[Reading] {} read letter {} ({}): memory {}: {}", letter.recipientName, letter.id, emotion,
                             memoryId, memory);
@@ -168,20 +176,19 @@ namespace PhysicalLetters::Reading {
                 SKSE::log::info("[Reading] A load happened while memory {} was stored: LetterDB not updated", memoryId);
             }
 
-            // Replies are delivered in a later milestone; for now they're only logged.
-            if (replies) {
-                SKSE::log::info("[Reading] {} would reply: {}", letter.recipientName, replyText);
-            } else {
-                SKSE::log::info("[Reading] {} doesn't reply", letter.recipientName);
+            if (replies && !replyText.empty()) {
+                SKSE::log::info("[Reading] {} replies: {}", letter.recipientName, replyText);
+                return { Result::kRead, replyText };
             }
-            return Result::kRead;
+            SKSE::log::info("[Reading] {} doesn't reply", letter.recipientName);
+            return { Result::kRead };
         }
 
-        void Report(const std::function<void(Result)>& done, Result result)
+        void Report(const std::function<void(Outcome)>& done, Outcome outcome)
         {
-            SKSE::GetTaskInterface()->AddTask([done, result]() {
+            SKSE::GetTaskInterface()->AddTask([done, outcome = std::move(outcome)]() {
                 try {
-                    done(result);
+                    done(outcome);
                 } catch (const std::exception& e) {
                     SKSE::log::error("[Reading] Handling a reading's result failed: {}", e.what());
                 }
@@ -194,12 +201,12 @@ namespace PhysicalLetters::Reading {
         return "physical_letters_letter:" + letterId;
     }
 
-    void Read(const std::string& letterId, RE::FormID recipientFormId, std::function<void(Result)> done)
+    void Read(const std::string& letterId, RE::FormID recipientFormId, std::function<void(Outcome)> done)
     {
         auto letter = LetterDB::GetSingleton()->Get(letterId);
         if (!letter) {
             SKSE::log::error("[Reading] Letter {} isn't in LetterDB: it can't be read", letterId);
-            Report(done, Result::kAbandon);
+            Report(done, { Result::kAbandon });
             return;
         }
 
@@ -210,8 +217,7 @@ namespace PhysicalLetters::Reading {
                 // Delivered again after loading an older save: after Keep the memory is
                 // still there, after Clear it was deleted with the rest of that history.
                 if (SkyrimNet::HasMemoryWithTag(recipientFormId, LetterTag(letter.id))) {
-                    SKSE::log::info("[Reading] {} already remembers letter {}", letter.recipientName, letter.id);
-                    Report(done, Result::kRead);
+                    Report(done, Remembered(letter));
                     return;
                 }
 
@@ -236,28 +242,28 @@ namespace PhysicalLetters::Reading {
                     kPrompt, context.dump(), [letter, recipientFormId, generation, done](std::string response, bool success) {
                         if (!success) {
                             SKSE::log::error("[Reading] The LLM call for letter {} failed: {}", letter.id, response);
-                            Report(done, Result::kRetry);
+                            Report(done, { Result::kRetry });
                             return;
                         }
                         std::thread([letter, recipientFormId, generation, done, response = std::move(response)]() {
-                            Result result = Result::kRetry;
+                            Outcome outcome;
                             try {
-                                result = Store(letter, recipientFormId, generation, response);
+                                outcome = Store(letter, recipientFormId, generation, response);
                             } catch (const std::exception& e) {
                                 SKSE::log::error("[Reading] Storing the reading of letter {} failed: {}", letter.id, e.what());
                             }
-                            Report(done, result);
+                            Report(done, std::move(outcome));
                         }).detach();
                     });
                 if (!queued) {
                     SKSE::log::error("[Reading] SkyrimNet refused the prompt for letter {}", letter.id);
-                    Report(done, Result::kRetry);
+                    Report(done, { Result::kRetry });
                 } else {
                     SKSE::log::info("[Reading] {} is reading letter {}", letter.recipientName, letter.id);
                 }
             } catch (const std::exception& e) {
                 SKSE::log::error("[Reading] Reading letter {} failed: {}", letter.id, e.what());
-                Report(done, Result::kRetry);
+                Report(done, { Result::kRetry });
             }
         }).detach();
     }

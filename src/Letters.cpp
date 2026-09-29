@@ -19,6 +19,7 @@
 
 #include "Letters.h"
 #include "DynamicForms.h"
+#include "SkyrimNet.h"
 #include "Strings.h"
 
 #include <random>
@@ -154,7 +155,8 @@ namespace PhysicalLetters::Letters {
             SKSE::log::error("[Letters] Couldn't create a form for letter {}", letter.id);
             return nullptr;
         }
-        const auto name = Strings::LetterName(letter.recipientName);
+        const bool toPlayer = letter.recipientUuid == SkyrimNet::UuidForFormId(0x14);
+        const auto name = toPlayer ? Strings::LetterFromName(letter.authorName) : Strings::LetterName(letter.recipientName);
         Configure(book, Template(), name);
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
         SetEntry(book, letter.id, Render(letter.body));

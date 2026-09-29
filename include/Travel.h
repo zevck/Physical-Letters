@@ -19,13 +19,11 @@
 
 #pragma once
 
-// DEV HARNESS until the editor and the hand-over exist.  Outside menus:
-//   F6  gives the player an example letter to the NPC under the crosshair
-//   F7  sends the newest letter the player wrote and carries (arrives after Travel::Hours)
-//   F8  makes every letter in transit due now, replies included (they go to the courier)
-namespace PhysicalLetters::DebugKeys {
+// How long a letter takes to travel: the engine's fast-travel time between the two
+// places, approximated with the straight-line distance (docs/DELIVERY.md).  Game thread.
+namespace PhysicalLetters::Travel {
 
-    // kDataLoaded.
-    void Register();
+    // Game hours for a letter to go from one reference to the other.
+    double Hours(RE::TESObjectREFR* a_from, RE::TESObjectREFR* a_to);
 
-} // namespace PhysicalLetters::DebugKeys
+} // namespace PhysicalLetters::Travel

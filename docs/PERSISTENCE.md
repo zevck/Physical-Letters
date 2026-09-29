@@ -6,7 +6,8 @@ Three places hold a letter's state, each for a reason:
 |---|---|---|
 | The letter item | A runtime `TESObjectBOOK` form (`0xFF` FormID) the engine saves itself | Items in inventories and the world need a real form. See SNPD `docs/BOOK_FORMS.md`. |
 | Which letter each form is | Co-save record `LFRM` | The save keeps only a form's flags |
-| Letters in transit or awaiting reading | Co-save record `LTRN` | Must revert with the save |
+| Letters in transit, awaiting reading, or on their way to the courier | Co-save record `LTRN` | Must revert with the save |
+| A reply the courier holds | The courier's container (`WICourierContainerRef`) | The engine saves it like any other inventory |
 | Each letter's text, author, recipient, reading | LetterDB | Written once, so one row serves every save of the character |
 
 ## Letter forms
@@ -18,7 +19,7 @@ Created by `DynamicForms::Create<TESObjectBOOK>()` (the engine picks the FormID)
 Unique ID `'SNPL'`:
 
 - **`LFRM`** (version 2, DynamicForms' format): per form, FormID, form type, flags (bit 0 = retired), then three strings: key (the letter id), template EditorID (unused, empty), display name ("Letter to X").
-- **`LTRN`** (version 2): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit, 1 delivered and awaiting reading). Version 1, from dev builds only, had no state; it loads as in transit.
+- **`LTRN`** (version 2): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 a reply on its way to the courier; for state 2 the "recipient" is the player). Version 1, from dev builds only, had no state; it loads as in transit.
 
 Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). The load callback fills the letter forms in from `LFRM` at once; their text follows when the session is ready.
 
@@ -51,7 +52,8 @@ SkyrimNet decides, not LetterDB: the recipient's memory of a letter is tagged `p
 | Reload without saving | Forms made after the loaded save aren't in it; parcels are the save's. A letter sent after it is back in the player's inventory and never arrives. |
 | Load a save from before a delivery, **Keep** | Delivered again; the reading finds the memory and stops: no second memory |
 | Load a save from before a delivery, **Clear** | Delivered again; the memory went with Clear, so the recipient reads it again |
-| Load a save made between delivery and reading | The parcel is awaiting reading and is read (or found read) |
+| Load a save made between delivery and reading | The parcel is awaiting reading and is read (or found read); a reply comes from LetterDB's stored reading if the memory already exists |
+| Load a save from before a reply reached the courier | The reply's parcel is in that save and goes to the courier when due |
 | A load while a reading is running | The result is dropped; the loaded save's own parcels decide what is read |
 | Second character | Another SkyrimNet save id, so another LetterDB |
 | SkyrimNet missing or too old | Letters keep their look, show `...`, nothing is delivered; the log says why |
