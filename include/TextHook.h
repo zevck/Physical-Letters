@@ -19,17 +19,10 @@
 
 #pragma once
 
-#include <RE/Skyrim.h>
-#include <SKSE/SKSE.h>
+// Serves each letter's text to everything that reads a book (GetDescription hook).
+namespace PhysicalLetters::TextHook {
 
-#include <spdlog/spdlog.h>
+    // SKSEPlugin_Load.
+    void Install();
 
-#include <atomic>
-#include <functional>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
-using namespace std::literals;
+} // namespace PhysicalLetters::TextHook

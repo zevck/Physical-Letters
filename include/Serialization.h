@@ -19,17 +19,11 @@
 
 #pragma once
 
-#include <RE/Skyrim.h>
-#include <SKSE/SKSE.h>
+// The co-save, unique ID 'SNPL': 'LFRM' (DynamicForms: what each letter form is) and
+// 'LTRN' (letters in transit).
+namespace PhysicalLetters::Serialization {
 
-#include <spdlog/spdlog.h>
+    // SKSEPlugin_Load.
+    void Register();
 
-#include <atomic>
-#include <functional>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
-using namespace std::literals;
+} // namespace PhysicalLetters::Serialization

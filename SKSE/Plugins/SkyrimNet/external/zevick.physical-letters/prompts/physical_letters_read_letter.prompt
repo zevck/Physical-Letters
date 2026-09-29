@@ -1,0 +1,45 @@
+{# Physical Letters: the recipient reads a delivered letter.  Sent by the plugin with
+   PublicSendCustomPromptToLLM; context variables: npc (UUID, name), letter (author,
+   recipient, body), memories (the recipient's memory texts most relevant to the letter). #}
+{% set actor = decnpc(npc.UUID) %}
+[ system ]
+    You are helping {{ actor.name }} read a letter that has just been delivered to {{ actor.objectivePronoun }}. You capture how {{ actor.name }} truly reacts to it, what {{ actor.subjectivePronoun }} will remember of it, and whether {{ actor.subjectivePronoun }} writes back, staying true to {{ actor.possessivePronoun }} personality, background and speech patterns.
+
+    {{ render_character_profile("full", npc.UUID) }}
+[ end system ]
+
+[ user ]
+    ## The Letter
+    From: {{ letter.author }}
+    To: {{ letter.recipient }}
+
+    ```
+    {{ letter.body }}
+    ```
+
+    {% if memories and length(memories) > 0 %}
+    ## What {{ actor.name }} Remembers That May Bear on It
+    {% for memory in memories -%}
+    - {{ memory }}
+    {% endfor %}
+    {% endif %}
+
+    ## Instructions
+
+    1. **React in character.** Decide how {{ actor.name }} feels on reading the letter, given {{ actor.possessivePronoun }} personality and history with {{ letter.author }}: warmly, coldly, with suspicion, indifference or anything in between. Not everyone is glad to receive a letter.
+
+    2. **Decide whether {{ actor.name }} replies.** Someone close to {{ letter.author }}, or with something to say, usually does; a stranger, a busy or proud person, or someone who resents {{ letter.author }} may not.
+
+    3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessivePronoun }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessivePronoun }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessivePronoun }} life.
+
+    4. **Write the memory {{ actor.name }} keeps of this**, in first person as {{ actor.name }}, two to four sentences: that a letter came from {{ letter.author }}, what it said in brief, how {{ actor.subjectivePronoun }} felt about it, and whether {{ actor.subjectivePronoun }} wrote back and what {{ actor.subjectivePronoun }} said.
+
+    **IMPORTANT**: Return ONLY a valid JSON object. Do not include explanatory text before or after the JSON.
+
+    Return JSON with exactly these fields:
+    - 'memory': the first-person memory described above (string)
+    - 'emotion': {{ actor.name }}'s main feeling on reading the letter, one word (e.g. "touched", "annoyed", "wary", "glad")
+    - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0 float)
+    - 'reply': true if {{ actor.subjectivePronoun }} writes back, false if not
+    - 'reply_text': the reply letter, or "" if {{ actor.subjectivePronoun }} doesn't write back
+[ end user ]

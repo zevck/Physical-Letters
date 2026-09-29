@@ -50,7 +50,8 @@ $espName  = "Physical Letters.esp"
 $mirroredFolders = @(
     "Scripts",
     "Source\Scripts",
-    "Interface\Translations"
+    "Interface\Translations",
+    "SKSE\Plugins\SkyrimNet\external\zevick.physical-letters"
 )
 
 # --- Build-result reporting -------------------------------------------------

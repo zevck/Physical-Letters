@@ -6,8 +6,11 @@
     "directxmath",
     "directxtk",
     "fmt",
+    "minhook",
+    "nlohmann-json",
     "rapidcsv",
     "spdlog",
+    "sqlite3",
     "xbyak"
   ]
 }

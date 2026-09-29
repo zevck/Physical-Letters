@@ -1,0 +1,13 @@
+{
+  "id": "zevick.physical-letters",
+  "type": "bundle",
+  "title": "Physical Letters",
+  "tagline": "NPCs read the letters the player sends them, remember them and may write back.",
+  "description": "Prompt content for Physical Letters: when a letter from the player reaches an NPC, the NPC reads it, keeps a memory of it and decides whether to reply.",
+  "author": "zevick",
+  "tags": ["letters", "immersive"],
+  "nsfw": false,
+  "icon": "book",
+  "version": "0.1.0",
+  "min_skyrimnet_version": "0.25.1"
+}

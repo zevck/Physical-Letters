@@ -19,17 +19,22 @@
 
 #pragma once
 
-#include <RE/Skyrim.h>
-#include <SKSE/SKSE.h>
+// The play session: from a load or new game until the next one.  A session is ready
+// once SkyrimNet has settled this save's history and LetterDB is open for its save
+// folder.  Nothing that reads or writes letters or SkyrimNet runs before that.
+namespace PhysicalLetters::Session {
 
-#include <spdlog/spdlog.h>
+    // kPreLoadGame, and kNewGame before Start: closes LetterDB.
+    void End();
+    // kPostLoadGame / kNewGame: from now on Poll may make the session ready.
+    void Start();
 
-#include <atomic>
-#include <functional>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <unordered_map>
-#include <vector>
+    // Game thread, every heartbeat: becomes ready once SkyrimNet is (see above).
+    void Poll();
+    bool IsReady();
 
-using namespace std::literals;
+    // Changes at every End.  Work that finishes on another thread checks it's still in
+    // the session it started in before writing anything.
+    std::uint32_t Generation();
+
+} // namespace PhysicalLetters::Session

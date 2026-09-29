@@ -17,9 +17,69 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "DebugKeys.h"
+#include "DynamicForms.h"
+#include "Letters.h"
+#include "Serialization.h"
+#include "Session.h"
+#include "SkyrimNet.h"
+#include "TextHook.h"
+#include "Transit.h"
+
 #include <spdlog/sinks/basic_file_sink.h>
+#include <thread>
 
 namespace {
+
+    constexpr auto kHeartbeat = std::chrono::seconds(2);
+
+    // Every kHeartbeat, on the game thread, for the life of the process: Poll makes a
+    // started session ready; Tick delivers and reads letters in a ready one.
+    void StartHeartbeat()
+    {
+        std::thread([]() {
+            while (true) {
+                std::this_thread::sleep_for(kHeartbeat);
+                SKSE::GetTaskInterface()->AddTask([]() {
+                    // An exception must not cross into the engine.
+                    try {
+                        PhysicalLetters::Session::Poll();
+                        PhysicalLetters::Transit::Tick();
+                    } catch (const std::exception& e) {
+                        SKSE::log::error("Heartbeat failed: {}", e.what());
+                    }
+                });
+            }
+        }).detach();
+    }
+
+    void OnMessage(SKSE::MessagingInterface::Message* msg)
+    {
+        if (!msg) return;
+        switch (msg->type) {
+        case SKSE::MessagingInterface::kDataLoaded:
+            PhysicalLetters::SkyrimNet::Init();
+            PhysicalLetters::Letters::CheckTemplate();
+            PhysicalLetters::DebugKeys::Register();
+            StartHeartbeat();
+            break;
+        case SKSE::MessagingInterface::kPreLoadGame:
+            PhysicalLetters::Session::End();
+            break;
+        case SKSE::MessagingInterface::kNewGame:
+            PhysicalLetters::Session::End();
+            PhysicalLetters::Session::Start();
+            break;
+        case SKSE::MessagingInterface::kPostLoadGame:
+            // World copies of our letters in the loaded cells were built before the load
+            // callback filled the forms in.
+            DynamicForms::RebuildLoadedWorldCopies();
+            PhysicalLetters::Session::Start();
+            break;
+        default:
+            break;
+        }
+    }
 
     void InitializeLog()
     {
@@ -53,6 +113,10 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
     // log = false: InitializeLog already set up our logger, and CommonLib's own
     // would replace it (and reopen the same file).
     SKSE::Init(a_skse, { .log = false });
+
+    PhysicalLetters::Serialization::Register();
+    PhysicalLetters::TextHook::Install();
+    SKSE::GetMessagingInterface()->RegisterListener(OnMessage);
 
     return true;
 }

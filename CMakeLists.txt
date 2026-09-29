@@ -25,9 +25,24 @@ add_subdirectory(lib/commonlibsse-ng ${CMAKE_CURRENT_BINARY_DIR}/CommonLibSSE-NG
 # Expose add_commonlibsse_plugin() and friends
 include(lib/commonlibsse-ng/cmake/CommonLibSSE.cmake)
 
+# ---- Dependencies ----
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(minhook CONFIG REQUIRED)
+
 # ---- Sources ----
 set(sources
     src/main.cpp
+    src/DebugKeys.cpp
+    src/DynamicForms.cpp
+    src/LetterDB.cpp
+    src/Letters.cpp
+    src/Reading.cpp
+    src/Serialization.cpp
+    src/Session.cpp
+    src/SkyrimNet.cpp
+    src/TextHook.cpp
+    src/Transit.cpp
 )
 
 # ---- Generate Plugin.h ----
@@ -69,6 +84,14 @@ target_compile_definitions(
     PRIVATE
         NOMINMAX
         WIN32_LEAN_AND_MEAN
+)
+
+target_link_libraries(
+    ${PROJECT_NAME}
+    PRIVATE
+        nlohmann_json::nlohmann_json
+        unofficial::sqlite3::sqlite3
+        minhook::minhook
 )
 
 # ---- Installation ----

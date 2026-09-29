@@ -19,17 +19,13 @@
 
 #pragma once
 
-#include <RE/Skyrim.h>
-#include <SKSE/SKSE.h>
+// DEV HARNESS until the editor and the hand-over exist.  Outside menus:
+//   F6  gives the player an example letter to the NPC under the crosshair
+//   F7  sends the newest letter the player carries (due in kDelayHours)
+//   F8  makes every letter in transit due now
+namespace PhysicalLetters::DebugKeys {
 
-#include <spdlog/spdlog.h>
+    // kDataLoaded.
+    void Register();
 
-#include <atomic>
-#include <functional>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
-using namespace std::literals;
+} // namespace PhysicalLetters::DebugKeys
