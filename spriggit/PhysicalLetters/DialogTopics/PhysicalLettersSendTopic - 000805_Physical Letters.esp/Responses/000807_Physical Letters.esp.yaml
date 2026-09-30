@@ -22,3 +22,9 @@ Conditions:
     RunOnType: Target
     ItemOrList: 00000F:Skyrim.esm
   ComparisonValue: 000802:Physical Letters.esp
+- MutagenObjectType: ConditionFloat
+  CompareOperator: GreaterThan
+  Data:
+    MutagenObjectType: GetKeywordItemCountConditionData
+    RunOnType: Target
+    Keyword: 000800:Physical Letters.esp

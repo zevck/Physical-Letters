@@ -21,6 +21,7 @@
 #include "LetterDB.h"
 #include "Letters.h"
 #include "Session.h"
+#include "SkyrimNet.h"
 #include "Transit.h"
 
 namespace PhysicalLetters::Postage {
@@ -28,8 +29,18 @@ namespace PhysicalLetters::Postage {
     namespace {
         constexpr RE::FormID kPlayer = 0x14;
         constexpr RE::FormID kGold = 0x00000F;
-        constexpr RE::FormID kPostageGlobal = 0x000802;  // PhysicalLettersPostage
+        constexpr RE::FormID kInnkeeperFaction = 0x05091B;  // JobInnkeeperFaction
+        constexpr RE::FormID kCourier = 0x039F83;           // WICourierNPC
+        constexpr RE::FormID kPostageGlobal = 0x000802;     // PhysicalLettersPostage
         constexpr std::string_view kPlugin = "Physical Letters.esp";
+
+        // Who the postage topic's conditions allow; any other gift menu is just a gift.
+        bool TakesPost(RE::Actor* a_holder)
+        {
+            auto* innkeepers = RE::TESForm::LookupByID<RE::TESFaction>(kInnkeeperFaction);
+            const auto* base = a_holder->GetActorBase();
+            return (innkeepers && a_holder->IsInFaction(innkeepers)) || (base && base->GetFormID() == kCourier);
+        }
 
         void GiveBack(RE::Actor* a_holder, RE::TESObjectBOOK* a_book)
         {
@@ -44,8 +55,7 @@ namespace PhysicalLetters::Postage {
             auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(a_bookId);
             auto* holder = RE::TESForm::LookupByID<RE::Actor>(a_holderId);
             auto* player = RE::PlayerCharacter::GetSingleton();
-            if (!book || !holder) return;
-            if (holder->GetInventoryCounts([book](RE::TESBoundObject& item) { return &item == book; })[book] <= 0) return;
+            if (!book || !holder || !TakesPost(holder)) return;
 
             auto letter = LetterDB::GetSingleton()->Get(Letters::IdFor(a_bookId));
             if (!Session::IsReady() || !letter) {
@@ -53,6 +63,9 @@ namespace PhysicalLetters::Postage {
                 GiveBack(holder, book);
                 return;
             }
+            // Only letters the player wrote are posted (the menu shows only those; this
+            // covers a stale keyword).  Anything else stays a gift.
+            if (letter->authorUuid != SkyrimNet::UuidForFormId(kPlayer)) return;
 
             auto* data = RE::TESDataHandler::GetSingleton();
             auto* postageGlobal = data->LookupForm<RE::TESGlobal>(kPostageGlobal, kPlugin);
@@ -80,8 +93,7 @@ namespace PhysicalLetters::Postage {
             }
         }
 
-        // A letter the player wrote, given to someone while the gift menu is open: the
-        // postage topic's gift menu (only it shows these letters to give).
+        // A letter given away while a gift menu is open; HandOver decides whether it's post.
         class GiftSink : public RE::BSTEventSink<RE::TESContainerChangedEvent> {
         public:
             static GiftSink* GetSingleton()
@@ -111,56 +123,6 @@ namespace PhysicalLetters::Postage {
                 return RE::BSEventNotifyControl::kContinue;
             }
         };
-    }
-
-    namespace {
-        constexpr RE::FormID kPostQuest = 0x000803;  // PhysicalLettersPostQuest
-        // Heartbeats to wait for Stop() before clearing kEnabled by hand.
-        constexpr int kStopWaitTicks = 2;
-        bool g_startPending = false;
-        int g_stopWait = 0;
-
-        std::string State(const RE::TESQuest* quest)
-        {
-            return std::format("running {}, starting {}, stopping {}, enabled {}", quest->IsRunning(), quest->IsStarting(),
-                               quest->IsStopping(), quest->IsEnabled());
-        }
-
-        RE::TESQuest* PostQuest()
-        {
-            auto* data = RE::TESDataHandler::GetSingleton();
-            return data ? data->LookupForm<RE::TESQuest>(kPostQuest, kPlugin) : nullptr;
-        }
-    }
-
-    void RestartDialogue()
-    {
-        auto* quest = PostQuest();
-        if (!quest) {
-            SKSE::log::error("[Postage] The postage quest isn't loaded: is {} enabled?", kPlugin);
-            return;
-        }
-        SKSE::log::info("[Postage] Restarting the postage quest ({})", State(quest));
-        if (quest->IsRunning() || quest->IsStarting()) quest->Stop();
-        g_startPending = true;
-        g_stopWait = 0;
-    }
-
-    void Tick()
-    {
-        if (!g_startPending) return;
-        auto* quest = PostQuest();
-        if (!quest) return;
-        if (quest->IsRunning() || quest->IsStarting()) {
-            if (++g_stopWait < kStopWaitTicks) return;
-            // Marked running without having started (a save from when the ESP set only
-            // kEnabled): Stop() has nothing to stop, so clear the flag itself.
-            SKSE::log::info("[Postage] The quest didn't stop ({}): clearing kEnabled", State(quest));
-            quest->SetEnabled(false);
-        }
-        g_startPending = false;
-        const bool started = quest->Start();
-        SKSE::log::info("[Postage] Postage dialogue {} ({})", started ? "started" : "failed to start", State(quest));
     }
 
     void Register()

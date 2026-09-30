@@ -21,11 +21,11 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x800` | Keyword | `PhysicalLettersOutgoingLetter` | On every letter the player wrote (added by the DLL) |
 | `0x801` | FormList | `PhysicalLettersOutgoingFilter` | Holds the keyword; the gift menu's filter |
 | `0x802` | Global (short) | `PhysicalLettersPostage` | 20; shown in the topic text |
-| `0x803` | Quest | `PhysicalLettersPostQuest` | Holds the dialogue; the DLL starts it on every load ([DELIVERY.md](DELIVERY.md#the-hand-over)) |
+| `0x803` | Quest | `PhysicalLettersPostQuest` | Holds the dialogue; starts with the game, listed in `Seq/Physical Letters.seq` ([DELIVERY.md](DELIVERY.md#the-hand-over)) |
 | `0x804` | DialogBranch | `PhysicalLettersSendBranch` | Top-level, player |
 | `0x805` | DialogTopic | `PhysicalLettersSendTopic` | "I need to send a letter. (… gold)" |
-| `0x806` | DialogResponses | | Accept: "Of course." (shared line), TIF `PhysicalLetters_TIF_Postage` |
-| `0x807` | DialogResponses | | Refuse: "Nah. I don't think so." (shared line) |
+| `0x806` | DialogResponses | | Accept: "Of course." (shared line), TIF `PhysicalLetters_TIF_Postage`. Innkeeper or courier, gold ≥ postage, carrying a letter the player wrote |
+| `0x807` | DialogResponses | | Refuse: "Nah. I don't think so." (shared line). Same, with gold < postage |
 
 The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`).
 
@@ -55,3 +55,7 @@ If a record is easier to make in the Creation Kit or xEdit, edit the deployed `.
 ## Papyrus
 
 The TIF's source is `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
+
+## The SEQ file
+
+`Seq/Physical Letters.seq` lists the plugin's start-game quests with dialogue: raw little-endian `uint32` FormIDs as stored in the plugin (master index in the top byte: `0x01` = the plugin itself after its one master, Skyrim.esm), no header. Today one entry, `0x01000803`. A new start-game quest, or a new master, means regenerating it.

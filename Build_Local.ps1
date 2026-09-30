@@ -57,6 +57,7 @@ $mirroredFolders = @(
     "Scripts",
     "Source\Scripts",
     "Interface\Translations",
+    "Seq",
     "SKSE\Plugins\SkyrimNet\external\zevick.physical-letters"
 )
 

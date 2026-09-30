@@ -23,7 +23,7 @@
 // physical_letters_read_letter, shipped in the SkyrimNet plugin folder
 // SKSE/Plugins/SkyrimNet/external/zevick.physical-letters) returns their memory of it,
 // their emotion, and whether and what they reply.  The memory goes into SkyrimNet, tagged
-// with the letter (LetterTag), so the NPC knows about the letter from then on.
+// with the letter and the delivery, so the NPC knows about the letter from then on.
 namespace PhysicalLetters::Reading {
 
     enum class Result {
@@ -37,12 +37,16 @@ namespace PhysicalLetters::Reading {
         std::string reply;  // kRead: the recipient's reply letter, "" if they don't write back
     };
 
-    // The tag on the memory of a letter.  Its presence in SkyrimNet, not our own records,
-    // says whether the letter was read: it survives Keep and goes with Clear.
+    // The tags on the memory of a reading.  The letter tag names the letter (the
+    // correspondence history counts it).  The delivery tag names one delivery: its presence
+    // in SkyrimNet, not our own records, says whether that delivery was read (it survives
+    // Keep and goes with Clear).  A letter sent again is a new delivery, so it's read again.
     std::string LetterTag(const std::string& letterId);
+    std::string DeliveryTag(const std::string& deliveryId);
 
     // Game thread.  The work runs on other threads; `done` is then called on the game
     // thread, once, unless SkyrimNet drops the LLM task (the caller times out).
-    void Read(const std::string& letterId, RE::FormID recipientFormId, std::function<void(Outcome)> done);
+    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId,
+              std::function<void(Outcome)> done);
 
 } // namespace PhysicalLetters::Reading

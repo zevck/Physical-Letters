@@ -22,11 +22,11 @@
 | Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
 | Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |
-| TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text |
+| TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |
 | DynamicForms | `src/DynamicForms.cpp` | Runtime forms the engine saves itself (shared with SNPD) |
 | Serialization | `src/Serialization.cpp`, `include/CoSave.h` | The co-save records |
 | Strings | `include/Strings.h` | Every piece of text the player sees (English only for now) |
-| DebugKeys | `src/DebugKeys.cpp` | F6, F7, F8 until the editor and the hand-over exist |
+| DebugKeys | `src/DebugKeys.cpp` | F6, F7, F8 until the editor exists (F7 sends without the hand-over) |
 
 ## The session
 

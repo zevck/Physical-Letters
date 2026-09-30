@@ -49,6 +49,9 @@ namespace PhysicalLetters::Letters {
     // Thread-safe lookups for the text hook and other code.
     RE::FormID FindByDescription(const RE::TESDescription* description);
     std::string TextFor(RE::FormID formId);
+    // The item card's text ("A letter to X from Y.") if `description` is a letter's item
+    // card, "" otherwise.
+    std::string CardFor(const RE::TESDescription* description);
     std::string IdFor(RE::FormID formId);
     RE::FormID FormFor(const std::string& letterId);
 

@@ -10,7 +10,7 @@ SKSE plugin (CommonLibSSE-NG, C++23; one DLL for SE, AE and VR). The player writ
 - Letter forms are runtime forms the engine saves itself (`DynamicForms`). Never pick a FormID yourself, and never remove a form from the save. See [docs/PERSISTENCE.md](docs/PERSISTENCE.md).
 - `DynamicForms` is shared with SNPD: keep the two copies identical ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#code-shared-with-skyrimnet-physical-diaries)).
 - Every persistence change must survive: save → reload, reload without saving, loading an older save with SkyrimNet **Keep and Clear**, and a second character.
-- Whether a letter was read is SkyrimNet's tagged memory, not our records.
+- Whether a delivery was read is SkyrimNet's tagged memory (the delivery tag), not our records.
 - Game state only on the game thread (`SKSE::GetTaskInterface()->AddTask`), and every task catches exceptions. SkyrimNet callbacks run on its thread pool: no `RE::` there.
 - SkyrimNet content (the prompt, the manifest) follows SkyrimNet's modding docs (`C:\Modding\MO2\mods\SkyrimNet - Dev\docs\modding`): Beta 25 plugin layout under `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/`, and its prompt style guide.
 - Text the player sees goes in `include/Strings.h`.

@@ -46,7 +46,6 @@ namespace {
                     try {
                         PhysicalLetters::Session::Poll();
                         PhysicalLetters::Transit::Tick();
-                        PhysicalLetters::Postage::Tick();
                     } catch (const std::exception& e) {
                         SKSE::log::error("Heartbeat failed: {}", e.what());
                     }
@@ -72,14 +71,12 @@ namespace {
         case SKSE::MessagingInterface::kNewGame:
             PhysicalLetters::Session::End();
             PhysicalLetters::Session::Start();
-            PhysicalLetters::Postage::RestartDialogue();
             break;
         case SKSE::MessagingInterface::kPostLoadGame:
             // World copies of our letters in the loaded cells were built before the load
             // callback filled the forms in.
             DynamicForms::RebuildLoadedWorldCopies();
             PhysicalLetters::Session::Start();
-            PhysicalLetters::Postage::RestartDialogue();
             break;
         default:
             break;

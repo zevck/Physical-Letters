@@ -59,7 +59,7 @@ namespace PhysicalLetters {
         bool MarkDelivered(const std::string& id, double gameDays);
 
         // The recipient's reading: the LLM's answer (JSON) and the memory it became.  A
-        // record only: whether a letter was read is SkyrimNet's memory (Reading::LetterTag).
+        // record only: whether a delivery was read is SkyrimNet's memory (Reading::DeliveryTag).
         bool SetReading(const std::string& id, const std::string& readingJson, int memoryId);
         // The stored reading's JSON, "" if there is none.
         std::string GetReading(const std::string& id);

@@ -27,12 +27,4 @@ namespace PhysicalLetters::Postage {
     // kDataLoaded.
     void Register();
 
-    // kPostLoadGame / kNewGame: (re)start the postage quest.  Its topic only reaches the
-    // dialogue menu when the quest starts while the game runs: start-game-enabled, it ran
-    // but its topic never showed (tested on AE, with and without flag 0x10).  A quest
-    // already running (an older save) is stopped first.
-    void RestartDialogue();
-    // Heartbeat: finishes a restart once the stopped quest has stopped.
-    void Tick();
-
 } // namespace PhysicalLetters::Postage

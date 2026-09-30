@@ -11,13 +11,13 @@ Context variables the plugin sets:
 | Variable | Value |
 |---|---|
 | `npc` | `{ UUID, name }` of the recipient; the template uses `decnpc(npc.UUID)` and `render_character_profile("full", npc.UUID)` |
-| `letter` | `{ author, recipient, body }` |
-| `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it. |
+| `letter` | `{ author, recipient, body, read_before }`; `read_before` is true when the recipient already has a memory of this letter (it was sent again) |
+| `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. |
 | `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
 
 **How many earlier letters the prompt shows** is set at the top of the template: `{% set max_earlier_letters = 5 %}`. Edit it there (or in a SkyrimNet overlay of the prompt); up to 20 are passed.
 
-**Which earlier letters count** follows the same rule as the rest of the mod: SkyrimNet's memory decides ([PERSISTENCE.md](PERSISTENCE.md#was-a-letter-read)). A letter to the recipient counts if they have its tagged memory; their own reply counts if they remember the letter it answers (that memory holds the reply). Letters from timelines the player left, and letters still on their way, drop out without any bookkeeping of ours.
+**Which earlier letters count** follows the same rule as the rest of the mod: SkyrimNet's memory decides ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). A letter to the recipient counts if they have its tagged memory; their own reply counts if they remember the letter it answers (that memory holds the reply). Letters from timelines the player left, and letters still on their way, drop out without any bookkeeping of ours.
 
 The template follows SkyrimNet's prompt guide (`docs/modding/WORKFLOW_PROMPTS.md` in SkyrimNet): the actor is never addressed as "you", names and pronouns come from `decnpc()`.
 
@@ -30,7 +30,7 @@ It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importan
 
 ## The memory
 
-`PublicAddMemory` for the recipient: type `RELATIONSHIP`, the player as related actor, the emotion, the importance, and the tags `physical_letters`, `letter_received` and `physical_letters_letter:<letter id>` ([PERSISTENCE.md](PERSISTENCE.md#was-a-letter-read)). The content:
+`PublicAddMemory` for the recipient: type `RELATIONSHIP`, the player as related actor, the emotion, the importance, and the tags `physical_letters`, `letter_received`, `physical_letters_letter:<letter id>` and `physical_letters_delivery:<delivery id>` ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). The content:
 
 ```
 <the first-person memory>
@@ -52,7 +52,7 @@ A parcel leaves the queue only when the reading succeeds (or can never succeed: 
 - SkyrimNet doesn't answer within 5 minutes (it drops cancelled LLM tasks without calling back);
 - a load happens meanwhile (the loaded save's queue takes over).
 
-Retries wait 30 s, then double. After 5 failures the letter waits for the next load, which retries it again. Before every LLM call, and again before storing, the reading checks for the tagged memory, so a retry never makes a second memory.
+Retries wait 30 s, then double. After 5 failures the letter waits for the next load, which retries it again. Before every LLM call, and again before storing, the reading checks for the delivery's tagged memory, so a retry never makes a second memory of one delivery.
 
 ## Not done yet
 

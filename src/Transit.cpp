@@ -41,6 +41,7 @@ namespace PhysicalLetters::Transit {
         struct Parcel {
             // Saved.
             std::string letterId;
+            std::string deliveryId;  // this sending of the letter; a letter can be sent again
             std::string recipientUuid;
             std::string recipientName;
             double      dueAt = 0;  // game days
@@ -59,8 +60,8 @@ namespace PhysicalLetters::Transit {
         // Letters already logged as waiting for an unreachable recipient, so the log isn't flooded.
         std::vector<std::string> g_reportedWaiting;
 
-        // v1 (dev builds only) had no state: every parcel was in transit.
-        constexpr std::uint32_t kRecordVersion = 2;
+        // v1 (dev builds only) had no state: every parcel was in transit.  v2 had no delivery id.
+        constexpr std::uint32_t kRecordVersion = 3;
 
         // An NPC takes this long to write back, before the travel time.
         constexpr double kWritingHours = 12.0;
@@ -168,17 +169,18 @@ namespace PhysicalLetters::Transit {
             SKSE::log::info("[Transit] {} replies to letter {} with letter {}, due at the courier in {:.1f} game hours",
                             reply.authorName, original.letterId, reply.id, hours);
             return Parcel{ .letterId = reply.id,
+                           .deliveryId = Letters::NewId(),
                            .recipientUuid = reply.recipientUuid,
                            .recipientName = reply.recipientName,
                            .dueAt = Now() + hours / 24.0,
                            .state = State::kToPlayer };
         }
 
-        void OnReadingDone(const std::string& letterId, std::uint64_t attempt, std::uint32_t generation,
+        void OnReadingDone(const std::string& deliveryId, std::uint64_t attempt, std::uint32_t generation,
                            const Reading::Outcome& outcome)
         {
             if (generation != Session::Generation()) return;  // the new session has its own queue
-            const auto it = std::ranges::find_if(g_parcels, [&](const Parcel& p) { return p.letterId == letterId; });
+            const auto it = std::ranges::find_if(g_parcels, [&](const Parcel& p) { return p.deliveryId == deliveryId; });
             if (it == g_parcels.end() || it->attempt != attempt) return;  // a timed-out attempt answering late
 
             if (outcome.result == Reading::Result::kRetry) {
@@ -186,7 +188,7 @@ namespace PhysicalLetters::Transit {
                 ++it->failures;
                 if (it->failures >= kMaxFailures) {
                     SKSE::log::error("[Transit] Letter {} couldn't be read {} times: it's tried again after the next load",
-                                     letterId, it->failures);
+                                     it->letterId, it->failures);
                 } else {
                     it->retryAt = Clock::now() + kFirstRetryDelay * (1 << (it->failures - 1));
                 }
@@ -207,10 +209,10 @@ namespace PhysicalLetters::Transit {
             parcel.reading = true;
             parcel.attempt = ++g_lastAttempt;
             parcel.startedAt = Clock::now();
-            Reading::Read(parcel.letterId, recipient->GetFormID(),
-                          [letterId = parcel.letterId, attempt = parcel.attempt,
+            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(),
+                          [deliveryId = parcel.deliveryId, attempt = parcel.attempt,
                            generation = Session::Generation()](const Reading::Outcome& outcome) {
-                              OnReadingDone(letterId, attempt, generation, outcome);
+                              OnReadingDone(deliveryId, attempt, generation, outcome);
                           });
         }
     }
@@ -223,6 +225,7 @@ namespace PhysicalLetters::Transit {
         const double hours = Travel::Hours(holder, FindActor(letter.recipientUuid));
         holder->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
         g_parcels.push_back({ .letterId = letter.id,
+                              .deliveryId = Letters::NewId(),
                               .recipientUuid = letter.recipientUuid,
                               .recipientName = letter.recipientName,
                               .dueAt = Now() + hours / 24.0 });
@@ -257,7 +260,7 @@ namespace PhysicalLetters::Transit {
                 if (clock - parcel.startedAt > kReadingTimeout) {
                     SKSE::log::warn("[Transit] No answer for letter {} after {} minutes: counted as failed",
                                     parcel.letterId, std::chrono::duration_cast<std::chrono::minutes>(kReadingTimeout).count());
-                    OnReadingDone(parcel.letterId, parcel.attempt, Session::Generation(), { Reading::Result::kRetry });
+                    OnReadingDone(parcel.deliveryId, parcel.attempt, Session::Generation(), { Reading::Result::kRetry });
                     // Ignore it if it answers after all; the next attempt finds its memory by tag.
                     parcel.attempt = 0;
                 }
@@ -286,12 +289,13 @@ namespace PhysicalLetters::Transit {
             CoSave::WriteString(a_intfc, p.recipientName);
             a_intfc->WriteRecordData(p.dueAt);
             a_intfc->WriteRecordData(static_cast<std::uint8_t>(p.state));
+            CoSave::WriteString(a_intfc, p.deliveryId);
         }
     }
 
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version)
     {
-        if (a_version != 1 && a_version != kRecordVersion) {
+        if (a_version < 1 || a_version > kRecordVersion) {
             SKSE::log::error("[Transit] Co-save record version {} is unknown — skipped", a_version);
             return;
         }
@@ -302,11 +306,13 @@ namespace PhysicalLetters::Transit {
             std::uint8_t state = 0;
             if (!CoSave::ReadString(a_intfc, p.letterId) || !CoSave::ReadString(a_intfc, p.recipientUuid) ||
                 !CoSave::ReadString(a_intfc, p.recipientName) || a_intfc->ReadRecordData(p.dueAt) != sizeof(p.dueAt) ||
-                (a_version >= 2 && a_intfc->ReadRecordData(state) != sizeof(state))) {
+                (a_version >= 2 && a_intfc->ReadRecordData(state) != sizeof(state)) ||
+                (a_version >= 3 && !CoSave::ReadString(a_intfc, p.deliveryId))) {
                 SKSE::log::error("[Transit] Co-save record is truncated after {} of {} letter(s)", i, count);
                 break;
             }
             p.state = state <= 2 ? static_cast<State>(state) : State::kInTransit;
+            if (p.deliveryId.empty()) p.deliveryId = p.letterId;  // v1/v2: one delivery per letter
             g_parcels.push_back(std::move(p));
         }
         const auto inState = [](State state) {

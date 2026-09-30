@@ -1,7 +1,8 @@
 {# Physical Letters: the recipient reads a delivered letter.  Sent by the plugin with
    PublicSendCustomPromptToLLM; context variables:
      npc             UUID, name of the recipient
-     letter          author, recipient, body of the letter being read
+     letter          author, recipient, body of the letter being read; read_before is
+                     true when the recipient already received this same letter once
      correspondence  earlier letters between the two that the recipient knows of, oldest
                      first (up to 20): from, to, days_ago, body
      memories        the recipient's other memories most relevant to the writer #}
@@ -37,6 +38,10 @@
     ```
     {{ letter.body }}
     ```
+    {% if letter.read_before %}
+
+    {{ actor.name }} has received this very letter before, word for word{% if correspondence and length(correspondence) > 0 %}; any reply {{ actor.subjectivePronoun }} sent to it is among the earlier letters above{% endif %}. {{ letter.author }} has sent it again.
+    {% endif %}
 
     {% if memories and length(memories) > 0 %}
     ## What {{ actor.name }} Remembers That May Bear on It
@@ -51,7 +56,7 @@
 
     2. **Decide whether {{ actor.name }} replies.** Someone close to {{ letter.author }}, or with something to say, usually does; a stranger, a busy or proud person, or someone who resents {{ letter.author }} may not.
 
-    3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessiveAdjective }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessiveAdjective }} life. If there are earlier letters, this is a correspondence: answer what is new, stay consistent with what was already written, and don't repeat it.
+    3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessiveAdjective }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessiveAdjective }} life. If there are earlier letters, this is a correspondence: answer what is new, stay consistent with what was already written, and don't repeat it.{% if letter.read_before %} Receiving the same letter twice is odd: {{ actor.name }} notices, may be puzzled, amused or irritated, and need not answer it all over again.{% endif %}
 
     4. **Write the memory {{ actor.name }} keeps of this**, in first person as {{ actor.name }}, two to four sentences: that a letter came from {{ letter.author }}, what it said in brief, how {{ actor.subjectivePronoun }} felt about it, and whether {{ actor.subjectivePronoun }} wrote back and what {{ actor.subjectivePronoun }} said.
 

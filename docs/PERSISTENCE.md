@@ -8,7 +8,7 @@ Three places hold a letter's state, each for a reason:
 | Which letter each form is | Co-save record `LFRM` | The save keeps only a form's flags |
 | Letters in transit, awaiting reading, or on their way to the courier | Co-save record `LTRN` | Must revert with the save |
 | A reply the courier holds | The courier's container (`WICourierContainerRef`) | The engine saves it like any other inventory |
-| Each letter's text, author, recipient, reading | LetterDB | Written once, so one row serves every save of the character |
+| Each letter's text, author, recipient, reading | LetterDB | The text is written once, so one row serves every save of the character |
 
 ## Letter forms
 
@@ -19,7 +19,7 @@ Created by `DynamicForms::Create<TESObjectBOOK>()` (the engine picks the FormID)
 Unique ID `'SNPL'`:
 
 - **`LFRM`** (version 2, DynamicForms' format): per form, FormID, form type, flags (bit 0 = retired), then three strings: key (the letter id), template EditorID (unused, empty), display name ("Letter to X").
-- **`LTRN`** (version 2): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 a reply on its way to the courier; for state 2 the "recipient" is the player). Version 1, from dev builds only, had no state; it loads as in transit.
+- **`LTRN`** (version 3): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 a reply on its way to the courier; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Version 2 had no delivery id and version 1 no state; they load with the letter id as delivery id, and as in transit.
 
 Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). The load callback fills the letter forms in from `LFRM` at once; their text follows when the session is ready.
 
@@ -34,16 +34,16 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `author_uuid`, `author_name`, `recipient_uuid`, `recipient_name` | SkyrimNet identities |
 | `body` | The letter's plain text |
 | `written_at`, `delivered_at` | Game days; `delivered_at` is 0 until delivered |
-| `reading`, `memory_id` | The LLM's answer (JSON) and the SkyrimNet memory it became. A record only; see below |
+| `reading`, `memory_id` | The LLM's answer (JSON) and the SkyrimNet memory it became, from the latest reading of the letter (a letter sent again is read again). A record only; see below |
 | `in_reply_to` | For a reply, the id of the letter it answers ('' otherwise; replies from before this column have '' too, and so don't appear in the correspondence) |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 
 **Unlike SNPD's DiaryDB, LetterDB is the only copy of a letter's text**: nothing can rebuild it. A letter whose row is missing shows "The ink has run; the letter can't be read."
 
-## Was a letter read?
+## Was a delivery read?
 
-SkyrimNet decides, not LetterDB: the recipient's memory of a letter is tagged `physical_letters_letter:<letter id>`, and a reading first asks SkyrimNet (`PublicQueryMemoriesForActor`, `includeTags`) whether that memory exists. SkyrimNet's history reverts with a Clear and not with a Keep, so the answer is right in every case below without tracking timelines ourselves.
+SkyrimNet decides, not LetterDB. Each sending of a letter is a delivery with its own id (saved with the parcel), and the recipient's memory of it carries two tags: `physical_letters_letter:<letter id>` (which letter; the correspondence history counts it) and `physical_letters_delivery:<delivery id>` (which delivery). A reading first asks SkyrimNet (`PublicQueryMemoriesForActor`, `includeTags`) whether that delivery's memory exists, and again before storing. SkyrimNet's history reverts with a Clear and not with a Keep, so the answer is right in every case below without tracking timelines ourselves, and a retry or a reload never makes a second memory of one delivery. A letter sent again is a new delivery, so it's always read.
 
 ## Scenarios
 
@@ -51,7 +51,7 @@ SkyrimNet decides, not LetterDB: the recipient's memory of a letter is tagged `p
 |---|---|
 | Save → reload | Forms and parcels come back from the co-save; the text from LetterDB |
 | Reload without saving | Forms made after the loaded save aren't in it; parcels are the save's. A letter sent after it is back in the player's inventory and never arrives. |
-| Load a save from before a delivery, **Keep** | Delivered again; the reading finds the memory and stops: no second memory |
+| Load a save from before a delivery, **Keep** | Delivered again (the same delivery, from the save's parcel); the reading finds its memory and stops: no second memory |
 | Load a save from before a delivery, **Clear** | Delivered again; the memory went with Clear, so the recipient reads it again |
 | Load a save made between delivery and reading | The parcel is awaiting reading and is read (or found read); a reply comes from LetterDB's stored reading if the memory already exists |
 | Load a save from before a reply reached the courier | The reply's parcel is in that save and goes to the courier when due |

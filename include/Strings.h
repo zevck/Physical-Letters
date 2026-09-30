@@ -35,6 +35,12 @@ namespace PhysicalLetters::Strings {
         return authorName.empty() ? "Letter" : "Letter from " + authorName;
     }
 
+    // A letter's item card, under its model in the inventory.
+    inline std::string LetterCard(const std::string& recipientName, const std::string& authorName)
+    {
+        return std::format("A letter to {} from {}.", recipientName, authorName);
+    }
+
     // A letter's page before LetterDB is open (moments after a load).
     inline constexpr std::string_view kLetterPending = "...";
     // A letter LetterDB has no text for.

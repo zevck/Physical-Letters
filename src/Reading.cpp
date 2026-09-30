@@ -129,7 +129,8 @@ namespace PhysicalLetters::Reading {
 
         // Its own thread (AddMemory blocks while the memory is embedded): the memory, then
         // the reading kept in LetterDB.
-        Outcome Store(const Letter& letter, RE::FormID recipientFormId, std::uint32_t generation, const std::string& response)
+        Outcome Store(const Letter& letter, const std::string& deliveryId, RE::FormID recipientFormId, std::uint32_t generation,
+                      const std::string& response)
         {
             const auto reading = ParseResponse(response);
             if (!reading.is_object()) {
@@ -149,7 +150,7 @@ namespace PhysicalLetters::Reading {
                 return { Result::kRetry };
             }
             // An earlier attempt that timed out may have finished after all.
-            const auto tag = LetterTag(letter.id);
+            const auto tag = DeliveryTag(deliveryId);
             if (SkyrimNet::HasMemoryWithTag(recipientFormId, tag)) return Remembered(letter);
 
             const float importance = std::clamp(GetFloat(reading, "importance", kDefaultImportance), 0.0f, 1.0f);
@@ -162,7 +163,7 @@ namespace PhysicalLetters::Reading {
             std::string content = std::format("{}\n\nThe letter from {}:\n{}", memory, letter.authorName, letter.body);
             if (replies && !replyText.empty()) content += std::format("\n\nMy reply:\n{}", replyText);
 
-            const auto tags = json::array({ "physical_letters", "letter_received", tag }).dump();
+            const auto tags = json::array({ "physical_letters", "letter_received", LetterTag(letter.id), tag }).dump();
             const int memoryId = SkyrimNet::AddMemory(recipientFormId, content, importance, "RELATIONSHIP", emotion, tags,
                                                       std::format("[{}]", kPlayer));
             if (memoryId == 0) {
@@ -192,10 +193,12 @@ namespace PhysicalLetters::Reading {
         // decides, as everywhere: a letter to the reader counts if they remember it, and
         // their reply counts if they remember the letter it answers (that memory holds the
         // reply).  Letters from timelines the player left, or still on their way, drop out.
-        // Blocks (a memory query per letter to the reader): not on the game thread.
-        json Correspondence(const Letter& current, RE::FormID readerFormId, double now)
+        // A letter sent again that the reader already read isn't listed, but their replies
+        // to it are.  Blocks (a memory query per letter to the reader): not on the game thread.
+        json Correspondence(const Letter& current, bool readBefore, RE::FormID readerFormId, double now)
         {
             std::vector<std::string> remembered;
+            if (readBefore) remembered.push_back(current.id);
             auto entries = json::array();
             for (const auto& earlier : LetterDB::GetSingleton()->Between(current.recipientUuid, current.authorUuid)) {
                 if (earlier.id == current.id) continue;
@@ -233,7 +236,13 @@ namespace PhysicalLetters::Reading {
         return "physical_letters_letter:" + letterId;
     }
 
-    void Read(const std::string& letterId, RE::FormID recipientFormId, std::function<void(Outcome)> done)
+    std::string DeliveryTag(const std::string& deliveryId)
+    {
+        return "physical_letters_delivery:" + deliveryId;
+    }
+
+    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId,
+              std::function<void(Outcome)> done)
     {
         auto letter = LetterDB::GetSingleton()->Get(letterId);
         if (!letter) {
@@ -245,11 +254,11 @@ namespace PhysicalLetters::Reading {
         const auto generation = Session::Generation();
         const double now = RE::Calendar::GetSingleton()->GetDaysPassed();
         // Memory queries and the LLM call block: off the game thread.
-        std::thread([letter = std::move(*letter), recipientFormId, generation, now, done = std::move(done)]() {
+        std::thread([letter = std::move(*letter), deliveryId, recipientFormId, generation, now, done = std::move(done)]() {
             try {
-                // Delivered again after loading an older save: after Keep the memory is
+                // This delivery again after loading an older save: after Keep the memory is
                 // still there, after Clear it was deleted with the rest of that history.
-                if (SkyrimNet::HasMemoryWithTag(recipientFormId, LetterTag(letter.id))) {
+                if (SkyrimNet::HasMemoryWithTag(recipientFormId, DeliveryTag(deliveryId))) {
                     Report(done, Remembered(letter));
                     return;
                 }
@@ -264,26 +273,33 @@ namespace PhysicalLetters::Reading {
                     }
                 }
 
+                // The same letter from an earlier delivery (sent again).
+                const bool readBefore = SkyrimNet::HasMemoryWithTag(recipientFormId, LetterTag(letter.id));
+
                 std::uint64_t uuid = 0;
                 std::from_chars(letter.recipientUuid.data(), letter.recipientUuid.data() + letter.recipientUuid.size(), uuid);
                 const json context = {
                     { "npc", { { "UUID", uuid }, { "name", letter.recipientName } } },
-                    { "letter", { { "author", letter.authorName }, { "recipient", letter.recipientName }, { "body", letter.body } } },
-                    { "correspondence", Correspondence(letter, recipientFormId, now) },
+                    { "letter",
+                      { { "author", letter.authorName },
+                        { "recipient", letter.recipientName },
+                        { "body", letter.body },
+                        { "read_before", readBefore } } },
+                    { "correspondence", Correspondence(letter, readBefore, recipientFormId, now) },
                     { "memories", memories },
                 };
 
                 const bool queued = SkyrimNet::SendPrompt(
-                    kPrompt, context.dump(), [letter, recipientFormId, generation, done](std::string response, bool success) {
+                    kPrompt, context.dump(), [letter, deliveryId, recipientFormId, generation, done](std::string response, bool success) {
                         if (!success) {
                             SKSE::log::error("[Reading] The LLM call for letter {} failed: {}", letter.id, response);
                             Report(done, { Result::kRetry });
                             return;
                         }
-                        std::thread([letter, recipientFormId, generation, done, response = std::move(response)]() {
+                        std::thread([letter, deliveryId, recipientFormId, generation, done, response = std::move(response)]() {
                             Outcome outcome;
                             try {
-                                outcome = Store(letter, recipientFormId, generation, response);
+                                outcome = Store(letter, deliveryId, recipientFormId, generation, response);
                             } catch (const std::exception& e) {
                                 SKSE::log::error("[Reading] Storing the reading of letter {} failed: {}", letter.id, e.what());
                             }

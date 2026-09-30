@@ -3,6 +3,9 @@ EditorID: PhysicalLettersPostQuest
 Name:
   TargetLanguage: English
   Value: Physical Letters postage
+Flags:
+- StartGameEnabled
+- 0x10
 QuestFormVersion: 0
 TextDisplayGlobals:
 - 000802:Physical Letters.esp

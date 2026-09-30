@@ -35,8 +35,9 @@
 //  - Everything else (SkyrimNet's book-read event, Immersive Reading on VR) passes the
 //    book as the parent: UTF-8, font tags stripped.
 //
-// The item card asks for CNAM, not DESC, and is left alone.  RELOCATION_ID(14399,
-// 14552) is (SE id, AE id); VR reuses the SE id through the VR Address Library.
+// The item card asks for CNAM, not DESC: a letter's item card gets "A letter to X from Y."
+// RELOCATION_ID(14399, 14552) is (SE id, AE id); VR reuses the SE id through the VR
+// Address Library.
 // SkyrimNet Physical Diaries hooks the same function; each answers only its own forms.
 // ---------------------------------------------------------------------------
 
@@ -192,8 +193,19 @@ namespace
         static void thunk(RE::TESDescription* a_self, RE::BSString& a_out, RE::TESForm* a_parent,
                           std::uint32_t a_fieldType)
         {
-            // Only DESC (the book's text; CNAM is the item card).  Cheap checks first:
-            // this runs for every description.
+            // Only our letters' CNAM (item card) and DESC (text).  Cheap checks first: this
+            // runs for every description.
+            // CNAM: a letter's item card ("A letter to X from Y.").
+            if (a_fieldType == 'MANC') {
+                try {
+                    if (const auto card = PhysicalLetters::Letters::CardFor(a_self); !card.empty()) {
+                        a_out = card.c_str();
+                        return;
+                    }
+                } catch (const std::exception& e) {
+                    SKSE::log::error("[TextHook] Preparing a letter's item card failed: {}", e.what());
+                }
+            }
             if (a_fieldType == 'CSED') {
                 try {
                     if (!a_parent) {

@@ -30,13 +30,18 @@ namespace PhysicalLetters::Letters {
         // WIDBAssassinLetter: a plain letter (Note01 model), no script.
         constexpr RE::FormID kTemplateId = 0x10596A;
         constexpr std::string_view kTemplatePlugin = "Skyrim.esm";
+        constexpr RE::FormID kOutgoingKeyword = 0x000800;  // PhysicalLettersOutgoingLetter
+        constexpr std::string_view kPlugin = "Physical Letters.esp";
+        constexpr RE::FormID kPlayer = 0x14;
 
         constexpr std::string_view kPageBreak = "[pagebreak]";
 
         struct Entry {
             std::string id;
             std::string text;  // rendered book markup
+            std::string card;  // the item card's description; "" until LetterDB is open
             const RE::TESDescription* description = nullptr;
+            const RE::TESDescription* cardDescription = nullptr;
         };
 
         std::mutex g_mutex;
@@ -127,20 +132,28 @@ namespace PhysicalLetters::Letters {
 
         // The player's own letters carry PhysicalLettersOutgoingLetter, which the postage
         // topic's gift menu filters on (docs/DELIVERY.md#the-hand-over).  Set every session:
-        // the save keeps only a runtime form's flags.
+        // the save keeps only a runtime form's flags, and a form can hold another letter
+        // after loading another save.
         void MarkOutgoing(RE::TESObjectBOOK* book, const Letter& letter)
         {
             auto* data = RE::TESDataHandler::GetSingleton();
-            auto* keyword = data ? data->LookupForm<RE::BGSKeyword>(0x000800, "Physical Letters.esp") : nullptr;
-            if (keyword && letter.authorUuid == SkyrimNet::UuidForFormId(0x14)) book->AddKeyword(keyword);
+            auto* keyword = data ? data->LookupForm<RE::BGSKeyword>(kOutgoingKeyword, kPlugin) : nullptr;
+            if (!keyword) return;
+            if (letter.authorUuid == SkyrimNet::UuidForFormId(kPlayer)) {
+                book->AddKeyword(keyword);
+            } else {
+                book->RemoveKeyword(keyword);
+            }
         }
 
-        void SetEntry(RE::TESObjectBOOK* book, std::string id, std::string text)
+        void SetEntry(RE::TESObjectBOOK* book, std::string id, std::string text, std::string card = {})
         {
             std::lock_guard lock{ g_mutex };
             g_letters.insert_or_assign(book->GetFormID(), Entry{ .id = std::move(id),
                                                                  .text = std::move(text),
-                                                                 .description = static_cast<RE::TESDescription*>(book) });
+                                                                 .card = std::move(card),
+                                                                 .description = static_cast<RE::TESDescription*>(book),
+                                                                 .cardDescription = &book->itemCardDescription });
         }
     }
 
@@ -169,7 +182,7 @@ namespace PhysicalLetters::Letters {
         const auto name = toPlayer ? Strings::LetterFromName(letter.authorName) : Strings::LetterName(letter.recipientName);
         Configure(book, Template(), name);
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
-        SetEntry(book, letter.id, Render(letter.body));
+        SetEntry(book, letter.id, Render(letter.body), Strings::LetterCard(letter.recipientName, letter.authorName));
         MarkOutgoing(book, letter);
         if (!LetterDB::GetSingleton()->Insert(letter)) {
             SKSE::log::error("[Letters] Letter {} wasn't stored: its text is lost after a reload", letter.id);
@@ -200,7 +213,7 @@ namespace PhysicalLetters::Letters {
             auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(record.formId);
             if (!book) continue;
             if (const auto letter = db->Get(record.key)) {
-                SetEntry(book, record.key, Render(letter->body));
+                SetEntry(book, record.key, Render(letter->body), Strings::LetterCard(letter->recipientName, letter->authorName));
                 MarkOutgoing(book, *letter);
                 ++attached;
             } else {
@@ -225,6 +238,15 @@ namespace PhysicalLetters::Letters {
             if (entry.description == description) return formId;
         }
         return 0;
+    }
+
+    std::string CardFor(const RE::TESDescription* description)
+    {
+        std::lock_guard lock{ g_mutex };
+        for (const auto& [formId, entry] : g_letters) {
+            if (entry.cardDescription == description) return entry.card;
+        }
+        return {};
     }
 
     std::string TextFor(RE::FormID formId)
