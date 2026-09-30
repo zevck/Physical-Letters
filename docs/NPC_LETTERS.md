@@ -10,8 +10,13 @@ A global schedule in the co-save: the next letter is due `IntervalDays` game day
 
 1. **The pool**, on a worker thread: `PublicGetActorEngagement` (player events only), every NPC with events involving the player. It walks SkyrimNet's whole memory and event history, which is why it runs off the game thread and once per attempt.
 2. **Filtered on the data**: at least `MinEvents` events with the player; a FormID SkyrimNet knows a UUID for; not on cooldown.
-3. **A shortlist of 3**, drawn at random without replacement, weighted by the square root of their events with the player: someone the player sees a lot writes more often, not every time.
-4. **Checked in the world**, on the game thread, in shortlist order: the UUID maps back to the same FormID, the actor exists and isn't dead, and they aren't around the player (`Is3DLoaded`: a letter from someone in the next room is odd). The first who passes is asked.
+3. **Filtered in the world**, on the game thread, every one of them: the UUID maps back to the same FormID, the actor exists and isn't dead, and they aren't around the player. Around means **the same area** (`Travel::Area`, like a postcode: the nearest location up the parents with `LocTypeHabitation`, so the Bannered Mare and the street outside are both Whiterun; outside settlements, the named place below the hold, such as a dungeon or camp), or, in the open wilderness where there is no area, within `NearDistance` (8,192 units by default, about two exterior cells) measured like travel time. Also out: anyone who spoke to the player within `MinDaysApart` (1 day by default). Positions alone fail here: an interior resolves to its location's marker, which can be far from the door the NPC outside stands at. A letter from someone in the same town is odd.
+4. **A shortlist of 3** from those, drawn at random without replacement, weighted by the square root of their events with the player (someone the player sees a lot writes more often, not every time) times **recency**: from `RecentWeight` (10% by default) if they spoke to the player today up to full after `MissedAfterDays` (3 by default), from the time of their latest exchange with the player (`PublicGetRecentDialogue`, game seconds), so someone met two days ago is two thirds as likely. Unknown recency (no recorded dialogue) counts as 1.
+5. **Asked in turn**, each checked in the world again first (the player may have moved meanwhile).
+
+The log names each NPC drawn with their events, days since last seen and weight; with debug logging, each engagement entry and recent dialogue as SkyrimNet returned them, why each skipped NPC can't write, and the LLM's raw answer.
+
+**The engagement list's times are unusable**: `lastEventTime` is always 0 and every event counts as recent. SkyrimNet's database returns `game_time` as a `time_point`, which its event reader handles (`DatabaseManager_EventRead.cpp`) but the stats query doesn't (it only reads `double` and `long long`, `DatabaseManager_EventQueries.cpp`). Read from the source, 2026-09-30; so recency and the prompt's dialogue come from `PublicGetRecentDialogue`, one call per NPC in the pool, on the worker thread.
 
 **SkyrimNet aggregates the engagement list by actor name** (`DataAPI/ActorEngagementService.cpp`): same-named actors are merged and given one name-looked-up FormID. The UUID round trip in step 4 drops entries that don't resolve to one real actor, so generic duplicates (guards) may be merged or skipped; that's fine for a letter writer, and nothing here identifies anyone by name.
 
@@ -23,7 +28,8 @@ A global schedule in the co-save: the next letter is due `IntervalDays` game day
 |---|---|
 | `npc` | `{ UUID, name }` of the NPC who might write |
 | `recipient` | The player's name |
-| `days_since_seen` | Game days since their last event with the player (`lastEventTime`, game seconds / 86400), -1 unknown |
+| `days_since_seen` | Game days since their latest exchange with the player, -1 unknown |
+| `dialogue` | Their latest spoken exchanges with the player, oldest first, up to 10 (`PublicGetRecentDialogue`): `{ speaker, text }`, with the speaker's name. SkyrimNet's actual fields differ from its header: the line is `data` (not `text`) and the speaker `"player"` or `"npc"` (not a name); read as seen in game, 2026-09-30. Many NPCs have events with the player but no memories yet; this is what they have to write about |
 | `correspondence` | The earlier letters between them that the NPC knows of (`Reading::Correspondence`) |
 | `memories` | Up to 8 of the NPC's memories most relevant to the player, letters excluded |
 

@@ -41,6 +41,7 @@ namespace PhysicalLetters::NpcLetters {
         // NPCs asked in turn when one has nothing to write.
         constexpr std::size_t kShortlist = 3;
         constexpr int kMaxMemories = 8;
+        constexpr int kMaxExchanges = 10;
         constexpr RE::FormID kPlayer = 0x14;
         constexpr float kDefaultImportance = 0.6f;
 
@@ -53,11 +54,14 @@ namespace PhysicalLetters::NpcLetters {
         // SkyrimNet drops cancelled LLM tasks without calling back: an attempt this old failed.
         constexpr auto kAttemptTimeout = std::chrono::minutes(5);
 
+
         struct Candidate {
             std::string uuid;
             RE::FormID  formId = 0;
             std::string name;
-            double      daysSinceSeen = -1;  // -1 unknown
+            int         events = 0;          // with the player
+            double      daysSinceSeen = -1;  // since their last exchange with the player; -1 unknown
+            json        dialogue = json::array();  // their latest exchanges with the player
         };
 
         double Now()
@@ -87,18 +91,16 @@ namespace PhysicalLetters::NpcLetters {
             g_busy = false;
         }
 
-        // Worker thread.  NPCs with enough events involving the player, off cooldown, drawn
-        // at random weighted by the square root of those events: someone the player sees a
-        // lot writes more often, not every time.
-        std::vector<Candidate> Shortlist(double now, const std::unordered_map<std::string, double>& cooldowns,
-                                         int minEvents)
+        // Worker thread.  NPCs with enough events involving the player, off cooldown.
+        std::vector<Candidate> Pool(double now, const std::unordered_map<std::string, double>& cooldowns, int minEvents,
+                                    const std::string& playerName)
         {
             const auto engagement = json::parse(SkyrimNet::Engagement(), nullptr, false);
             if (!engagement.is_array()) return {};
 
             std::vector<Candidate> pool;
-            std::vector<double> weights;
             for (const auto& entry : engagement) {
+                SKSE::log::debug("[NpcLetters] Engagement: {}", entry.dump());
                 const auto formId = entry.value("formId", 0u);
                 const int events = entry.value("eventCount", 0);
                 if (formId == 0 || formId == kPlayer || events < minEvents) continue;
@@ -107,28 +109,53 @@ namespace PhysicalLetters::NpcLetters {
                 if (const auto it = cooldowns.find(uuid); it != cooldowns.end() && it->second > now) continue;
                 auto name = SkyrimNet::ActorName(uuid);
                 if (name.empty()) name = entry.value("name", std::string{});
-                // SkyrimNet's event times are game seconds.
-                const double lastSeen = entry.value("lastEventTime", 0.0);
-                pool.push_back({ uuid, formId, name, lastSeen > 0 ? std::max(0.0, now - lastSeen / 86400.0) : -1.0 });
-                weights.push_back(std::sqrt(static_cast<double>(events)));
+                // The engagement list's lastEventTime is always 0 (SkyrimNet's stats don't read
+                // its time_point game times); the dialogue's times are read properly.  Game
+                // seconds.
+                auto dialogue = json::parse(SkyrimNet::RecentDialogue(formId, kMaxExchanges), nullptr, false);
+                if (!dialogue.is_array()) dialogue = json::array();
+                SKSE::log::debug("[NpcLetters] {}'s recent dialogue: {}", name, dialogue.dump().substr(0, 1500));
+                double lastSeen = 0;
+                auto exchanges = json::array();
+                for (const auto& line : dialogue) {
+                    if (const auto it = line.find("gameTime"); it != line.end() && it->is_number()) {
+                        lastSeen = std::max(lastSeen, it->get<double>());
+                    }
+                    // The line is "data" (the header says "text"), the speaker "player" or "npc".
+                    auto text = LlmJson::GetString(line, "data");
+                    if (text.empty()) text = LlmJson::GetString(line, "text");
+                    if (text.empty()) continue;
+                    const auto speaker = LlmJson::GetString(line, "speaker");
+                    exchanges.push_back({ { "speaker", speaker == "npc" ? name : speaker == "player" ? playerName : speaker },
+                                          { "text", text } });
+                }
+                pool.push_back({ uuid, formId, name, events, lastSeen > 0 ? std::max(0.0, now - lastSeen / 86400.0) : -1.0,
+                                 std::move(exchanges) });
             }
+            return pool;
+        }
 
-            std::vector<Candidate> shortlist;
-            while (shortlist.size() < kShortlist && !pool.empty()) {
-                std::discrete_distribution<std::size_t> draw(weights.begin(), weights.end());
-                const auto i = draw(Rng());
-                shortlist.push_back(std::move(pool[i]));
-                pool.erase(pool.begin() + static_cast<std::ptrdiff_t>(i));
-                weights.erase(weights.begin() + static_cast<std::ptrdiff_t>(i));
-            }
-            SKSE::log::info("[NpcLetters] {} NPC(s) could write; shortlisted {}", pool.size() + shortlist.size(),
-                            shortlist.size());
-            return shortlist;
+        // How likely the candidate is to be drawn: the square root of their events with the
+        // player (someone seen a lot writes more often, not every time), less if they dealt
+        // with the player lately.
+        double Weight(const Candidate& candidate)
+        {
+            const auto* config = Config::GetSingleton();
+            const double missedAfter = config->Get(Config::kNpcMissedAfter);
+            const double floor = config->Get(Config::kNpcRecentWeight) / 100.0;
+            const double recency = candidate.daysSinceSeen < 0 || missedAfter <= 0
+                                        ? 1.0
+                                        : std::clamp(candidate.daysSinceSeen / missedAfter, floor, 1.0);
+            return std::sqrt(static_cast<double>(candidate.events)) * recency;
         }
 
         // The candidate's actor if they can write now: the same actor as their UUID
-        // (SkyrimNet merges same-named actors), alive, and not around the player (a letter
-        // from someone in the next room is odd).
+        // (SkyrimNet merges same-named actors), alive, not seen lately (MinDaysApart), and not
+        // around the player (a letter from someone in the same town is odd): the same area
+        // (Travel::Area: the same settlement or named place), or, in the wilderness, within
+        // NearDistance (straight line between their places, an interior as its location's
+        // marker).  Also checked again before asking: the
+        // player may have moved while an earlier candidate was asked.
         RE::Actor* Writer(const Candidate& candidate, std::string& why)
         {
             auto* actor = RE::TESForm::LookupByID<RE::Actor>(candidate.formId);
@@ -140,8 +167,19 @@ namespace PhysicalLetters::NpcLetters {
                 why = "dead";
                 return nullptr;
             }
-            if (actor->Is3DLoaded()) {
-                why = "near the player";
+            const auto* config = Config::GetSingleton();
+            if (const int apart = config->Get(Config::kNpcMinDaysApart);
+                apart > 0 && candidate.daysSinceSeen >= 0 && candidate.daysSinceSeen < apart) {
+                why = std::format("spoke to the player {:.1f} days ago", candidate.daysSinceSeen);
+                return nullptr;
+            }
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            if (const auto* area = Travel::Area(actor); area && area == Travel::Area(player)) {
+                why = std::format("in the player's area, {}", area->GetName());
+                return nullptr;
+            }
+            if (const auto distance = Travel::Distance(actor, player); distance && *distance < config->Get(Config::kNpcNearDistance)) {
+                why = std::format("{:.0f} units from the player", *distance);
                 return nullptr;
             }
             return actor;
@@ -160,6 +198,7 @@ namespace PhysicalLetters::NpcLetters {
                 Finish();
                 return;
             }
+            SKSE::log::debug("[NpcLetters] {}'s answer: {}", candidate.name, response.substr(0, 2000));
             const auto answer = LlmJson::ParseResponse(response);
             const auto text = answer.is_object() ? LlmJson::GetString(answer, "letter") : std::string{};
             if (!answer.is_object() || !LlmJson::GetBool(answer, "write") || text.empty()) {
@@ -236,6 +275,7 @@ namespace PhysicalLetters::NpcLetters {
                         { "recipient", playerName },
                         { "days_since_seen", static_cast<int>(c.daysSinceSeen) },
                         { "correspondence", Reading::Correspondence(c.uuid, playerUuid, c.formId, now) },
+                        { "dialogue", c.dialogue },
                         { "memories", memories },
                     };
                     const bool queued = SkyrimNet::SendPrompt(
@@ -269,6 +309,44 @@ namespace PhysicalLetters::NpcLetters {
 
         // Game thread.  The first NPC from shortlist[index] on who can write now is asked;
         // none left, and the letter waits for the next interval.
+        // Game thread.  Of the pool, those who can write now (Writer), drawn at random by
+        // Weight without replacement, up to kShortlist.
+        std::vector<Candidate> Shortlist(std::vector<Candidate> pool)
+        {
+            const auto total = pool.size();
+            std::vector<Candidate> eligible;
+            std::vector<double> weights;
+            for (auto& candidate : pool) {
+                std::string why;
+                if (!Writer(candidate, why)) {
+                    SKSE::log::debug("[NpcLetters] {} can't write now ({})", candidate.name, why);
+                    continue;
+                }
+                const double weight = Weight(candidate);
+                if (weight <= 0) {
+                    SKSE::log::debug("[NpcLetters] {} has weight 0", candidate.name);
+                    continue;
+                }
+                weights.push_back(weight);
+                eligible.push_back(std::move(candidate));
+            }
+            std::vector<Candidate> shortlist;
+            while (shortlist.size() < kShortlist && !eligible.empty()) {
+                std::discrete_distribution<std::size_t> draw(weights.begin(), weights.end());
+                const auto i = draw(Rng());
+                SKSE::log::info("[NpcLetters] Drew {} ({} events with the player, last seen {} days ago, weight {:.2f})",
+                                eligible[i].name, eligible[i].events,
+                                eligible[i].daysSinceSeen < 0 ? std::string{ "?" } : std::format("{:.1f}", eligible[i].daysSinceSeen),
+                                weights[i]);
+                shortlist.push_back(std::move(eligible[i]));
+                eligible.erase(eligible.begin() + static_cast<std::ptrdiff_t>(i));
+                weights.erase(weights.begin() + static_cast<std::ptrdiff_t>(i));
+            }
+            SKSE::log::info("[NpcLetters] {} NPC(s) in the pool, {} could write now; shortlisted {}", total,
+                            eligible.size() + shortlist.size(), shortlist.size());
+            return shortlist;
+        }
+
         void TryFrom(std::vector<Candidate> shortlist, std::size_t index, std::uint32_t generation)
         {
             if (generation != Session::Generation()) return;
@@ -304,16 +382,18 @@ namespace PhysicalLetters::NpcLetters {
         g_busySince = std::chrono::steady_clock::now();
         const auto generation = Session::Generation();
         const int minEvents = Config::GetSingleton()->Get(Config::kNpcMinEvents);
-        std::thread([now, cooldowns = g_cooldownUntil, minEvents, generation]() {
-            std::vector<Candidate> shortlist;
+        std::thread([now, cooldowns = g_cooldownUntil, minEvents, generation,
+                     playerName = std::string{ RE::PlayerCharacter::GetSingleton()->GetName() }]() {
+            std::vector<Candidate> pool;
             try {
-                shortlist = Shortlist(now, cooldowns, minEvents);
+                pool = Pool(now, cooldowns, minEvents, playerName);
             } catch (const std::exception& e) {
                 SKSE::log::error("[NpcLetters] Picking a writer failed: {}", e.what());
             }
-            SKSE::GetTaskInterface()->AddTask([shortlist = std::move(shortlist), generation]() mutable {
+            SKSE::GetTaskInterface()->AddTask([pool = std::move(pool), generation]() mutable {
                 try {
-                    TryFrom(std::move(shortlist), 0, generation);
+                    if (generation != Session::Generation()) return;
+                    TryFrom(Shortlist(std::move(pool)), 0, generation);
                 } catch (const std::exception& e) {
                     SKSE::log::error("[NpcLetters] Picking a writer failed: {}", e.what());
                     if (generation == Session::Generation()) Finish();

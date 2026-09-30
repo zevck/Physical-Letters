@@ -18,6 +18,10 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[NpcLetters] IntervalDays` | 7 | 1–60 | Game days between attempts, times 0.5–1.5 at random |
 | `[NpcLetters] CooldownDays` | 14 | 0–120 | After an NPC writes to the player (first or in reply), game days before they may write first again |
 | `[NpcLetters] MinEvents` | 5 | 1–200 | Events with the player SkyrimNet must have recorded for an NPC to be picked |
+| `[NpcLetters] MinDaysApart` | 1 | 0–30 | Game days since their last exchange with the player below which an NPC isn't picked (0 = off) |
+| `[NpcLetters] MissedAfterDays` | 3 | 0–30 | Game days apart for an NPC's full weight; 0 ignores recency |
+| `[NpcLetters] RecentWeight` | 10 | 0–100 | Weight (percent of full) of someone the player spoke to today; it grows to full over `MissedAfterDays` |
+| `[NpcLetters] NearDistance` | 8192 | 0–65536 | In the wilderness (no area), game units within which an NPC is around the player |
 
 **Every setting is one row in `Config::kSettings`**: section, key, default, range. Reads clamp to the range and fall back to the default on a non-number, so a hand-edited INI can't feed the code nonsense. `Save()` writes only the keys in the table (anything else is dropped at the next start), building the file in memory first so a failure can't leave it half-written.
 
@@ -27,7 +31,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 
 `PhysicalLetters_MCM` (`extends SKI_ConfigBase`) on the start-game quest `PhysicalLettersMCMQuest` (`0x808`), whose player alias runs `SKI_PlayerLoadGameAlias`, as SNPD's does. Needs SkyUI; without it the INI still works.
 
-One page, three sections: Delivery (five sliders), NPC letters (the toggle and three sliders), Logging (the debug toggle). Sliders and toggles are rows in two arrays, so a section is a range of them. The script knows only the setting names (`"Delivery.Postage"`): the natives `GetSetting`, `SetSetting`, `GetSettingDefault`, `GetSettingMin` and `GetSettingMax` on `PhysicalLetters_MCM` take them, so defaults and ranges live only in `kSettings`.
+One page, three sections: Delivery (five sliders), NPC letters (the toggle and seven sliders), Logging (the debug toggle). Sliders and toggles are rows in two arrays, so a section is a range of them. The script knows only the setting names (`"Delivery.Postage"`): the natives `GetSetting`, `SetSetting`, `GetSettingDefault`, `GetSettingMin` and `GetSettingMax` on `PhysicalLetters_MCM` take them, so defaults and ranges live only in `kSettings`.
 
 Strings are `$PL_…` keys in `Interface/Translations/Physical Letters_<LANGUAGE>.txt` (UTF-16 LE with BOM, key and text separated by a tab). All nine files hold the English text for now.
 

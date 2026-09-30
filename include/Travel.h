@@ -26,4 +26,15 @@ namespace PhysicalLetters::Travel {
     // Game hours for a letter to go from one reference to the other.
     double Hours(RE::TESObjectREFR* a_from, RE::TESObjectREFR* a_to);
 
+    // Straight-line game units between the two places, as Hours resolves them (an interior
+    // is its location's exterior marker); nothing if they share no root worldspace or a
+    // place can't be found.
+    std::optional<double> Distance(RE::TESObjectREFR* a_from, RE::TESObjectREFR* a_to);
+
+    // The area the reference is in, like a postcode: its settlement (the nearest location up
+    // the parents with LocTypeHabitation: the Bannered Mare and the street outside are both
+    // Whiterun), else the named place below the hold (a dungeon, a camp); nullptr in the
+    // open wilderness (the hold itself) or when it has no location.
+    const RE::BGSLocation* Area(RE::TESObjectREFR* a_ref);
+
 } // namespace PhysicalLetters::Travel

@@ -44,12 +44,12 @@ endfunction
 ; having run first (on the first open it hadn't, and the page came up empty).  Rebuilt
 ; every time: OnConfigInit runs once per save, so a script update would keep old arrays.
 function Setup()
-    _names = new string[8]
-    _labels = new string[8]
-    _tips = new string[8]
-    _formats = new string[8]
-    _steps = new int[8]
-    _oids = new int[8]
+    _names = new string[12]
+    _labels = new string[12]
+    _tips = new string[12]
+    _formats = new string[12]
+    _steps = new int[12]
+    _oids = new int[12]
     Slider(0, "Delivery.Postage", "$PL_Postage", "$PL_TipPostage", 5)
     Slider(1, "Delivery.WritingHours", "$PL_WritingHours", "$PL_TipWritingHours", 1)
     Slider(2, "Delivery.MinHours", "$PL_MinHours", "$PL_TipMinHours", 1)
@@ -58,6 +58,11 @@ function Setup()
     Slider(5, "NpcLetters.IntervalDays", "$PL_NpcInterval", "$PL_TipNpcInterval", 1)
     Slider(6, "NpcLetters.CooldownDays", "$PL_NpcCooldown", "$PL_TipNpcCooldown", 1)
     Slider(7, "NpcLetters.MinEvents", "$PL_NpcMinEvents", "$PL_TipNpcMinEvents", 1)
+    Slider(8, "NpcLetters.MinDaysApart", "$PL_NpcMinDaysApart", "$PL_TipNpcMinDaysApart", 1)
+    Slider(9, "NpcLetters.MissedAfterDays", "$PL_NpcMissedAfter", "$PL_TipNpcMissedAfter", 1)
+    Slider(10, "NpcLetters.RecentWeight", "$PL_NpcRecentWeight", "$PL_TipNpcRecentWeight", 5)
+    _formats[10] = "{0}%"
+    Slider(11, "NpcLetters.NearDistance", "$PL_NpcNearDistance", "$PL_TipNpcNearDistance", 512)
 
     _toggleNames = new string[2]
     _toggleLabels = new string[2]
@@ -87,7 +92,7 @@ event OnPageReset(string page)
     AddEmptyOption()
     AddHeaderOption("$PL_HeaderNpcLetters")
     AddToggle(0)
-    AddSliders(5, 7)
+    AddSliders(5, 11)
     AddEmptyOption()
     AddHeaderOption("$PL_HeaderLogging")
     AddToggle(1)

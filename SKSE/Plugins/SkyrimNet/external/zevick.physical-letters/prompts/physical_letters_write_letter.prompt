@@ -5,6 +5,7 @@
      days_since_seen  game days since the NPC last dealt with the player (-1 unknown)
      correspondence   earlier letters between the two that the NPC knows of, oldest first
                       (up to 20): from, to, days_ago, body
+     dialogue         their latest spoken exchanges, oldest first (up to 10): speaker, text
      memories         the NPC's memories most relevant to the player (letters excluded) #}
 
 {# How many of the most recent earlier letters to show. #}
@@ -22,6 +23,13 @@
     {% if days_since_seen >= 0 %}
     ## Time Apart
     {% if days_since_seen == 0 %}{{ actor.name }} dealt with {{ recipient }} earlier today.{% else if days_since_seen == 1 %}{{ actor.name }} last dealt with {{ recipient }} a day ago.{% else %}{{ actor.name }} last dealt with {{ recipient }} {{ days_since_seen }} days ago.{% endif %}
+    {% endif %}
+
+    {% if dialogue and length(dialogue) > 0 %}
+    ## The Last Time They Spoke
+    {% for line in dialogue -%}
+    {{ line.speaker }}: {{ line.text }}
+    {% endfor %}
     {% endif %}
 
     {% if correspondence and length(correspondence) > 0 %}
@@ -47,7 +55,7 @@
 
     1. **Decide whether {{ actor.name }} writes.** People write when they have a reason: news of their own, something unfinished between them, gratitude, worry, a favour to ask, a grudge, or simply missing someone. Someone who barely knows {{ recipient }}, or has nothing to say, doesn't write. It's fine to decide not to.
 
-    2. **If {{ actor.subjectivePronoun }} writes, write the letter** in {{ actor.possessiveAdjective }} own voice: addressed to {{ recipient }}, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. Draw on what {{ actor.subjectivePronoun }} remembers and on {{ actor.possessiveAdjective }} own life as the profile describes it. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent major events. If there are earlier letters, this continues a correspondence: stay consistent and don't repeat what was already written.
+    2. **If {{ actor.subjectivePronoun }} writes, write the letter** in {{ actor.possessiveAdjective }} own voice: addressed to {{ recipient }}, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. Draw on what they last talked about, what {{ actor.subjectivePronoun }} remembers, and {{ actor.possessiveAdjective }} own life as the profile describes it. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent major events. If there are earlier letters, this continues a correspondence: stay consistent and don't repeat what was already written.
 
     3. **Write the memory {{ actor.name }} keeps of writing it**, in first person as {{ actor.name }}, one or two sentences: that {{ actor.subjectivePronoun }} wrote to {{ recipient }} and what about.
 

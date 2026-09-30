@@ -131,6 +131,12 @@ namespace PhysicalLetters::SkyrimNet {
         return PublicGetActorEngagement(0, true, true, kDay, 7 * kDay);
     }
 
+    std::string RecentDialogue(RE::FormID formId, int maxExchanges)
+    {
+        if (!g_available || !PublicGetRecentDialogue) return "[]";
+        return PublicGetRecentDialogue(formId, maxExchanges);
+    }
+
     int AddMemory(RE::FormID formId, const std::string& content, float importance, const std::string& type,
                   const std::string& emotion, const std::string& tagsJson, const std::string& relatedActorsJson)
     {
