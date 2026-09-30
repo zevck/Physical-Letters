@@ -19,7 +19,7 @@
 
 #pragma once
 
-// DEV HARNESS until the editor and the hand-over exist.  Outside menus:
+// DEV HARNESS until the editor exists.  Outside menus:
 //   F6  gives the player an example letter to the NPC under the crosshair
 //   F7  sends the newest letter the player wrote and carries (arrives after Travel::Hours)
 //   F8  makes every letter in transit due now, replies included (they go to the courier)

@@ -163,8 +163,6 @@ namespace PhysicalLetters::Transit {
             LetterDB::GetSingleton()->MarkDelivered(parcel.letterId, Now());
             SKSE::log::info("[Transit] Delivered letter {} to {} (0x{:X})", parcel.letterId, parcel.recipientName,
                             recipient->GetFormID());
-            // Testing aid while there is no other sign; remove once replies exist.
-            RE::SendHUDMessage::ShowHUDMessage(Strings::LetterDelivered(parcel.recipientName).c_str());
             return Delivery::kDelivered;
         }
 

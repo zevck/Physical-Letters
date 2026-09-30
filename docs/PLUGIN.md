@@ -1,6 +1,6 @@
 # The plugin (ESP)
 
-`Physical Letters.esp` holds the records the DLL can't make: the hand-over dialogue ([DELIVERY.md](DELIVERY.md#the-hand-over)). Its source is text in git, written with [Spriggit](https://github.com/Mutagen-Modding/Spriggit); the `.esp` itself is never committed. This follows SkyrimNet's setup (its `docs/skyrim_plugins.md`), in Spriggit's YAML format.
+`Physical Letters.esp` holds the records the DLL can't make: the hand-over dialogue ([DELIVERY.md](DELIVERY.md#the-hand-over)) and the MCM quest ([SETTINGS.md](SETTINGS.md)). Its source is text in git, written with [Spriggit](https://github.com/Mutagen-Modding/Spriggit); the `.esp` itself is never committed. This follows SkyrimNet's setup (its `docs/skyrim_plugins.md`), in Spriggit's YAML format.
 
 ## Layout
 

@@ -52,9 +52,4 @@ namespace PhysicalLetters::Strings {
         return dead ? "Return to sender (deceased)" : "Return to sender (not found)";
     }
 
-    inline std::string LetterDelivered(const std::string& recipientName)
-    {
-        return std::format("Your letter reached {}.", recipientName);
-    }
-
 } // namespace PhysicalLetters::Strings

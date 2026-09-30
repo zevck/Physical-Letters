@@ -32,8 +32,8 @@ VR's Address Library doesn't list the four functions (checked in the 2026-09-27 
 - **Positions in the exterior world.** A reference in an exterior cell is used as it is. Anyone indoors, or an NPC not loaded, uses the world marker of their current location, or its parent's (Dragonsreach → Whiterun), then of their editor location. Letters travel the roads.
 - **No path** (the engine returns `FLT_MAX`): the straight line × 1.3. The log says which it was, and how long the pathing took.
 - **At least 2 game hours** (`MinHours`): someone still carries the letter across town. Two people indoors in the same town resolve to the same marker, 0 units apart.
-- **Worldspaces compare by their root.** City worldspaces (`WhiterunWorld`, `SolitudeWorld`, …) are children of `Tamriel` and share its coordinates, so a letter from Solitude to someone in Whiterun's streets is within one world. Whether the engine's pathing crosses from a city worldspace into Tamriel isn't known yet; if it doesn't, the straight line applies, which is valid because the coordinates are shared. Some city locations have no marker of their own (`SolitudeLocation`): their hold's is used.
-- **No common root worldspace** (Solstheim and Skyrim, Blackreach), or no place found: 48 game hours (`FallbackHours`).
+- **Worldspaces compare by their root.** City worldspaces (`WhiterunWorld`, `SolitudeWorld`, …) are children of `Tamriel` and share its coordinates, so a letter from Solitude to someone in Whiterun's streets is within one world. The engine's pathing crosses from a city worldspace into Tamriel (tested: Solitude to Whiterun's streets, below); where no path is found, the straight line applies, which is valid because the coordinates are shared. Some city locations have no marker of their own (`SolitudeLocation`): their hold's is used.
+- **No common root worldspace** (Solstheim and Skyrim, Blackreach), or no place found (or no usable walk speed or `fFastTravelSpeedMult`): 48 game hours (`FallbackHours`).
 
 Tested on AE (2026-09-30): Solitude (Winking Skeever) to Katarina in Whiterun's streets, road 142,905 units against a straight line of 141,323 (the engine's path is coarse), 9 ms of pathing, 2.8 game hours at `fFastTravelSpeedMult` 3.60 and timescale 20.
 
@@ -46,8 +46,7 @@ When a letter is due, its recipient must be found (`FindActor`: SkyrimNet's UUID
 - **The recipient is dead:** the letter turns around at once and comes back **through the courier**, after the travel time from their body to the player. The courier handing it back is the signal, and its item card says why; there's no message.
 - **The recipient can't be found** for `ReturnAfterDays` game days after the letter was due (3 by default, [SETTINGS.md](SETTINGS.md)): it goes to the courier at once: the wait was the delay, and there's no place to measure a trip back from. A mod may have removed them, or they only exist while their cell is loaded.
 
-A returning letter is a state-2 parcel like a reply: the same letter form, now addressed to the courier's container. Its item card adds a line, "Return to sender (deceased)" or "(not found)" (a `
-` in the card text breaks the line; tested on AE); the co-save keeps that ([PERSISTENCE.md](PERSISTENCE.md#the-co-save)), and sending the letter again clears it. It keeps its keyword, so it can be sent again.
+A returning letter is a state-2 parcel like a reply: the same letter form, now addressed to the player. Its item card adds a line, "Return to sender (deceased)" or "(not found)" (a `\n` in the card text breaks the line; tested on AE); the co-save keeps that ([PERSISTENCE.md](PERSISTENCE.md#the-co-save)), and sending the letter again clears it. It keeps its keyword, so it can be sent again.
 
 ## Replies and the courier
 

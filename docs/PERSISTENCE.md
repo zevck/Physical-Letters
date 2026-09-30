@@ -6,7 +6,7 @@ Three places hold a letter's state, each for a reason:
 |---|---|---|
 | The letter item | A runtime `TESObjectBOOK` form (`0xFF` FormID) the engine saves itself | Items in inventories and the world need a real form. See SNPD `docs/BOOK_FORMS.md`. |
 | Which letter each form is | Co-save record `LFRM` | The save keeps only a form's flags |
-| Letters in transit, awaiting reading, or on their way to the courier | Co-save record `LTRN` | Must revert with the save |
+| Letters in transit, awaiting reading, or on their way to the courier; which of the player's letters came back and why | Co-save record `LTRN` | Must revert with the save |
 | A reply the courier holds | The courier's container (`WICourierContainerRef`) | The engine saves it like any other inventory |
 | Each letter's text, author, recipient, reading | LetterDB | The text is written once, so one row serves every save of the character |
 
@@ -18,8 +18,8 @@ Created by `DynamicForms::Create<TESObjectBOOK>()` (the engine picks the FormID)
 
 Unique ID `'SNPL'`:
 
-- **`LFRM`** (version 2, DynamicForms' format): per form, FormID, form type, flags (bit 0 = retired), then three strings: key (the letter id), template EditorID (unused, empty), display name ("Letter to X").
-- **`LTRN`** (version 4): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 on its way to the courier: a reply, or the player's own letter coming back undelivered; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Then the returned letters: a count, and per letter its id (string) and why it came back (`uint8`: 1 the recipient is dead, 2 not found), for its item card. Version 3 had no returned letters, version 2 no delivery id and version 1 no state; they load with the letter id as delivery id, and as in transit.
+- **`LFRM`** (version 2, DynamicForms' format): per form, FormID, form type, flags (bit 0 = retired), then three strings: key (the letter id), template EditorID (unused, empty), display name ("Letter to X", or "Letter from X" for a letter to the player).
+- **`LTRN`** (version 4): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 on its way to the courier: a reply, or the player's own letter coming back undelivered; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Then the returned letters: a count, and per letter its id (string) and why it came back (`uint8`: 1 the recipient is dead, 2 not found), for its item card. Version 3 had no returned letters, version 2 no delivery id and version 1 no state; versions 1 and 2 load with the letter id as delivery id, and version 1 parcels as in transit.
 
 Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). The load callback fills the letter forms in from `LFRM` at once; their text follows when the session is ready.
 
@@ -59,4 +59,4 @@ SkyrimNet decides, not LetterDB. Each sending of a letter is a delivery with its
 | Second character | Another SkyrimNet save id, so another LetterDB |
 | SkyrimNet missing or too old | Letters keep their look, show `...`, nothing is delivered; the log says why |
 
-Tested in game on AE (2026-09-29): creation, sending, delivery after the delay, reading and the memory. The retry path, Keep and Clear, and a second character are not tested yet.
+Tested in game on AE (2026-09-30): creation, sending, delivery after the delay, reading and the memory; Keep, Clear and a load during a reading; replies through the courier and the correspondence; the hand-over; returned letters and their card line. Not tested yet: a letter sent again (`read_before`), the retry path, a second character, SE and VR.
