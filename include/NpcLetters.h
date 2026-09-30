@@ -19,18 +19,23 @@
 
 #pragma once
 
-// DEV HARNESS until the editor exists.  Outside menus:
-//   F6  gives the player an example letter to the NPC under the crosshair
-//   F7  sends the newest letter the player wrote and carries (arrives after Travel::Hours)
-//   F8  makes every letter in transit due now, replies included (they go to the courier),
-//       and the next letter an NPC writes first (docs/NPC_LETTERS.md)
-namespace PhysicalLetters::DebugKeys {
+// NPCs writing to the player first (docs/NPC_LETTERS.md): every few days one NPC the player
+// has dealt with, picked at random weighted by how much, may write; the LLM decides whether
+// and what.  The schedule and the cooldowns live in the co-save.  Game thread.
+namespace PhysicalLetters::NpcLetters {
 
-    // kDataLoaded.
-    void Register();
+    // Heartbeat, once the session is ready.
+    void Tick();
 
-    // Session ready: a letter to a recipient who is never found, unless the player carries
-    // one already (tests docs/DELIVERY.md#undeliverable-letters).  Dev only.
-    void GiveUndeliverableLetter();
+    // An NPC wrote to the player (first, or a reply): they don't write first again for
+    // CooldownDays.
+    void StartCooldown(const std::string& uuid);
 
-} // namespace PhysicalLetters::DebugKeys
+    // Debug (F8): the next letter is due now.
+    void MakeDue();
+
+    void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type);
+    void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version);
+    void Revert();
+
+} // namespace PhysicalLetters::NpcLetters

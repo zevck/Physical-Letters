@@ -15,69 +15,86 @@ string[] _tips
 string[] _formats
 int[] _steps
 int[] _oids
-int _oidDebugLog = -1
+
+; The toggles (on/off settings): setting, label, tooltip.
+string[] _toggleNames
+string[] _toggleLabels
+string[] _toggleTips
+int[] _toggleOids
 
 event OnConfigInit()
     ModName = "Physical Letters"
 endevent
 
+function Slider(int i, string name, string label, string tip, int step)
+    _names[i] = name
+    _labels[i] = label
+    _tips[i] = tip
+    _formats[i] = "{0}"
+    _steps[i] = step
+endfunction
+
+function Toggle(int i, string name, string label, string tip)
+    _toggleNames[i] = name
+    _toggleLabels[i] = label
+    _toggleTips[i] = tip
+endfunction
+
 ; Called by OnPageReset, which builds every option: nothing may rely on OnConfigOpen
 ; having run first (on the first open it hadn't, and the page came up empty).  Rebuilt
 ; every time: OnConfigInit runs once per save, so a script update would keep old arrays.
 function Setup()
-    _names = new string[5]
-    _labels = new string[5]
-    _tips = new string[5]
-    _formats = new string[5]
-    _steps = new int[5]
-    _oids = new int[5]
-    _names[0] = "Delivery.Postage"
-    _labels[0] = "$PL_Postage"
-    _tips[0] = "$PL_TipPostage"
-    _formats[0] = "{0}"
-    _steps[0] = 5
-    _names[1] = "Delivery.WritingHours"
-    _labels[1] = "$PL_WritingHours"
-    _tips[1] = "$PL_TipWritingHours"
-    _formats[1] = "{0}"
-    _steps[1] = 1
-    _names[2] = "Delivery.MinHours"
-    _labels[2] = "$PL_MinHours"
-    _tips[2] = "$PL_TipMinHours"
-    _formats[2] = "{0}"
-    _steps[2] = 1
-    _names[3] = "Delivery.FallbackHours"
-    _labels[3] = "$PL_FallbackHours"
-    _tips[3] = "$PL_TipFallbackHours"
-    _formats[3] = "{0}"
-    _steps[3] = 1
-    _names[4] = "Delivery.ReturnAfterDays"
-    _labels[4] = "$PL_ReturnAfterDays"
-    _tips[4] = "$PL_TipReturnAfterDays"
-    _formats[4] = "{0}"
-    _steps[4] = 1
+    _names = new string[8]
+    _labels = new string[8]
+    _tips = new string[8]
+    _formats = new string[8]
+    _steps = new int[8]
+    _oids = new int[8]
+    Slider(0, "Delivery.Postage", "$PL_Postage", "$PL_TipPostage", 5)
+    Slider(1, "Delivery.WritingHours", "$PL_WritingHours", "$PL_TipWritingHours", 1)
+    Slider(2, "Delivery.MinHours", "$PL_MinHours", "$PL_TipMinHours", 1)
+    Slider(3, "Delivery.FallbackHours", "$PL_FallbackHours", "$PL_TipFallbackHours", 1)
+    Slider(4, "Delivery.ReturnAfterDays", "$PL_ReturnAfterDays", "$PL_TipReturnAfterDays", 1)
+    Slider(5, "NpcLetters.IntervalDays", "$PL_NpcInterval", "$PL_TipNpcInterval", 1)
+    Slider(6, "NpcLetters.CooldownDays", "$PL_NpcCooldown", "$PL_TipNpcCooldown", 1)
+    Slider(7, "NpcLetters.MinEvents", "$PL_NpcMinEvents", "$PL_TipNpcMinEvents", 1)
+
+    _toggleNames = new string[2]
+    _toggleLabels = new string[2]
+    _toggleTips = new string[2]
+    _toggleOids = new int[2]
+    Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
+    Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
+endfunction
+
+function AddSliders(int first, int last)
+    int i = first
+    while i <= last
+        _oids[i] = AddSliderOption(_labels[i], GetSetting(_names[i]), _formats[i])
+        i += 1
+    endwhile
+endfunction
+
+function AddToggle(int i)
+    _toggleOids[i] = AddToggleOption(_toggleLabels[i], GetSetting(_toggleNames[i]) != 0)
 endfunction
 
 event OnPageReset(string page)
     Setup()
     SetCursorFillMode(TOP_TO_BOTTOM)
     AddHeaderOption("$PL_HeaderDelivery")
-    int i = 0
-    while i < _names.Length
-        _oids[i] = AddSliderOption(_labels[i], GetSetting(_names[i]), _formats[i])
-        i += 1
-    endwhile
+    AddSliders(0, 4)
+    AddEmptyOption()
+    AddHeaderOption("$PL_HeaderNpcLetters")
+    AddToggle(0)
+    AddSliders(5, 7)
     AddEmptyOption()
     AddHeaderOption("$PL_HeaderLogging")
-    _oidDebugLog = AddToggleOption("$PL_DebugLog", GetSetting("General.DebugLog") != 0)
+    AddToggle(1)
 endevent
 
-int function SliderIndex(int oid)
-    return _oids.Find(oid)
-endfunction
-
 event OnOptionSliderOpen(int oid)
-    int i = SliderIndex(oid)
+    int i = _oids.Find(oid)
     if i >= 0
         SetSliderDialogStartValue(GetSetting(_names[i]))
         SetSliderDialogDefaultValue(GetSettingDefault(_names[i]))
@@ -87,7 +104,7 @@ event OnOptionSliderOpen(int oid)
 endevent
 
 event OnOptionSliderAccept(int oid, float value)
-    int i = SliderIndex(oid)
+    int i = _oids.Find(oid)
     if i >= 0
         SetSetting(_names[i], value as int)
         SetSliderOptionValue(oid, GetSetting(_names[i]), _formats[i])
@@ -95,29 +112,36 @@ event OnOptionSliderAccept(int oid, float value)
 endevent
 
 event OnOptionSelect(int oid)
-    if oid == _oidDebugLog
-        bool enabled = GetSetting("General.DebugLog") == 0
-        SetSetting("General.DebugLog", enabled as int)
+    int i = _toggleOids.Find(oid)
+    if i >= 0
+        bool enabled = GetSetting(_toggleNames[i]) == 0
+        SetSetting(_toggleNames[i], enabled as int)
         SetToggleOptionValue(oid, enabled)
     endif
 endevent
 
 event OnOptionDefault(int oid)
-    int i = SliderIndex(oid)
+    int i = _oids.Find(oid)
     if i >= 0
         SetSetting(_names[i], GetSettingDefault(_names[i]))
         SetSliderOptionValue(oid, GetSetting(_names[i]), _formats[i])
-    elseif oid == _oidDebugLog
-        SetSetting("General.DebugLog", 0)
-        SetToggleOptionValue(oid, false)
+        return
+    endif
+    i = _toggleOids.Find(oid)
+    if i >= 0
+        SetSetting(_toggleNames[i], GetSettingDefault(_toggleNames[i]))
+        SetToggleOptionValue(oid, GetSetting(_toggleNames[i]) != 0)
     endif
 endevent
 
 event OnOptionHighlight(int oid)
-    int i = SliderIndex(oid)
+    int i = _oids.Find(oid)
     if i >= 0
         SetInfoText(_tips[i])
-    elseif oid == _oidDebugLog
-        SetInfoText("$PL_TipDebugLog")
+        return
+    endif
+    i = _toggleOids.Find(oid)
+    if i >= 0
+        SetInfoText(_toggleTips[i])
     endif
 endevent

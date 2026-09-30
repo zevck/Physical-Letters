@@ -1,6 +1,6 @@
 # Reading
 
-When a letter is delivered, its recipient reads it: one LLM call decides how they react, what they remember and whether they write back, and the memory goes into SkyrimNet. Code: `src/Reading.cpp`, the queue side in `src/Transit.cpp`.
+When a letter is delivered, its recipient reads it: one LLM call decides how they react, what they remember and whether they write back, and the memory goes into SkyrimNet. Code: `src/Reading.cpp`, the queue side in `src/Transit.cpp`, the JSON reading in `include/LlmJson.h` (shared with [NPC letters](NPC_LETTERS.md)).
 
 ## The prompt
 
@@ -17,7 +17,7 @@ Context variables the plugin sets:
 
 **How many earlier letters the prompt shows** is set at the top of the template: `{% set max_earlier_letters = 5 %}`. Edit it there (or in a SkyrimNet overlay of the prompt); up to 20 are passed.
 
-**Which earlier letters count** follows the same rule as the rest of the mod: SkyrimNet's memory decides ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). A letter to the recipient counts if they have its tagged memory; their own reply counts if they remember the letter it answers (that memory holds the reply). Letters from timelines the player left, and letters still on their way, drop out without any bookkeeping of ours.
+**Which earlier letters count** follows the same rule as the rest of the mod: SkyrimNet's memory decides ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). A letter to the recipient counts if they have its tagged memory; their own reply counts if they remember the letter it answers (that memory holds the reply); a letter they wrote first counts if they have its tagged memory of writing it ([NPC_LETTERS.md](NPC_LETTERS.md#the-letter)). Letters from timelines the player left, and letters still on their way, drop out without any bookkeeping of ours.
 
 The template follows SkyrimNet's prompt guide (`docs/modding/WORKFLOW_PROMPTS.md` in SkyrimNet): the actor is never addressed as "you", names and pronouns come from `decnpc()`.
 

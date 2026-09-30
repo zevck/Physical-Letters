@@ -124,6 +124,13 @@ namespace PhysicalLetters::SkyrimNet {
         return found.is_array() && !found.empty();
     }
 
+    std::string Engagement()
+    {
+        if (!g_available || !PublicGetActorEngagement) return "[]";
+        constexpr double kDay = 86400.0;
+        return PublicGetActorEngagement(0, true, true, kDay, 7 * kDay);
+    }
+
     int AddMemory(RE::FormID formId, const std::string& content, float importance, const std::string& type,
                   const std::string& emotion, const std::string& tagsJson, const std::string& relatedActorsJson)
     {

@@ -37,9 +37,15 @@ namespace PhysicalLetters {
         static constexpr Setting kFallbackHours { "Delivery", "FallbackHours", 48,  1, 336  };
         // Game days a letter waits, once due, for a recipient who can't be found.
         static constexpr Setting kReturnAfterDays { "Delivery", "ReturnAfterDays", 3, 1, 30 };
+        // NPCs writing to the player first (docs/NPC_LETTERS.md).
+        static constexpr Setting kNpcLetters     { "NpcLetters", "Enabled",      1,  0, 1   };
+        static constexpr Setting kNpcInterval    { "NpcLetters", "IntervalDays", 7,  1, 60  };
+        static constexpr Setting kNpcCooldown    { "NpcLetters", "CooldownDays", 14, 0, 120 };
+        static constexpr Setting kNpcMinEvents   { "NpcLetters", "MinEvents",    5,  1, 200 };
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
+            kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents,
         };
 
         static Config* GetSingleton()

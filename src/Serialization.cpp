@@ -20,6 +20,7 @@
 #include "Serialization.h"
 #include "DynamicForms.h"
 #include "Letters.h"
+#include "NpcLetters.h"
 #include "Transit.h"
 
 namespace PhysicalLetters::Serialization {
@@ -28,6 +29,7 @@ namespace PhysicalLetters::Serialization {
         constexpr std::uint32_t kSerializationId = 'SNPL';
         constexpr std::uint32_t kLetterFormsRecord = 'LFRM';
         constexpr std::uint32_t kTransitRecord = 'LTRN';
+        constexpr std::uint32_t kNpcLettersRecord = 'LNPC';
 
         void SaveCallback(SKSE::SerializationInterface* a_intfc)
         {
@@ -35,6 +37,7 @@ namespace PhysicalLetters::Serialization {
                 // First: without its record a letter in the save loads as an empty shell.
                 DynamicForms::Save(a_intfc, kLetterFormsRecord);
                 Transit::Save(a_intfc, kTransitRecord);
+                NpcLetters::Save(a_intfc, kNpcLettersRecord);
             } catch (const std::exception& e) {
                 SKSE::log::error("SaveCallback exception: {}", e.what());
             }
@@ -45,6 +48,7 @@ namespace PhysicalLetters::Serialization {
             DynamicForms::Revert();
             Letters::Revert();
             Transit::Revert();
+            NpcLetters::Revert();
         }
 
         // Inside the load, after the engine has recreated this save's letter forms: their
@@ -56,6 +60,7 @@ namespace PhysicalLetters::Serialization {
                 while (a_intfc->GetNextRecordInfo(type, version, length)) {
                     if (type == kLetterFormsRecord) DynamicForms::Load(a_intfc, version);
                     else if (type == kTransitRecord) Transit::Load(a_intfc, version);
+                    else if (type == kNpcLettersRecord) NpcLetters::Load(a_intfc, version);
                 }
                 Letters::ConfigureLoaded();
             } catch (const std::exception& e) {

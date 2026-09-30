@@ -20,6 +20,7 @@
 #include "Reading.h"
 #include "LetterDB.h"
 #include "Session.h"
+#include "LlmJson.h"
 #include "SkyrimNet.h"
 
 #include <nlohmann/json.hpp>
@@ -29,6 +30,7 @@ namespace PhysicalLetters::Reading {
 
     namespace {
         using json = nlohmann::json;
+        using namespace LlmJson;
 
         constexpr auto kPrompt = "physical_letters_read_letter";
         constexpr int kMaxMemories = 8;
@@ -37,84 +39,6 @@ namespace PhysicalLetters::Reading {
         constexpr std::size_t kMaxCorrespondence = 20;
         constexpr RE::FormID kPlayer = 0x14;
         constexpr float kDefaultImportance = 0.7f;
-
-        // Fixes the two slips LLMs make most in otherwise valid JSON: a trailing comma
-        // before } or ] (seen in game), and raw line breaks or tabs inside a string.
-        std::string RepairJson(std::string_view text)
-        {
-            std::string out;
-            out.reserve(text.size());
-            bool inString = false, escaped = false;
-            for (std::size_t i = 0; i < text.size(); ++i) {
-                const char c = text[i];
-                if (inString) {
-                    if (escaped) escaped = false;
-                    else if (c == '\\') escaped = true;
-                    else if (c == '"') inString = false;
-                    if (c == '\n') { out += "\\n"; continue; }
-                    if (c == '\r') continue;
-                    if (c == '\t') { out += "\\t"; continue; }
-                    out += c;
-                    continue;
-                }
-                if (c == '"') inString = true;
-                if (c == ',') {
-                    auto next = text.find_first_not_of(" \t\r\n", i + 1);
-                    if (next != std::string_view::npos && (text[next] == '}' || text[next] == ']')) continue;
-                }
-                out += c;
-            }
-            return out;
-        }
-
-        // The LLM's JSON object, without any text or code fence around it; discarded
-        // (not an object) if it can't be read even after RepairJson.
-        json ParseResponse(const std::string& response)
-        {
-            const auto first = response.find('{');
-            const auto last = response.rfind('}');
-            if (first == std::string::npos || last == std::string::npos || last < first) return json{};
-            const auto text = std::string_view{ response }.substr(first, last - first + 1);
-            auto parsed = json::parse(text, nullptr, false);
-            if (parsed.is_discarded()) parsed = json::parse(RepairJson(text), nullptr, false);
-            return parsed;
-        }
-
-        // Field readers that accept what LLMs write instead of the type asked for (null,
-        // "0.8", "yes").  json::value would throw on a present key of another type.
-        std::string GetString(const json& j, const char* key)
-        {
-            const auto it = j.find(key);
-            return it != j.end() && it->is_string() ? it->get<std::string>() : std::string{};
-        }
-
-        float GetFloat(const json& j, const char* key, float fallback)
-        {
-            const auto it = j.find(key);
-            if (it == j.end()) return fallback;
-            if (it->is_number()) return it->get<float>();
-            if (it->is_string()) {
-                const auto& text = it->get_ref<const std::string&>();
-                float value = fallback;
-                std::from_chars(text.data(), text.data() + text.size(), value);
-                return value;
-            }
-            return fallback;
-        }
-
-        bool GetBool(const json& j, const char* key)
-        {
-            const auto it = j.find(key);
-            if (it == j.end()) return false;
-            if (it->is_boolean()) return it->get<bool>();
-            if (it->is_number()) return it->get<double>() != 0.0;
-            if (it->is_string()) {
-                auto text = it->get<std::string>();
-                std::ranges::transform(text, text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                return text == "true" || text == "yes";
-            }
-            return false;
-        }
 
         // A letter the recipient already remembers: its reply, from the reading kept in
         // LetterDB (the save may predate the reply letter).  No reply if that reading was
@@ -188,37 +112,6 @@ namespace PhysicalLetters::Reading {
             return { Result::kRead };
         }
 
-        // The earlier letters between the reader and the writer that the reader knows of in
-        // this timeline, oldest first, at most kMaxCorrespondence.  SkyrimNet's memory
-        // decides, as everywhere: a letter to the reader counts if they remember it, and
-        // their reply counts if they remember the letter it answers (that memory holds the
-        // reply).  Letters from timelines the player left, or still on their way, drop out.
-        // A letter sent again that the reader already read isn't listed, but their replies
-        // to it are.  Blocks (a memory query per letter to the reader): not on the game thread.
-        json Correspondence(const Letter& current, bool readBefore, RE::FormID readerFormId, double now)
-        {
-            std::vector<std::string> remembered;
-            if (readBefore) remembered.push_back(current.id);
-            auto entries = json::array();
-            for (const auto& earlier : LetterDB::GetSingleton()->Between(current.recipientUuid, current.authorUuid)) {
-                if (earlier.id == current.id) continue;
-                bool known = false;
-                if (earlier.recipientUuid == current.recipientUuid) {
-                    known = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(earlier.id));
-                    if (known) remembered.push_back(earlier.id);
-                } else {
-                    known = std::ranges::find(remembered, earlier.inReplyTo) != remembered.end();
-                }
-                if (!known) continue;
-                entries.push_back({ { "from", earlier.authorName },
-                                    { "to", earlier.recipientName },
-                                    { "days_ago", static_cast<int>(std::max(0.0, now - earlier.writtenAt)) },
-                                    { "body", earlier.body } });
-            }
-            if (entries.size() > kMaxCorrespondence) entries.erase(entries.begin(), entries.end() - kMaxCorrespondence);
-            return entries;
-        }
-
         void Report(const std::function<void(Outcome)>& done, Outcome outcome)
         {
             SKSE::GetTaskInterface()->AddTask([done, outcome = std::move(outcome)]() {
@@ -239,6 +132,38 @@ namespace PhysicalLetters::Reading {
     std::string DeliveryTag(const std::string& deliveryId)
     {
         return "physical_letters_delivery:" + deliveryId;
+    }
+
+    // SkyrimNet's memory decides, as everywhere.  A letter to the reader counts if they
+    // remember it.  Their own letter counts if they remember writing it (a letter they wrote
+    // first carries its tag on their memory of writing it), or, for a reply, if they remember
+    // the letter it answers (that memory holds the reply).  Letters from timelines the player
+    // left, or still on their way, drop out.  A memory query per letter.
+    json Correspondence(const std::string& readerUuid, const std::string& otherUuid, RE::FormID readerFormId, double now,
+                        const std::string& skipId, bool skipRemembered)
+    {
+        std::vector<std::string> remembered;
+        if (skipRemembered) remembered.push_back(skipId);
+        auto entries = json::array();
+        for (const auto& earlier : LetterDB::GetSingleton()->Between(readerUuid, otherUuid)) {
+            if (earlier.id == skipId) continue;
+            bool known = false;
+            if (earlier.recipientUuid == readerUuid) {
+                known = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(earlier.id));
+                if (known) remembered.push_back(earlier.id);
+            } else if (!earlier.inReplyTo.empty() && std::ranges::find(remembered, earlier.inReplyTo) != remembered.end()) {
+                known = true;
+            } else {
+                known = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(earlier.id));
+            }
+            if (!known) continue;
+            entries.push_back({ { "from", earlier.authorName },
+                                { "to", earlier.recipientName },
+                                { "days_ago", static_cast<int>(std::max(0.0, now - earlier.writtenAt)) },
+                                { "body", earlier.body } });
+        }
+        if (entries.size() > kMaxCorrespondence) entries.erase(entries.begin(), entries.end() - kMaxCorrespondence);
+        return entries;
     }
 
     void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId,
@@ -285,7 +210,7 @@ namespace PhysicalLetters::Reading {
                         { "recipient", letter.recipientName },
                         { "body", letter.body },
                         { "read_before", readBefore } } },
-                    { "correspondence", Correspondence(letter, readBefore, recipientFormId, now) },
+                    { "correspondence", Correspondence(letter.recipientUuid, letter.authorUuid, recipientFormId, now, letter.id, readBefore) },
                     { "memories", memories },
                 };
 

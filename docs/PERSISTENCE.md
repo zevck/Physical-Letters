@@ -7,6 +7,7 @@ Three places hold a letter's state, each for a reason:
 | The letter item | A runtime `TESObjectBOOK` form (`0xFF` FormID) the engine saves itself | Items in inventories and the world need a real form. See SNPD `docs/BOOK_FORMS.md`. |
 | Which letter each form is | Co-save record `LFRM` | The save keeps only a form's flags |
 | Letters in transit, awaiting reading, or on their way to the courier; which of the player's letters came back and why | Co-save record `LTRN` | Must revert with the save |
+| When the next NPC letter is due; NPCs on cooldown | Co-save record `LNPC` ([NPC_LETTERS.md](NPC_LETTERS.md#saves)) | Must revert with the save |
 | A reply the courier holds | The courier's container (`WICourierContainerRef`) | The engine saves it like any other inventory |
 | Each letter's text, author, recipient, reading | LetterDB | The text is written once, so one row serves every save of the character |
 

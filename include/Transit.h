@@ -32,6 +32,9 @@ namespace PhysicalLetters::Transit {
     // time in game hours, nothing if the holder hasn't the letter.
     std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter, RE::TESObjectREFR* holder);
 
+    // An NPC's letter to the player (already created): it goes to the courier after `hours`.
+    void QueueToPlayer(const Letter& letter, double hours);
+
     // Delivers what is due, starts (or retries) the readings owed, and hands replies to the
     // courier.  Runs every heartbeat once the session is ready.
     void Tick();

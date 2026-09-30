@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <nlohmann/json.hpp>
+
 // The recipient reads a delivered letter: one LLM call (the prompt
 // physical_letters_read_letter, shipped in the SkyrimNet plugin folder
 // SKSE/Plugins/SkyrimNet/external/zevick.physical-letters) returns their memory of it,
@@ -43,6 +45,13 @@ namespace PhysicalLetters::Reading {
     // Keep and goes with Clear).  A letter sent again is a new delivery, so it's read again.
     std::string LetterTag(const std::string& letterId);
     std::string DeliveryTag(const std::string& deliveryId);
+
+    // The earlier letters between `readerUuid` and `otherUuid` that the reader knows of in
+    // this timeline, oldest first (at most 20): { from, to, days_ago, body }.  SkyrimNet's
+    // memory decides (docs/READING.md#the-prompt).  `skipId` is left out; if
+    // `skipRemembered`, the reader's replies to it still count.  Blocks: not on the game thread.
+    nlohmann::json Correspondence(const std::string& readerUuid, const std::string& otherUuid, RE::FormID readerFormId,
+                                  double now, const std::string& skipId = {}, bool skipRemembered = false);
 
     // Game thread.  The work runs on other threads; `done` is then called on the game
     // thread, once, unless SkyrimNet drops the LLM task (the caller times out).

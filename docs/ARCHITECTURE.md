@@ -8,6 +8,8 @@
 4. **The recipient reads it**: `Reading::Read` sends one prompt to the LLM through SkyrimNet and stores the NPC's memory of the letter. Only then does the parcel leave the queue. See [READING.md](READING.md).
 5. **If they reply**, the same step creates the reply letter and queues it to the player. When due (writing time plus travel), it goes to the vanilla courier, who brings it to the player in a town.
 
+Separately, every few days an NPC the player has dealt with may **write first**: `NpcLetters` picks one, the LLM decides whether they write, and the letter takes the same road to the courier ([NPC_LETTERS.md](NPC_LETTERS.md)).
+
 If the recipient is dead when the letter is due, or can't be found for `ReturnAfterDays`, the letter turns back at step 3 and reaches the player through the courier ([DELIVERY.md](DELIVERY.md#undeliverable-letters)).
 
 ## Components
@@ -20,7 +22,8 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | Letters | `src/Letters.cpp` | Letter forms, their look, their rendered text (a thread-safe snapshot) |
 | LetterDB | `src/LetterDB.cpp` | SQLite store of each letter's text, per SkyrimNet save folder |
 | Transit | `src/Transit.cpp` | The queue: delivery, the reading owed (with retries), replies and undeliverable letters to the courier |
-| Reading | `src/Reading.cpp` | The LLM call and the SkyrimNet memory |
+| Reading | `src/Reading.cpp`, `include/LlmJson.h` | The LLM call and the SkyrimNet memory; the correspondence history; reading the LLM's JSON |
+| NpcLetters | `src/NpcLetters.cpp` | NPCs writing to the player first: the schedule, the pick, the prompt, cooldowns |
 | Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
 | Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |

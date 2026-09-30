@@ -56,6 +56,12 @@ namespace PhysicalLetters::SkyrimNet {
     // Whether the actor has an active memory carrying `tag`.  Blocks: not on the game thread.
     bool HasMemoryWithTag(RE::FormID formId, const std::string& tag);
 
+    // Every NPC with events involving the player, with their counts (PublicGetActorEngagement,
+    // player events only; "[]" on error).  SkyrimNet aggregates by actor NAME: entries of
+    // same-named actors are merged, so callers check each FormID against its UUID.  Scans
+    // SkyrimNet's whole history: not on the game thread.
+    std::string Engagement();
+
     // Stores a memory for the actor.  Blocks while it is embedded: not on the game thread.
     // Returns the memory id, 0 on error.
     int AddMemory(RE::FormID formId, const std::string& content, float importance, const std::string& type,

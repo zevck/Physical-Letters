@@ -21,6 +21,7 @@
 #include "CoSave.h"
 #include "Config.h"
 #include "Letters.h"
+#include "NpcLetters.h"
 #include "Reading.h"
 #include "Session.h"
 #include "Courier.h"
@@ -187,6 +188,7 @@ namespace PhysicalLetters::Transit {
                                  Travel::Hours(FindActor(original.recipientUuid), player);
             SKSE::log::info("[Transit] {} replies to letter {} with letter {}, due at the courier in {:.1f} game hours",
                             reply.authorName, original.letterId, reply.id, hours);
+            NpcLetters::StartCooldown(reply.authorUuid);
             return Parcel{ .letterId = reply.id,
                            .deliveryId = Letters::NewId(),
                            .recipientUuid = reply.recipientUuid,
@@ -251,6 +253,16 @@ namespace PhysicalLetters::Transit {
                               .dueAt = Now() + hours / 24.0 });
         SKSE::log::info("[Transit] Sent letter {} to {}, due in {:.1f} game hours", letter.id, letter.recipientName, hours);
         return hours;
+    }
+
+    void QueueToPlayer(const Letter& letter, double hours)
+    {
+        g_parcels.push_back({ .letterId = letter.id,
+                              .deliveryId = Letters::NewId(),
+                              .recipientUuid = letter.recipientUuid,
+                              .recipientName = letter.recipientName,
+                              .dueAt = Now() + hours / 24.0,
+                              .state = State::kToPlayer });
     }
 
     void Tick()

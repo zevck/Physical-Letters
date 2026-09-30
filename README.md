@@ -2,7 +2,7 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
+**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too. Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
 
 ## Requirements
 
@@ -26,7 +26,7 @@ At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.
 
 ## Settings
 
-In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, and when an undeliverable letter comes back. See [docs/SETTINGS.md](docs/SETTINGS.md).
+In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, when an undeliverable letter comes back, and how often NPCs write to you first (or not at all). See [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Dev keys
 
@@ -36,7 +36,7 @@ Outside menus, once the log says `[Session] Ready`:
 |---|---|
 | F6 | Gives you an example letter to the NPC under the crosshair (SkyrimNet must know them) |
 | F7 | Sends the newest letter you wrote and carry; it arrives after the travel time (as fast travel would take) |
-| F8 | Makes every letter in transit due now, including replies, which then go to the courier |
+| F8 | Makes every letter in transit due now, including replies, which then go to the courier, and the next letter an NPC writes first |
 
 On every load you also get a letter to "Nobody (test)" (unless you carry one): its recipient is never found, so it comes back through the courier ([docs/DELIVERY.md](docs/DELIVERY.md#undeliverable-letters)).
 

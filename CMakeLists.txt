@@ -47,6 +47,7 @@ set(sources
     src/Courier.cpp
     src/Postage.cpp
     src/Papyrus.cpp
+    src/NpcLetters.cpp
 )
 
 # ---- Generate Plugin.h ----
