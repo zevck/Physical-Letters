@@ -36,7 +36,8 @@ namespace PhysicalLetters::Transit {
         enum class State : std::uint8_t {
             kInTransit = 0,        // a letter to an NPC, on its way
             kAwaitingReading = 1,  // in the recipient's inventory, not yet read
-            kToPlayer = 2,         // an NPC's letter to the player, on its way to the courier
+            kToPlayer = 2,         // on its way to the courier: an NPC's letter to the player, or
+                                   // the player's own coming back undelivered
         };
 
         struct Parcel {
@@ -61,8 +62,9 @@ namespace PhysicalLetters::Transit {
         // Letters already logged as waiting for an unreachable recipient, so the log isn't flooded.
         std::vector<std::string> g_reportedWaiting;
 
-        // v1 (dev builds only) had no state: every parcel was in transit.  v2 had no delivery id.
-        constexpr std::uint32_t kRecordVersion = 3;
+        // v1 (dev builds only) had no state: every parcel was in transit.  v2 had no delivery id,
+        // v3 no returned letters.
+        constexpr std::uint32_t kRecordVersion = 4;
 
         // A reading SkyrimNet never answers (it drops cancelled LLM tasks) counts as failed.
         constexpr auto kReadingTimeout = std::chrono::minutes(5);
@@ -110,9 +112,24 @@ namespace PhysicalLetters::Transit {
             return actor;
         }
 
-        enum class Delivery { kDelivered, kReturned, kWaiting, kLost, kToCourier };
+        enum class Delivery { kDelivered, kReturning, kWaiting, kLost, kToCourier };
 
-        Delivery Deliver(const Parcel& parcel)
+        // The letter goes back to the player through the courier, after the travel time from
+        // the recipient; if they can't be found, at once (the wait was the delay).
+        void TurnBack(Parcel& parcel, RE::Actor* recipient, Letters::Returned reason, std::string_view why)
+        {
+            Letters::SetReturned(parcel.letterId, reason);
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            const double hours = recipient ? Travel::Hours(recipient, player) : 0.0;
+            SKSE::log::info("[Transit] {} {}: letter {} comes back through the courier in {:.1f} game hours",
+                            parcel.recipientName, why, parcel.letterId, hours);
+            parcel.recipientUuid = SkyrimNet::UuidForFormId(player->GetFormID());
+            parcel.recipientName = player->GetName();
+            parcel.dueAt = Now() + hours / 24.0;
+            parcel.state = State::kToPlayer;
+        }
+
+        Delivery Deliver(Parcel& parcel)
         {
             auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
             if (!book) {
@@ -129,13 +146,17 @@ namespace PhysicalLetters::Transit {
                 return Delivery::kToCourier;
             }
             auto* recipient = FindRecipient(parcel);
-            if (!recipient) return Delivery::kWaiting;
-
+            if (!recipient) {
+                // Someone not persistent is only found while their cell is loaded: wait, but
+                // not forever (a recipient a mod removed never turns up).
+                const int days = Config::GetSingleton()->Get(Config::kReturnAfterDays);
+                if (Now() - parcel.dueAt < days) return Delivery::kWaiting;
+                TurnBack(parcel, nullptr, Letters::Returned::kNotFound, std::format("wasn't found in {} days", days));
+                return Delivery::kReturning;
+            }
             if (recipient->IsDead()) {
-                RE::PlayerCharacter::GetSingleton()->AddObjectToContainer(book, nullptr, 1, nullptr);
-                RE::SendHUDMessage::ShowHUDMessage(Strings::LetterReturned(parcel.recipientName).c_str());
-                SKSE::log::info("[Transit] {} is dead: letter {} returned to the player", parcel.recipientName, parcel.letterId);
-                return Delivery::kReturned;
+                TurnBack(parcel, recipient, Letters::Returned::kDead, "is dead");
+                return Delivery::kReturning;
             }
 
             recipient->AddObjectToContainer(book, nullptr, 1, nullptr);
@@ -224,6 +245,7 @@ namespace PhysicalLetters::Transit {
         }
         const double hours = Travel::Hours(holder, FindActor(letter.recipientUuid));
         holder->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+        Letters::SetReturned(letter.id, std::nullopt);
         g_parcels.push_back({ .letterId = letter.id,
                               .deliveryId = Letters::NewId(),
                               .recipientUuid = letter.recipientUuid,
@@ -246,6 +268,7 @@ namespace PhysicalLetters::Transit {
                 parcel.state = State::kAwaitingReading;
                 return false;
             case Delivery::kWaiting:
+            case Delivery::kReturning:
                 return false;
             default:
                 return true;
@@ -272,7 +295,9 @@ namespace PhysicalLetters::Transit {
 
     void MakeAllDue()
     {
-        for (auto& parcel : g_parcels) parcel.dueAt = 0;
+        // Now, not 0: how overdue a letter is decides when an unfound recipient's comes back.
+        const double now = Now();
+        for (auto& parcel : g_parcels) parcel.dueAt = std::min(parcel.dueAt, now);
         SKSE::log::info("[Transit] {} letter(s) made due now", g_parcels.size());
     }
 
@@ -290,6 +315,12 @@ namespace PhysicalLetters::Transit {
             a_intfc->WriteRecordData(p.dueAt);
             a_intfc->WriteRecordData(static_cast<std::uint8_t>(p.state));
             CoSave::WriteString(a_intfc, p.deliveryId);
+        }
+        const auto returned = Letters::ReturnedLetters();
+        a_intfc->WriteRecordData(static_cast<std::uint32_t>(returned.size()));
+        for (const auto& [letterId, reason] : returned) {
+            CoSave::WriteString(a_intfc, letterId);
+            a_intfc->WriteRecordData(static_cast<std::uint8_t>(reason));
         }
     }
 
@@ -314,6 +345,15 @@ namespace PhysicalLetters::Transit {
             p.state = state <= 2 ? static_cast<State>(state) : State::kInTransit;
             if (p.deliveryId.empty()) p.deliveryId = p.letterId;  // v1/v2: one delivery per letter
             g_parcels.push_back(std::move(p));
+        }
+        std::uint32_t returnedCount = 0;
+        if (a_version >= 4 && a_intfc->ReadRecordData(returnedCount) == sizeof(returnedCount)) {
+            for (std::uint32_t i = 0; i < returnedCount; ++i) {
+                std::string letterId;
+                std::uint8_t reason = 0;
+                if (!CoSave::ReadString(a_intfc, letterId) || a_intfc->ReadRecordData(reason) != sizeof(reason)) break;
+                if (reason == 1 || reason == 2) Letters::SetReturned(letterId, static_cast<Letters::Returned>(reason));
+            }
         }
         const auto inState = [](State state) {
             return std::ranges::count_if(g_parcels, [state](const Parcel& p) { return p.state == state; });

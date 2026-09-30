@@ -46,6 +46,7 @@ namespace PhysicalLetters::Letters {
 
         std::mutex g_mutex;
         std::unordered_map<RE::FormID, Entry> g_letters;
+        std::unordered_map<std::string, Returned> g_returned;  // by letter id
 
         RE::TESObjectBOOK* Template()
         {
@@ -229,6 +230,7 @@ namespace PhysicalLetters::Letters {
     {
         std::lock_guard lock{ g_mutex };
         g_letters.clear();
+        g_returned.clear();
     }
 
     RE::FormID FindByDescription(const RE::TESDescription* description)
@@ -244,9 +246,28 @@ namespace PhysicalLetters::Letters {
     {
         std::lock_guard lock{ g_mutex };
         for (const auto& [formId, entry] : g_letters) {
-            if (entry.cardDescription == description) return entry.card;
+            if (entry.cardDescription != description) continue;
+            const auto returned = g_returned.find(entry.id);
+            if (entry.card.empty() || returned == g_returned.end()) return entry.card;
+            return std::format("{}\n{}", entry.card, Strings::ReturnToSender(returned->second == Returned::kDead));
         }
         return {};
+    }
+
+    void SetReturned(const std::string& letterId, std::optional<Returned> reason)
+    {
+        std::lock_guard lock{ g_mutex };
+        if (reason) {
+            g_returned.insert_or_assign(letterId, *reason);
+        } else {
+            g_returned.erase(letterId);
+        }
+    }
+
+    std::vector<std::pair<std::string, Returned>> ReturnedLetters()
+    {
+        std::lock_guard lock{ g_mutex };
+        return { g_returned.begin(), g_returned.end() };
     }
 
     std::string TextFor(RE::FormID formId)

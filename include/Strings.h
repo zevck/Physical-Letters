@@ -46,14 +46,15 @@ namespace PhysicalLetters::Strings {
     // A letter LetterDB has no text for.
     inline constexpr std::string_view kLetterUnreadable = "The ink has run; the letter can't be read.";
 
+    // Added to a returned letter's item card.
+    inline std::string_view ReturnToSender(bool dead)
+    {
+        return dead ? "Return to sender (deceased)" : "Return to sender (not found)";
+    }
+
     inline std::string LetterDelivered(const std::string& recipientName)
     {
         return std::format("Your letter reached {}.", recipientName);
-    }
-
-    inline std::string LetterReturned(const std::string& recipientName)
-    {
-        return std::format("Your letter to {} came back undelivered.", recipientName);
     }
 
 } // namespace PhysicalLetters::Strings

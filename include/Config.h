@@ -35,9 +35,11 @@ namespace PhysicalLetters {
         static constexpr Setting kWritingHours  { "Delivery", "WritingHours",  12,  0, 168  };
         static constexpr Setting kMinHours      { "Delivery", "MinHours",      2,   0, 48   };
         static constexpr Setting kFallbackHours { "Delivery", "FallbackHours", 48,  1, 336  };
+        // Game days a letter waits, once due, for a recipient who can't be found.
+        static constexpr Setting kReturnAfterDays { "Delivery", "ReturnAfterDays", 3, 1, 30 };
         // INI order.
         static constexpr Setting kSettings[] = {
-            kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours,
+            kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
         };
 
         static Config* GetSingleton()

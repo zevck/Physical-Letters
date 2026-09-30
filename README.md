@@ -37,6 +37,8 @@ Outside menus, once the log says `[Session] Ready`:
 | F7 | Sends the newest letter you wrote and carry; it arrives after the travel time (as fast travel would take) |
 | F8 | Makes every letter in transit due now, including replies, which then go to the courier |
 
+On every load you also get a letter to "Nobody (test)" (unless you carry one): its recipient is never found, so it comes back through the courier ([docs/DELIVERY.md](docs/DELIVERY.md#undeliverable-letters)).
+
 ## Building
 
 `.\Build_Local.ps1` builds the plugin and deploys it to the dev mod folders named in the gitignored `Build_Config_Local.ps1`. See [docs/INDEX.md](docs/INDEX.md) for how the code works.

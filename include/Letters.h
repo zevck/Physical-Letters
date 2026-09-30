@@ -27,6 +27,12 @@
 // served by the GetDescription hook (TextHook).
 namespace PhysicalLetters::Letters {
 
+    // Why a letter came back to the player (its item card says so).  Saved in the co-save.
+    enum class Returned : std::uint8_t {
+        kDead = 1,
+        kNotFound = 2,
+    };
+
     // kDataLoaded: whether the vanilla letter every letter takes its look from is there
     // (logs an error if not).
     bool CheckTemplate();
@@ -53,6 +59,12 @@ namespace PhysicalLetters::Letters {
     // card, "" otherwise.
     std::string CardFor(const RE::TESDescription* description);
     std::string IdFor(RE::FormID formId);
+
+    // Marks a letter as returned (its card adds a line "Return to sender (…)"), or clears it when
+    // it's sent again.  Thread-safe.
+    void SetReturned(const std::string& letterId, std::optional<Returned> reason);
+    // For the co-save.
+    std::vector<std::pair<std::string, Returned>> ReturnedLetters();
     RE::FormID FormFor(const std::string& letterId);
 
 } // namespace PhysicalLetters::Letters

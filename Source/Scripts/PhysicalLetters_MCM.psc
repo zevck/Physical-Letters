@@ -25,12 +25,12 @@ endevent
 ; having run first (on the first open it hadn't, and the page came up empty).  Rebuilt
 ; every time: OnConfigInit runs once per save, so a script update would keep old arrays.
 function Setup()
-    _names = new string[4]
-    _labels = new string[4]
-    _tips = new string[4]
-    _formats = new string[4]
-    _steps = new int[4]
-    _oids = new int[4]
+    _names = new string[5]
+    _labels = new string[5]
+    _tips = new string[5]
+    _formats = new string[5]
+    _steps = new int[5]
+    _oids = new int[5]
     _names[0] = "Delivery.Postage"
     _labels[0] = "$PL_Postage"
     _tips[0] = "$PL_TipPostage"
@@ -51,6 +51,11 @@ function Setup()
     _tips[3] = "$PL_TipFallbackHours"
     _formats[3] = "{0}"
     _steps[3] = 1
+    _names[4] = "Delivery.ReturnAfterDays"
+    _labels[4] = "$PL_ReturnAfterDays"
+    _tips[4] = "$PL_TipReturnAfterDays"
+    _formats[4] = "{0}"
+    _steps[4] = 1
 endfunction
 
 event OnPageReset(string page)

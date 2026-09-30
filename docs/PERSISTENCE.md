@@ -19,7 +19,7 @@ Created by `DynamicForms::Create<TESObjectBOOK>()` (the engine picks the FormID)
 Unique ID `'SNPL'`:
 
 - **`LFRM`** (version 2, DynamicForms' format): per form, FormID, form type, flags (bit 0 = retired), then three strings: key (the letter id), template EditorID (unused, empty), display name ("Letter to X").
-- **`LTRN`** (version 3): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 a reply on its way to the courier; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Version 2 had no delivery id and version 1 no state; they load with the letter id as delivery id, and as in transit.
+- **`LTRN`** (version 4): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 on its way to the courier: a reply, or the player's own letter coming back undelivered; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Then the returned letters: a count, and per letter its id (string) and why it came back (`uint8`: 1 the recipient is dead, 2 not found), for its item card. Version 3 had no returned letters, version 2 no delivery id and version 1 no state; they load with the letter id as delivery id, and as in transit.
 
 Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). The load callback fills the letter forms in from `LFRM` at once; their text follows when the session is ready.
 

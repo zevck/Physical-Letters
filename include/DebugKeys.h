@@ -28,4 +28,8 @@ namespace PhysicalLetters::DebugKeys {
     // kDataLoaded.
     void Register();
 
+    // Session ready: a letter to a recipient who is never found, unless the player carries
+    // one already (tests docs/DELIVERY.md#undeliverable-letters).  Dev only.
+    void GiveUndeliverableLetter();
+
 } // namespace PhysicalLetters::DebugKeys

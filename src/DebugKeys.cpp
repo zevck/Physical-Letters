@@ -108,6 +108,36 @@ namespace PhysicalLetters::DebugKeys {
             }
         }
 
+        // A UUID SkyrimNet never gives out: the recipient is never found.
+        constexpr std::string_view kNobodyUuid = "0";
+        constexpr std::string_view kNobodyName = "Nobody (test)";
+    }
+
+    void GiveUndeliverableLetter()
+    {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* db = LetterDB::GetSingleton();
+        const auto inventory = player->GetInventory([](RE::TESBoundObject& item) {
+            return item.GetFormType() == RE::FormType::Book && !Letters::IdFor(item.GetFormID()).empty();
+        });
+        for (const auto& [item, data] : inventory) {
+            const auto letter = db->Get(Letters::IdFor(item->GetFormID()));
+            if (data.first > 0 && letter && letter->recipientUuid == kNobodyUuid) return;
+        }
+        const Letter letter{ .id = Letters::NewId(),
+                             .authorUuid = SkyrimNet::UuidForFormId(player->GetFormID()),
+                             .authorName = player->GetName(),
+                             .recipientUuid = std::string{ kNobodyUuid },
+                             .recipientName = std::string{ kNobodyName },
+                             .body = ExampleBody(std::string{ kNobodyName }, player->GetName()),
+                             .writtenAt = RE::Calendar::GetSingleton()->GetDaysPassed() };
+        if (auto* book = Letters::Create(letter)) {
+            player->AddObjectToContainer(book, nullptr, 1, nullptr);
+            SKSE::log::info("[DebugKeys] Test letter to {} (never found) added", kNobodyName);
+        }
+    }
+
+    namespace {
         class InputSink : public RE::BSTEventSink<RE::InputEvent*> {
         public:
             static InputSink* GetSingleton()
