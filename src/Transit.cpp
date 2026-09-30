@@ -19,6 +19,7 @@
 
 #include "Transit.h"
 #include "CoSave.h"
+#include "Config.h"
 #include "Letters.h"
 #include "Reading.h"
 #include "Session.h"
@@ -62,9 +63,6 @@ namespace PhysicalLetters::Transit {
 
         // v1 (dev builds only) had no state: every parcel was in transit.  v2 had no delivery id.
         constexpr std::uint32_t kRecordVersion = 3;
-
-        // An NPC takes this long to write back, before the travel time.
-        constexpr double kWritingHours = 12.0;
 
         // A reading SkyrimNet never answers (it drops cancelled LLM tasks) counts as failed.
         constexpr auto kReadingTimeout = std::chrono::minutes(5);
@@ -165,7 +163,9 @@ namespace PhysicalLetters::Transit {
                                 .inReplyTo = original.letterId };
             if (!Letters::Create(reply)) return std::nullopt;
 
-            const double hours = kWritingHours + Travel::Hours(FindActor(original.recipientUuid), player);
+            // Writing the reply, then the travel.
+            const double hours = Config::GetSingleton()->Get(Config::kWritingHours) +
+                                 Travel::Hours(FindActor(original.recipientUuid), player);
             SKSE::log::info("[Transit] {} replies to letter {} with letter {}, due at the courier in {:.1f} game hours",
                             reply.authorName, original.letterId, reply.id, hours);
             return Parcel{ .letterId = reply.id,

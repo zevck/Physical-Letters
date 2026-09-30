@@ -2,11 +2,12 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** Tested on AE: a letter reaches its recipient after the travel time, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier. Built, not yet tested: sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage. Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
+**Status: in development.** Tested on AE: a letter reaches its recipient after the travel time, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, is tested too. Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
 
 ## Requirements
 
 - SKSE and the Address Library for your runtime.
+- SkyUI for the MCM (optional: the INI works without it).
 - **SkyrimNet with public API v11** (0.25.1, not released yet). With an older SkyrimNet the plugin loads, logs why, and letters are never read.
 
 ## What it installs
@@ -16,9 +17,15 @@ SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physi
 | `SKSE/Plugins/PhysicalLetters.dll` | The plugin |
 | `Physical Letters.esp` | ESL-flagged plugin: the postage dialogue for innkeepers and the courier |
 | `Scripts/PhysicalLetters_TIF_Postage.pex` | The dialogue's script (opens the gift menu) |
+| `Scripts/PhysicalLetters_MCM.pex`, `Interface/Translations/` | The MCM |
+| `Seq/Physical Letters.seq` | Lets the postage dialogue start with the game |
 | `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/` | A SkyrimNet plugin: the prompt the recipient reads a letter with. It shows under SkyrimNet's Installed Plugins with an External badge. |
 
 At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.db` (under MO2's `overwrite/`) and logs to `Documents/My Games/Skyrim Special Edition/SKSE/PhysicalLetters.log`.
+
+## Settings
+
+In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, and the travel-time tuning. See [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Dev keys
 

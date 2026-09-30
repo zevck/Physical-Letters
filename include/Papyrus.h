@@ -19,11 +19,10 @@
 
 #pragma once
 
-// How long a letter takes to travel: the engine's fast-travel time between the two
-// places, along the navmesh as fast travel measures it (docs/DELIVERY.md).  Game thread.
-namespace PhysicalLetters::Travel {
+// The MCM's natives on PhysicalLetters_MCM (docs/SETTINGS.md).
+namespace PhysicalLetters::Papyrus {
 
-    // Game hours for a letter to go from one reference to the other.
-    double Hours(RE::TESObjectREFR* a_from, RE::TESObjectREFR* a_to);
+    // SKSEPlugin_Load.
+    void Register();
 
-} // namespace PhysicalLetters::Travel
+} // namespace PhysicalLetters::Papyrus

@@ -25,6 +25,8 @@
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |
 | DynamicForms | `src/DynamicForms.cpp` | Runtime forms the engine saves itself (shared with SNPD) |
 | Serialization | `src/Serialization.cpp`, `include/CoSave.h` | The co-save records |
+| Config | `include/Config.h` | The INI settings ([SETTINGS.md](SETTINGS.md)) |
+| Papyrus | `src/Papyrus.cpp` | The MCM's natives |
 | Strings | `include/Strings.h` | Every piece of text the player sees (English only for now) |
 | DebugKeys | `src/DebugKeys.cpp` | F6, F7, F8 until the editor exists (F7 sends without the hand-over) |
 

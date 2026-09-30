@@ -18,6 +18,7 @@
  */
 
 #include "Postage.h"
+#include "Config.h"
 #include "LetterDB.h"
 #include "Letters.h"
 #include "Session.h"
@@ -123,6 +124,14 @@ namespace PhysicalLetters::Postage {
                 return RE::BSEventNotifyControl::kContinue;
             }
         };
+    }
+
+    void ApplyPrice()
+    {
+        auto* data = RE::TESDataHandler::GetSingleton();
+        auto* global = data ? data->LookupForm<RE::TESGlobal>(kPostageGlobal, kPlugin) : nullptr;
+        if (!global) return;
+        global->value = static_cast<float>(Config::GetSingleton()->Get(Config::kPostage));
     }
 
     void Register()

@@ -18,40 +18,113 @@
  */
 
 #include "Travel.h"
+#include "Config.h"
 
 namespace PhysicalLetters::Travel {
 
     namespace {
-        // Fast travel measures the path; roads wind, so the straight line is stretched.
-        constexpr double kPathFactor = 1.3;
-        // Between worldspaces, or when a place can't be found: a straight line means nothing.
-        constexpr double kFallbackHours = 48.0;
-        // Someone still has to carry it: same room, or same town (both indoors resolve to
-        // the town's marker, 0 units apart).
-        constexpr double kMinHours = 2.0;
+        // When the engine finds no path: the straight line, stretched for winding roads.
+        constexpr double kStraightLineFactor = 1.3;
+
+        // Fast travel's own path length (docs/DELIVERY.md#travel-time).  Not in CommonLib;
+        // found in fast travel (AE 40445) on each runtime.  VR's Address Library doesn't list the
+        // functions (older copies not even the singleton), so VR uses raw offsets.
+        struct PathParams {
+            alignas(8) std::byte data[0x50];  // built from the traveller's handle
+        };
+        struct PathLocation {
+            alignas(8) std::byte data[sizeof(RE::BSPathingLocation)];
+            RE::BSPathingLocation* get() { return reinterpret_cast<RE::BSPathingLocation*>(data); }
+        };
+        static_assert(sizeof(RE::BSPathingLocation) == 0x30);
+
+        RE::Pathing* PathingSingleton()
+        {
+            static REL::Relocation<RE::Pathing**> singleton{ REL::VariantID(514893, 401037, 0x2FC4658) };
+            return *singleton;
+        }
+
+        void MakeParams(PathParams& a_out, const std::uint32_t& a_travellerHandle)
+        {
+            using func_t = void* (*)(PathParams*, const std::uint32_t*, bool);
+            static REL::Relocation<func_t> func{ REL::VariantID(30030, 30845, 0x48E670) };
+            func(&a_out, &a_travellerHandle, true);
+        }
+
+        void DestroyParams(PathParams& a_params)
+        {
+            using func_t = void (*)(PathParams*);
+            static REL::Relocation<func_t> func{ REL::VariantID(30031, 30846, 0x48E740) };
+            func(&a_params);
+        }
+
+        // Constructs the location in place.
+        void MakeLocation(PathLocation& a_out, RE::TESObjectREFR* a_ref)
+        {
+            using func_t = RE::BSPathingLocation* (*)(RE::Pathing*, RE::BSPathingLocation*, RE::TESObjectREFR*);
+            static REL::Relocation<func_t> func{ REL::VariantID(29820, 30636, 0x4831E0) };
+            func(PathingSingleton(), a_out.get(), a_ref);
+        }
+
+        // Game units along the navmesh, or FLT_MAX when there's no path.
+        float PathLength(RE::BSPathingLocation* a_from, RE::BSPathingLocation* a_to, PathParams& a_params)
+        {
+            using func_t = float (*)(RE::Pathing*, RE::BSPathingLocation*, RE::BSPathingLocation*, std::uint32_t, PathParams*,
+                                     std::uint32_t);
+            static REL::Relocation<func_t> func{ REL::VariantID(29841, 30657, 0x485760) };
+            return func(PathingSingleton(), a_from, a_to, 0, &a_params, 0);
+        }
+
+        // Fast travel's path length between the two, measured for the player; nullopt when
+        // the engine finds no path.
+        std::optional<double> RoadLength(RE::TESObjectREFR* a_from, RE::TESObjectREFR* a_to)
+        {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            if (!player || !PathingSingleton()) return std::nullopt;
+            const std::uint32_t handle = player->GetHandle().native_handle();
+            PathParams params;
+            MakeParams(params, handle);
+            PathLocation from, to;
+            MakeLocation(from, a_from);
+            MakeLocation(to, a_to);
+            const float length = PathLength(from.get(), to.get(), params);
+            std::destroy_at(to.get());
+            std::destroy_at(from.get());
+            DestroyParams(params);
+            if (length >= std::numeric_limits<float>::max()) return std::nullopt;
+            return length;
+        }
 
         struct Place {
-            const RE::TESWorldSpace* world = nullptr;
-            RE::NiPoint3 position;
+            RE::NiPointer<RE::TESObjectREFR> ref;
+            const RE::TESWorldSpace* world = nullptr;  // the root worldspace
         };
+
+        // City worldspaces (WhiterunWorld, SolitudeWorld) are children of Tamriel and share its
+        // coordinates: the same world for a letter.  Solstheim or Blackreach are not.
+        const RE::TESWorldSpace* RootWorld(const RE::TESWorldSpace* a_world)
+        {
+            while (a_world && a_world->parentWorld) a_world = a_world->parentWorld;
+            return a_world;
+        }
 
         // The place's exterior marker, or its parent location's.
         std::optional<Place> MarkerOf(const RE::BGSLocation* a_location)
         {
             for (auto* location = a_location; location; location = location->parentLoc) {
-                const auto marker = location->worldLocMarker.get();
-                if (marker && marker->GetWorldspace()) return Place{ marker->GetWorldspace(), marker->GetPosition() };
+                auto marker = location->worldLocMarker.get();
+                if (marker && marker->GetWorldspace()) return Place{ marker, RootWorld(marker->GetWorldspace()) };
             }
             return std::nullopt;
         }
 
-        // Where the reference is in the exterior world.  Interior coordinates don't compare
-        // with exterior ones, so an interior counts as its location's exterior marker.
+        // Where the reference is in the exterior world.  Letters travel the roads, so an
+        // interior counts as its location's exterior marker.
         std::optional<Place> WorldPlace(RE::TESObjectREFR* a_ref)
         {
             if (!a_ref) return std::nullopt;
             if (const auto* cell = a_ref->GetParentCell(); cell && cell->IsExteriorCell() && a_ref->GetWorldspace()) {
-                return Place{ a_ref->GetWorldspace(), a_ref->GetPosition() };
+                return Place{ RE::NiPointer<RE::TESObjectREFR>(a_ref), RootWorld(a_ref->GetWorldspace()) };
             }
             if (auto place = MarkerOf(a_ref->GetCurrentLocation())) return place;
             if (auto place = MarkerOf(a_ref->GetEditorLocation())) return place;
@@ -68,26 +141,42 @@ namespace PhysicalLetters::Travel {
 
     double Hours(RE::TESObjectREFR* a_from, RE::TESObjectREFR* a_to)
     {
+        const auto* config = Config::GetSingleton();
+        // Between worldspaces, or when a place can't be found: no road to measure.
+        const double fallbackHours = config->Get(Config::kFallbackHours);
+        // Someone still has to carry it: same room, or same town (both indoors resolve to
+        // the town's marker, 0 units apart).
+        const double minHours = config->Get(Config::kMinHours);
+
         const auto from = WorldPlace(a_from);
         const auto to = WorldPlace(a_to);
         if (!from || !to || from->world != to->world) {
-            SKSE::log::info("[Travel] No common worldspace: {:.0f} game hours", kFallbackHours);
-            return kFallbackHours;
+            SKSE::log::info("[Travel] No common worldspace ({} and {}): {:.0f} game hours",
+                            from && from->world ? from->world->GetFormEditorID() : "none",
+                            to && to->world ? to->world->GetFormEditorID() : "none", fallbackHours);
+            return fallbackHours;
         }
 
-        // The engine's fast-travel time (AE 1.6.1170, docs/DELIVERY.md): path length /
-        // (fFastTravelSpeedMult * the traveller's walk speed) real seconds, which the
-        // calendar turns into game time at TimeScale.
+        // The engine's fast-travel time: path length / (fFastTravelSpeedMult * the
+        // traveller's walk speed) real seconds, which the calendar turns into game time at
+        // TimeScale.
         auto* player = RE::PlayerCharacter::GetSingleton();
         const double walkSpeed = player ? player->GetWalkSpeed() : 0.0;
         const double speedMult = GameSetting("fFastTravelSpeedMult", 1.0f);
         const auto* calendar = RE::Calendar::GetSingleton();
         const double timeScale = calendar ? calendar->GetTimescale() : 20.0;
-        if (walkSpeed <= 0.0 || speedMult <= 0.0) return kFallbackHours;
+        if (walkSpeed <= 0.0 || speedMult <= 0.0) return fallbackHours;
 
-        const double distance = from->position.GetDistance(to->position) * kPathFactor;
-        const double hours = std::max(distance / (speedMult * walkSpeed) * timeScale / 3600.0, kMinHours);
-        SKSE::log::info("[Travel] {:.0f} units at walk speed {:.1f}, timescale {:.0f}: {:.1f} game hours", distance, walkSpeed,
+        const auto started = std::chrono::steady_clock::now();
+        const auto road = RoadLength(from->ref.get(), to->ref.get());
+        const auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+        const double straight = from->ref->GetPosition().GetDistance(to->ref->GetPosition());
+        const double distance = road ? *road : straight * kStraightLineFactor;
+
+        const double hours = std::max(distance / (speedMult * walkSpeed) * timeScale / 3600.0, minHours);
+        SKSE::log::info("[Travel] {} {:.0f} units (straight line {:.0f}, pathing {:.1f} ms) at walk speed {:.1f}, "
+                        "fFastTravelSpeedMult {:.2f}, timescale {:.0f}: {:.1f} game hours",
+                        road ? "Road" : "No road found: straight line x1.3,", distance, straight, ms, walkSpeed, speedMult,
                         timeScale, hours);
         return hours;
     }

@@ -1,0 +1,25 @@
+FormKey: 000808:Physical Letters.esp
+EditorID: PhysicalLettersMCMQuest
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_MCM
+  FileName: ''
+  Aliases:
+  - Property:
+      Name: ''
+      Object: 000808:Physical Letters.esp
+      Alias: 0
+    Scripts:
+    - Name: SKI_PlayerLoadGameAlias
+Name:
+  TargetLanguage: English
+  Value: Physical Letters MCM
+Flags:
+- StartGameEnabled
+- 0x10
+NextAliasID: 1
+Aliases:
+- Name: PlayerAlias
+  Flags: []
+  ForcedReference: 000014:Skyrim.esm
+  VoiceTypes: Null

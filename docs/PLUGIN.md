@@ -20,16 +20,17 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 |---|---|---|---|
 | `0x800` | Keyword | `PhysicalLettersOutgoingLetter` | On every letter the player wrote (added by the DLL) |
 | `0x801` | FormList | `PhysicalLettersOutgoingFilter` | Holds the keyword; the gift menu's filter |
-| `0x802` | Global (short) | `PhysicalLettersPostage` | 20; shown in the topic text |
+| `0x802` | Global (short) | `PhysicalLettersPostage` | The postage: shown in the topic text, checked by the gold conditions. The DLL sets it from the INI on every load ([SETTINGS.md](SETTINGS.md)) |
 | `0x803` | Quest | `PhysicalLettersPostQuest` | Holds the dialogue; starts with the game, listed in `Seq/Physical Letters.seq` ([DELIVERY.md](DELIVERY.md#the-hand-over)) |
 | `0x804` | DialogBranch | `PhysicalLettersSendBranch` | Top-level, player |
 | `0x805` | DialogTopic | `PhysicalLettersSendTopic` | "I need to send a letter. (… gold)" |
 | `0x806` | DialogResponses | | Accept: "Of course." (shared line), TIF `PhysicalLetters_TIF_Postage`. Innkeeper or courier, gold ≥ postage, carrying a letter the player wrote |
 | `0x807` | DialogResponses | | Refuse: "Nah. I don't think so." (shared line). Same, with gold < postage |
+| `0x808` | Quest | `PhysicalLettersMCMQuest` | The MCM: script `PhysicalLetters_MCM`; player alias with `SKI_PlayerLoadGameAlias`. Starts with the game; no dialogue, so not in the SEQ file |
 
 The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`).
 
-The vanilla masters in the same format (`C:\dev\Mutagen Tools\skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
+The vanilla masters in the same format (`C:\dev\Mutagen Tools\Spriggit Dumps\skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 
 ## Tools
 
@@ -54,7 +55,7 @@ If a record is easier to make in the Creation Kit or xEdit, edit the deployed `.
 
 ## Papyrus
 
-The TIF's source is `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
+The scripts' sources (the TIF and the MCM) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
 
 ## The SEQ file
 

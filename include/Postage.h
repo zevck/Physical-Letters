@@ -27,4 +27,8 @@ namespace PhysicalLetters::Postage {
     // kDataLoaded.
     void Register();
 
+    // Sets the postage global (the topic's price and gold conditions) from the settings.
+    // kNewGame / kPostLoadGame (a save stores the global's value) and when the MCM changes it.
+    void ApplyPrice();
+
 } // namespace PhysicalLetters::Postage

@@ -19,6 +19,8 @@
 
 #include "DebugKeys.h"
 #include "Postage.h"
+#include "Config.h"
+#include "Papyrus.h"
 #include "DynamicForms.h"
 #include "Letters.h"
 #include "Serialization.h"
@@ -71,12 +73,14 @@ namespace {
         case SKSE::MessagingInterface::kNewGame:
             PhysicalLetters::Session::End();
             PhysicalLetters::Session::Start();
+            PhysicalLetters::Postage::ApplyPrice();
             break;
         case SKSE::MessagingInterface::kPostLoadGame:
             // World copies of our letters in the loaded cells were built before the load
             // callback filled the forms in.
             DynamicForms::RebuildLoadedWorldCopies();
             PhysicalLetters::Session::Start();
+            PhysicalLetters::Postage::ApplyPrice();
             break;
         default:
             break;
@@ -115,6 +119,14 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
     // log = false: InitializeLog already set up our logger, and CommonLib's own
     // would replace it (and reopen the same file).
     SKSE::Init(a_skse, { .log = false });
+
+    // Written straight back: MO2 puts it in overwrite/, where mod updates don't replace it.
+    auto* config = PhysicalLetters::Config::GetSingleton();
+    config->Load(std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "PhysicalLetters.ini");
+    config->Save();
+    if (config->Get(PhysicalLetters::Config::kDebugLog)) spdlog::default_logger()->set_level(spdlog::level::debug);
+
+    PhysicalLetters::Papyrus::Register();
 
     PhysicalLetters::Serialization::Register();
     PhysicalLetters::TextHook::Install();
