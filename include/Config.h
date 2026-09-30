@@ -42,7 +42,7 @@ namespace PhysicalLetters {
         static constexpr Setting kNpcInterval    { "NpcLetters", "IntervalDays", 7,  1, 60  };
         static constexpr Setting kNpcCooldown    { "NpcLetters", "CooldownDays", 14, 0, 120 };
         static constexpr Setting kNpcMinEvents   { "NpcLetters", "MinEvents",    5,  1, 200 };
-        // In the wilderness (no area), closer than this is around the player (game units).
+        // Closer than this is around the player (game units), besides the same area.
         static constexpr Setting kNpcNearDistance  { "NpcLetters", "NearDistance",    8192, 0, 65536 };
         // Weight grows from RecentWeight (percent) to full over MissedAfterDays since the last
         // exchange; MissedAfterDays 0 ignores recency.

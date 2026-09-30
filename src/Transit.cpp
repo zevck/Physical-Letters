@@ -20,6 +20,7 @@
 #include "Transit.h"
 #include "CoSave.h"
 #include "Config.h"
+#include "GameTime.h"
 #include "Letters.h"
 #include "NpcLetters.h"
 #include "Reading.h"
@@ -73,11 +74,7 @@ namespace PhysicalLetters::Transit {
         // After this many failures the letter waits for the next load.
         constexpr int kMaxFailures = 5;
 
-        double Now()
-        {
-            auto* calendar = RE::Calendar::GetSingleton();
-            return calendar ? calendar->GetDaysPassed() : 0.0;
-        }
+        using GameTime::Now;
 
         void ReportWaiting(const Parcel& parcel, std::string_view why)
         {
@@ -253,6 +250,13 @@ namespace PhysicalLetters::Transit {
                               .dueAt = Now() + hours / 24.0 });
         SKSE::log::info("[Transit] Sent letter {} to {}, due in {:.1f} game hours", letter.id, letter.recipientName, hours);
         return hours;
+    }
+
+    bool IsLetterPendingFor(const std::string& uuid)
+    {
+        return std::ranges::any_of(g_parcels, [&](const Parcel& p) {
+            return p.recipientUuid == uuid && (p.state == State::kInTransit || p.state == State::kAwaitingReading);
+        });
     }
 
     void QueueToPlayer(const Letter& letter, double hours)

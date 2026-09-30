@@ -131,10 +131,10 @@ namespace PhysicalLetters::SkyrimNet {
         return PublicGetActorEngagement(0, true, true, kDay, 7 * kDay);
     }
 
-    std::string RecentDialogue(RE::FormID formId, int maxExchanges)
+    std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types)
     {
-        if (!g_available || !PublicGetRecentDialogue) return "[]";
-        return PublicGetRecentDialogue(formId, maxExchanges);
+        if (!g_available || !PublicGetRecentEvents) return "[]";
+        return PublicGetRecentEvents(formId, maxCount, types.c_str());
     }
 
     int AddMemory(RE::FormID formId, const std::string& content, float importance, const std::string& type,

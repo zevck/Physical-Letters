@@ -21,10 +21,10 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | SkyrimNet client | `src/SkyrimNet.cpp`, `include/SkyrimNet/PublicAPI.h` (vendored) | SkyrimNet's public API, resolved at run time; requires v11 |
 | Letters | `src/Letters.cpp` | Letter forms, their look, their rendered text (a thread-safe snapshot) |
 | LetterDB | `src/LetterDB.cpp` | SQLite store of each letter's text, per SkyrimNet save folder |
-| Transit | `src/Transit.cpp` | The queue: delivery, the reading owed (with retries), replies and undeliverable letters to the courier |
+| Transit | `src/Transit.cpp` | The queue: delivery, the reading owed (with retries), replies, NPC letters and undeliverable letters to the courier |
 | Reading | `src/Reading.cpp`, `include/LlmJson.h` | The LLM call and the SkyrimNet memory; the correspondence history; reading the LLM's JSON |
 | NpcLetters | `src/NpcLetters.cpp` | NPCs writing to the player first: the schedule, the pick, the prompt, cooldowns |
-| Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula) |
+| Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula); areas and distances (`Area`, `Distance`) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
 | Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |
@@ -46,9 +46,9 @@ Nothing reads or writes letters, LetterDB or SkyrimNet until the session is **re
 
 ## Threading
 
-- **Game thread:** everything that touches game state: the SKSE messages, the load callbacks, the heartbeat task (`Session::Poll`, `Transit::Tick`), the dev keys, and the result of every reading (`Reading` reports back with `AddTask`). Each task catches exceptions so none crosses into the engine.
+- **Game thread:** everything that touches game state: the SKSE messages, the load callbacks, the heartbeat task (`Session::Poll`, `Transit::Tick`, `NpcLetters::Tick`), the dev keys, and the result of every reading (`Reading` reports back with `AddTask`). Each task catches exceptions so none crosses into the engine.
 - **Any thread:** the `GetDescription` hook (the book menu and other readers, including the engine's "Poll controls" job). It reads only the `Letters` snapshot, under its mutex.
-- **Worker threads:** a reading's memory queries, the LLM call (SkyrimNet's pool calls back) and storing the memory, which blocks while SkyrimNet embeds it. Work that finishes after a load is dropped: it carries the session generation and checks it before writing, and again after the blocking `AddMemory`.
+- **Worker threads:** a reading's memory queries, the LLM call (SkyrimNet's pool calls back) and storing the memory, which blocks while SkyrimNet embeds it; an NPC letter's pool (the engagement list and each NPC's dialogue events), its prompt context and the writer's memory. Work that finishes after a load is dropped: it carries the session generation and checks it before writing, and again after the blocking `AddMemory`. NPC letters also carry an attempt id, so an attempt given up after its timeout can't act later ([NPC_LETTERS.md](NPC_LETTERS.md#the-prompt)).
 - **LetterDB** has its own mutex; readings write to it from worker threads.
 
 ## Code shared with SkyrimNet Physical Diaries

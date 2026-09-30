@@ -52,6 +52,8 @@ A returning letter is a state-2 parcel like a reply: the same letter form, now a
 
 When a reading returns a reply ([READING.md](READING.md)), the same game-thread step that ends the reading creates the reply letter (author the NPC, recipient the player, "Letter from X", the same template) and queues it as a parcel *to the player* (`LTRN` state 2). A save can't hold a finished reading without its reply. If a save was made between the memory and that step, the reading after a load finds the memory and takes the reply from LetterDB's stored reading.
 
+A letter an NPC writes first takes the same path, queued after the travel time alone, with no writing time (`Transit::QueueToPlayer`, [NPC_LETTERS.md](NPC_LETTERS.md#the-letter)).
+
 When the parcel is due, it goes to the vanilla courier: `WICourierScript.addItemToContainer(letter, 1)` on the quest `WICourier` (Skyrim.esm `0x039F82`), called through the Papyrus VM as vanilla quests call it (`WIKill03`, the Hearthfire steward letters), so mods that change the courier see our letters too. From the vanilla script (`WICourierScript.psc`):
 
 - `addItemToContainer` puts the item in `WICourierContainerRef` and raises the global `WICourierItemCount`, which makes the courier quest run on the player's next change of location.

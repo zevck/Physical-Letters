@@ -20,7 +20,7 @@ Created by `DynamicForms::Create<TESObjectBOOK>()` (the engine picks the FormID)
 Unique ID `'SNPL'`:
 
 - **`LFRM`** (version 2, DynamicForms' format): per form, FormID, form type, flags (bit 0 = retired), then three strings: key (the letter id), template EditorID (unused, empty), display name ("Letter to X", or "Letter from X" for a letter to the player).
-- **`LTRN`** (version 4): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 on its way to the courier: a reply, or the player's own letter coming back undelivered; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Then the returned letters: a count, and per letter its id (string) and why it came back (`uint8`: 1 the recipient is dead, 2 not found), for its item card. Version 3 had no returned letters, version 2 no delivery id and version 1 no state; versions 1 and 2 load with the letter id as delivery id, and version 1 parcels as in transit.
+- **`LTRN`** (version 4): per parcel, three strings (letter id, recipient UUID, recipient name), `dueAt` (double, game days), state (`uint8`: 0 in transit to an NPC, 1 delivered and awaiting reading, 2 on its way to the courier: a reply, a letter an NPC wrote first ([NPC_LETTERS.md](NPC_LETTERS.md)), or the player's own letter coming back undelivered; for state 2 the "recipient" is the player), then the delivery id (string: this sending of the letter; a letter can be sent again). Then the returned letters: a count, and per letter its id (string) and why it came back (`uint8`: 1 the recipient is dead, 2 not found), for its item card. Version 3 had no returned letters, version 2 no delivery id and version 1 no state; versions 1 and 2 load with the letter id as delivery id, and version 1 parcels as in transit.
 
 Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). The load callback fills the letter forms in from `LFRM` at once; their text follows when the session is ready.
 
@@ -46,6 +46,8 @@ New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 
 SkyrimNet decides, not LetterDB. Each sending of a letter is a delivery with its own id (saved with the parcel), and the recipient's memory of it carries two tags: `physical_letters_letter:<letter id>` (which letter; the correspondence history counts it) and `physical_letters_delivery:<delivery id>` (which delivery). A reading first asks SkyrimNet (`PublicQueryMemoriesForActor`, `includeTags`) whether that delivery's memory exists, and again before storing. SkyrimNet's history reverts with a Clear and not with a Keep, so the answer is right in every case below without tracking timelines ourselves, and a retry or a reload never makes a second memory of one delivery. A letter sent again is a new delivery, so it's always read.
 
+
+A letter an NPC writes first carries its letter tag on the **writer's** memory of writing it; that's how their later readings count it ([NPC_LETTERS.md](NPC_LETTERS.md#the-letter)).
 ## Scenarios
 
 | Scenario | Result |
@@ -58,6 +60,10 @@ SkyrimNet decides, not LetterDB. Each sending of a letter is a delivery with its
 | Load a save from before a reply reached the courier | The reply's parcel is in that save and goes to the courier when due |
 | A load while a reading is running | The result is dropped; the loaded save's own parcels decide what is read |
 | Second character | Another SkyrimNet save id, so another LetterDB |
+| NPC letters: a load while an attempt runs | The attempt's result is dropped (session generation); the loaded save's schedule decides when the next runs |
+| NPC letters: a save from before an NPC wrote, **Keep** | The schedule and cooldowns are the save's (`LNPC`), and the letter's parcel isn't in it; the writer's tagged memory of writing stays, so their next reading lists a letter the player never got. Accepted: SkyrimNet's Keep keeps what the NPC lived through |
+| NPC letters: the same, **Clear** | The memory goes with the rest of that history |
+| NPC letters: a save without `LNPC` (older, or new) | The next letter is scheduled when the session is first ready |
 | SkyrimNet missing or too old | Letters keep their look, show `...`, nothing is delivered; the log says why |
 
 Tested in game on AE (2026-09-30): creation, sending, delivery after the delay, reading and the memory; Keep, Clear and a load during a reading; replies through the courier and the correspondence; the hand-over; returned letters and their card line. Not tested yet: a letter sent again (`read_before`), the retry path, a second character, SE and VR.

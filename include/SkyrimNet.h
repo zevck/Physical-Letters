@@ -62,10 +62,10 @@ namespace PhysicalLetters::SkyrimNet {
     // SkyrimNet's whole history: not on the game thread.
     std::string Engagement();
 
-    // The latest dialogue between the player and the NPC, oldest first:
-    // [{ speaker, text, gameTime }] (PublicGetRecentDialogue; "[]" on error).  Blocks: not on
-    // the game thread.
-    std::string RecentDialogue(RE::FormID formId, int maxExchanges);
+    // The actor's newest events of the given types (comma-separated), oldest first
+    // (PublicGetRecentEvents; "[]" on error): { type, data, originatingActor, targetActor
+    // (UUIDs), gameTime (game seconds), ... }.  Blocks: not on the game thread.
+    std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types);
 
     // Stores a memory for the actor.  Blocks while it is embedded: not on the game thread.
     // Returns the memory id, 0 on error.

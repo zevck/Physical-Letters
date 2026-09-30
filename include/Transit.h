@@ -35,6 +35,10 @@ namespace PhysicalLetters::Transit {
     // An NPC's letter to the player (already created): it goes to the courier after `hours`.
     void QueueToPlayer(const Letter& letter, double hours);
 
+    // Whether a letter to this NPC is on its way or delivered and not yet read: they have one
+    // to answer, so they don't write first (docs/NPC_LETTERS.md#who).
+    bool IsLetterPendingFor(const std::string& uuid);
+
     // Delivers what is due, starts (or retries) the readings owed, and hands replies to the
     // courier.  Runs every heartbeat once the session is ready.
     void Tick();

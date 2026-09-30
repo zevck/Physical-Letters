@@ -134,11 +134,7 @@ namespace PhysicalLetters::Reading {
         return "physical_letters_delivery:" + deliveryId;
     }
 
-    // SkyrimNet's memory decides, as everywhere.  A letter to the reader counts if they
-    // remember it.  Their own letter counts if they remember writing it (a letter they wrote
-    // first carries its tag on their memory of writing it), or, for a reply, if they remember
-    // the letter it answers (that memory holds the reply).  Letters from timelines the player
-    // left, or still on their way, drop out.  A memory query per letter.
+    // The rules: docs/READING.md#the-prompt.  A memory query per letter.
     json Correspondence(const std::string& readerUuid, const std::string& otherUuid, RE::FormID readerFormId, double now,
                         const std::string& skipId, bool skipRemembered)
     {

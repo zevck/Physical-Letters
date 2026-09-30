@@ -21,7 +21,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[NpcLetters] MinDaysApart` | 1 | 0–30 | Game days since their last exchange with the player below which an NPC isn't picked (0 = off) |
 | `[NpcLetters] MissedAfterDays` | 3 | 0–30 | Game days apart for an NPC's full weight; 0 ignores recency |
 | `[NpcLetters] RecentWeight` | 10 | 0–100 | Weight (percent of full) of someone the player spoke to today; it grows to full over `MissedAfterDays` |
-| `[NpcLetters] NearDistance` | 8192 | 0–65536 | In the wilderness (no area), game units within which an NPC is around the player |
+| `[NpcLetters] NearDistance` | 8192 | 0–65536 | Game units within which an NPC is around the player, besides the same area (it also catches a farm just outside a town) |
 
 **Every setting is one row in `Config::kSettings`**: section, key, default, range. Reads clamp to the range and fall back to the default on a non-number, so a hand-edited INI can't feed the code nonsense. `Save()` writes only the keys in the table (anything else is dropped at the next start), building the file in memory first so a failure can't leave it half-written.
 
