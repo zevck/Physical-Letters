@@ -45,6 +45,7 @@ set(sources
     src/Transit.cpp
     src/Travel.cpp
     src/Courier.cpp
+    src/Postage.cpp
 )
 
 # ---- Generate Plugin.h ----

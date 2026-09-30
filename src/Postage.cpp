@@ -1,0 +1,174 @@
+/*
+ * Physical Letters - a Skyrim SKSE plugin for writing letters to NPCs,
+ * having them delivered, and receiving their replies through SkyrimNet.
+ * Copyright (C) 2026 Zevick
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "Postage.h"
+#include "LetterDB.h"
+#include "Letters.h"
+#include "Session.h"
+#include "Transit.h"
+
+namespace PhysicalLetters::Postage {
+
+    namespace {
+        constexpr RE::FormID kPlayer = 0x14;
+        constexpr RE::FormID kGold = 0x00000F;
+        constexpr RE::FormID kPostageGlobal = 0x000802;  // PhysicalLettersPostage
+        constexpr std::string_view kPlugin = "Physical Letters.esp";
+
+        void GiveBack(RE::Actor* a_holder, RE::TESObjectBOOK* a_book)
+        {
+            a_holder->RemoveItem(a_book, 1, RE::ITEM_REMOVE_REASON::kStoreInContainer, nullptr,
+                                 RE::PlayerCharacter::GetSingleton());
+        }
+
+        // Game thread.  The letter is in the holder's inventory now: send it from there, or
+        // give it back if it can't be sent.
+        void HandOver(RE::FormID a_bookId, RE::FormID a_holderId)
+        {
+            auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(a_bookId);
+            auto* holder = RE::TESForm::LookupByID<RE::Actor>(a_holderId);
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            if (!book || !holder) return;
+            if (holder->GetInventoryCounts([book](RE::TESBoundObject& item) { return &item == book; })[book] <= 0) return;
+
+            auto letter = LetterDB::GetSingleton()->Get(Letters::IdFor(a_bookId));
+            if (!Session::IsReady() || !letter) {
+                SKSE::log::warn("[Postage] Letter 0x{:X} can't be sent now: given back", a_bookId);
+                GiveBack(holder, book);
+                return;
+            }
+
+            auto* data = RE::TESDataHandler::GetSingleton();
+            auto* postageGlobal = data->LookupForm<RE::TESGlobal>(kPostageGlobal, kPlugin);
+            auto* gold = RE::TESForm::LookupByID<RE::TESBoundObject>(kGold);
+            const auto postage = postageGlobal ? static_cast<std::int32_t>(postageGlobal->value) : 0;
+            // The dialogue only offers this with the postage in hand; a mod could have taken it since.
+            if (!gold || player->GetItemCount(gold) < postage) {
+                SKSE::log::info("[Postage] The player can't pay {} gold: letter {} given back", postage, letter->id);
+                GiveBack(holder, book);
+                return;
+            }
+
+            if (!Transit::Send(book, *letter, holder)) {
+                GiveBack(holder, book);
+                return;
+            }
+            player->RemoveItem(gold, postage, RE::ITEM_REMOVE_REASON::kRemove, nullptr, holder);
+            RE::SendHUDMessage::ShowInventoryChangeMessage(gold, postage, false, true);
+            SKSE::log::info("[Postage] {} took letter {} to {} for {} gold", holder->GetName(), letter->id,
+                            letter->recipientName, postage);
+
+            // One letter per postage: done.
+            if (auto* queue = RE::UIMessageQueue::GetSingleton()) {
+                queue->AddMessage(RE::GiftMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kHide, nullptr);
+            }
+        }
+
+        // A letter the player wrote, given to someone while the gift menu is open: the
+        // postage topic's gift menu (only it shows these letters to give).
+        class GiftSink : public RE::BSTEventSink<RE::TESContainerChangedEvent> {
+        public:
+            static GiftSink* GetSingleton()
+            {
+                static GiftSink singleton;
+                return &singleton;
+            }
+
+            RE::BSEventNotifyControl ProcessEvent(const RE::TESContainerChangedEvent* a_event,
+                                                  RE::BSTEventSource<RE::TESContainerChangedEvent>*) override
+            {
+                if (!a_event || a_event->oldContainer != kPlayer || a_event->newContainer == 0 ||
+                    a_event->newContainer == kPlayer || Letters::IdFor(a_event->baseObj).empty()) {
+                    return RE::BSEventNotifyControl::kContinue;
+                }
+                auto* ui = RE::UI::GetSingleton();
+                if (!ui || !ui->IsMenuOpen(RE::GiftMenu::MENU_NAME)) return RE::BSEventNotifyControl::kContinue;
+
+                SKSE::GetTaskInterface()->AddTask([bookId = a_event->baseObj, holderId = a_event->newContainer]() {
+                    // An exception must not cross into the engine.
+                    try {
+                        HandOver(bookId, holderId);
+                    } catch (const std::exception& e) {
+                        SKSE::log::error("[Postage] Handing over letter 0x{:X} failed: {}", bookId, e.what());
+                    }
+                });
+                return RE::BSEventNotifyControl::kContinue;
+            }
+        };
+    }
+
+    namespace {
+        constexpr RE::FormID kPostQuest = 0x000803;  // PhysicalLettersPostQuest
+        // Heartbeats to wait for Stop() before clearing kEnabled by hand.
+        constexpr int kStopWaitTicks = 2;
+        bool g_startPending = false;
+        int g_stopWait = 0;
+
+        std::string State(const RE::TESQuest* quest)
+        {
+            return std::format("running {}, starting {}, stopping {}, enabled {}", quest->IsRunning(), quest->IsStarting(),
+                               quest->IsStopping(), quest->IsEnabled());
+        }
+
+        RE::TESQuest* PostQuest()
+        {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            return data ? data->LookupForm<RE::TESQuest>(kPostQuest, kPlugin) : nullptr;
+        }
+    }
+
+    void RestartDialogue()
+    {
+        auto* quest = PostQuest();
+        if (!quest) {
+            SKSE::log::error("[Postage] The postage quest isn't loaded: is {} enabled?", kPlugin);
+            return;
+        }
+        SKSE::log::info("[Postage] Restarting the postage quest ({})", State(quest));
+        if (quest->IsRunning() || quest->IsStarting()) quest->Stop();
+        g_startPending = true;
+        g_stopWait = 0;
+    }
+
+    void Tick()
+    {
+        if (!g_startPending) return;
+        auto* quest = PostQuest();
+        if (!quest) return;
+        if (quest->IsRunning() || quest->IsStarting()) {
+            if (++g_stopWait < kStopWaitTicks) return;
+            // Marked running without having started (a save from when the ESP set only
+            // kEnabled): Stop() has nothing to stop, so clear the flag itself.
+            SKSE::log::info("[Postage] The quest didn't stop ({}): clearing kEnabled", State(quest));
+            quest->SetEnabled(false);
+        }
+        g_startPending = false;
+        const bool started = quest->Start();
+        SKSE::log::info("[Postage] Postage dialogue {} ({})", started ? "started" : "failed to start", State(quest));
+    }
+
+    void Register()
+    {
+        if (auto* events = RE::ScriptEventSourceHolder::GetSingleton()) {
+            events->AddEventSink<RE::TESContainerChangedEvent>(GiftSink::GetSingleton());
+            SKSE::log::info("[Postage] Watching for letters handed over in the gift menu");
+        }
+    }
+
+} // namespace PhysicalLetters::Postage

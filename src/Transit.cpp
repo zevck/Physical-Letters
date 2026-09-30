@@ -215,12 +215,13 @@ namespace PhysicalLetters::Transit {
         }
     }
 
-    std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter)
+    std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter, RE::TESObjectREFR* holder)
     {
-        auto* player = RE::PlayerCharacter::GetSingleton();
-        if (!book || !player || player->GetItemCount(book) <= 0) return std::nullopt;
-        const double hours = Travel::Hours(player, FindActor(letter.recipientUuid));
-        player->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+        if (!book || !holder || holder->GetInventoryCounts([book](RE::TESBoundObject& item) { return &item == book; })[book] <= 0) {
+            return std::nullopt;
+        }
+        const double hours = Travel::Hours(holder, FindActor(letter.recipientUuid));
+        holder->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
         g_parcels.push_back({ .letterId = letter.id,
                               .recipientUuid = letter.recipientUuid,
                               .recipientName = letter.recipientName,

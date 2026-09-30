@@ -1,0 +1,7 @@
+FormKey: 000804:Physical Letters.esp
+EditorID: PhysicalLettersSendBranch
+Quest: 000803:Physical Letters.esp
+Category: Player
+Flags:
+- TopLevel
+StartingTopic: 000805:Physical Letters.esp

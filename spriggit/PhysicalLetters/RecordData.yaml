@@ -1,0 +1,12 @@
+SpriggitSource:
+  PackageName: Spriggit.Yaml.Skyrim
+  Version: 0.41
+ModKey: Physical Letters.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Flags:
+  - Small
+  Author: Zevick
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0

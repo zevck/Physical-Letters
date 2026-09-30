@@ -103,7 +103,7 @@ namespace PhysicalLetters::DebugKeys {
                 Notify("You carry no letter to send.");
                 return;
             }
-            if (const auto hours = Transit::Send(newestBook, *newest)) {
+            if (const auto hours = Transit::Send(newestBook, *newest, player)) {
                 Notify(std::format("Letter to {} sent; it arrives in {:.0f} hours.", newest->recipientName, *hours));
             }
         }

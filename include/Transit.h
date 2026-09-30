@@ -27,9 +27,10 @@
 // loading one made before the reading finished reads it again.  Game thread only.
 namespace PhysicalLetters::Transit {
 
-    // Takes the letter from the player; it reaches its recipient after the travel time
-    // (Travel::Hours).  Returns that time in game hours, nothing if the player hasn't the letter.
-    std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter);
+    // Takes the letter from whoever holds it (the player, or the innkeeper it was handed to);
+    // it reaches its recipient after the travel time from there (Travel::Hours).  Returns that
+    // time in game hours, nothing if the holder hasn't the letter.
+    std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter, RE::TESObjectREFR* holder);
 
     // Delivers what is due, starts (or retries) the readings owed, and hands replies to the
     // courier.  Runs every heartbeat once the session is ready.

@@ -2,7 +2,7 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** The send flow works (tested on AE): a letter reaches its recipient after the travel time, the recipient reads it, and SkyrimNet keeps a memory of it. Replies are built but not tested yet: a reply comes back to you through the vanilla courier. Writing your own letters and handing them to an innkeeper or courier are not built yet. Until they are, the plugin has dev keys (below).
+**Status: in development.** Tested on AE: a letter reaches its recipient after the travel time, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier. Built, not yet tested: sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage. Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
 
 ## Requirements
 
@@ -14,6 +14,8 @@ SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physi
 | Path | What |
 |---|---|
 | `SKSE/Plugins/PhysicalLetters.dll` | The plugin |
+| `Physical Letters.esp` | ESL-flagged plugin: the postage dialogue for innkeepers and the courier |
+| `Scripts/PhysicalLetters_TIF_Postage.pex` | The dialogue's script (opens the gift menu) |
 | `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/` | A SkyrimNet plugin: the prompt the recipient reads a letter with. It shows under SkyrimNet's Installed Plugins with an External badge. |
 
 At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.db` (under MO2's `overwrite/`) and logs to `Documents/My Games/Skyrim Special Edition/SKSE/PhysicalLetters.log`.

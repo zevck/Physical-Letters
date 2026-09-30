@@ -10,3 +10,9 @@
 
 # Machine-specific build settings
 Build_Config_Local.ps1
+
+# Downloaded tools (Spriggit CLI)
+/external
+
+# Pyro project (machine paths)
+skyrimse.ppj

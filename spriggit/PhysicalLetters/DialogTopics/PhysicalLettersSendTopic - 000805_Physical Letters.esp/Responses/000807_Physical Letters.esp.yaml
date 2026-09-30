@@ -1,0 +1,24 @@
+FormKey: 000807:Physical Letters.esp
+Flags: {}
+FavorLevel: None
+ResponseData: 0E0CC4:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Flags:
+  - OR
+  Data:
+    MutagenObjectType: GetInFactionConditionData
+    Faction: 05091B:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIsIDConditionData
+    Object: 039F83:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionGlobal
+  CompareOperator: LessThan
+  Data:
+    MutagenObjectType: GetItemCountConditionData
+    RunOnType: Target
+    ItemOrList: 00000F:Skyrim.esm
+  ComparisonValue: 000802:Physical Letters.esp

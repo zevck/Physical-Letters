@@ -1,0 +1,38 @@
+FormKey: 000806:Physical Letters.esp
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_TIF_Postage
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: PhysicalLettersOutgoingFilter
+      Object: 000801:Physical Letters.esp
+  ScriptFragments:
+    MutagenObjectType: ScriptFragments
+    FileName: PhysicalLetters_TIF_Postage
+    OnEnd:
+      ExtraBindDataVersion: 1
+      ScriptName: PhysicalLetters_TIF_Postage
+      FragmentName: Fragment_0
+Flags: {}
+FavorLevel: None
+ResponseData: 0DBA22:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Flags:
+  - OR
+  Data:
+    MutagenObjectType: GetInFactionConditionData
+    Faction: 05091B:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIsIDConditionData
+    Object: 039F83:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionGlobal
+  CompareOperator: GreaterThanOrEqualTo
+  Data:
+    MutagenObjectType: GetItemCountConditionData
+    RunOnType: Target
+    ItemOrList: 00000F:Skyrim.esm
+  ComparisonValue: 000802:Physical Letters.esp

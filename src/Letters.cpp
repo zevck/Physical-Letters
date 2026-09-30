@@ -125,6 +125,16 @@ namespace PhysicalLetters::Letters {
             book->SetFullName(name.c_str());
         }
 
+        // The player's own letters carry PhysicalLettersOutgoingLetter, which the postage
+        // topic's gift menu filters on (docs/DELIVERY.md#the-hand-over).  Set every session:
+        // the save keeps only a runtime form's flags.
+        void MarkOutgoing(RE::TESObjectBOOK* book, const Letter& letter)
+        {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            auto* keyword = data ? data->LookupForm<RE::BGSKeyword>(0x000800, "Physical Letters.esp") : nullptr;
+            if (keyword && letter.authorUuid == SkyrimNet::UuidForFormId(0x14)) book->AddKeyword(keyword);
+        }
+
         void SetEntry(RE::TESObjectBOOK* book, std::string id, std::string text)
         {
             std::lock_guard lock{ g_mutex };
@@ -160,6 +170,7 @@ namespace PhysicalLetters::Letters {
         Configure(book, Template(), name);
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
         SetEntry(book, letter.id, Render(letter.body));
+        MarkOutgoing(book, letter);
         if (!LetterDB::GetSingleton()->Insert(letter)) {
             SKSE::log::error("[Letters] Letter {} wasn't stored: its text is lost after a reload", letter.id);
         }
@@ -190,6 +201,7 @@ namespace PhysicalLetters::Letters {
             if (!book) continue;
             if (const auto letter = db->Get(record.key)) {
                 SetEntry(book, record.key, Render(letter->body));
+                MarkOutgoing(book, *letter);
                 ++attached;
             } else {
                 SKSE::log::warn("[Letters] No stored text for letter {} (0x{:X})", record.key, record.formId);

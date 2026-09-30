@@ -1,0 +1,9 @@
+FormKey: 000803:Physical Letters.esp
+EditorID: PhysicalLettersPostQuest
+Name:
+  TargetLanguage: English
+  Value: Physical Letters postage
+QuestFormVersion: 0
+TextDisplayGlobals:
+- 000802:Physical Letters.esp
+NextAliasID: 0
