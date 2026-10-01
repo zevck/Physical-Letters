@@ -50,6 +50,8 @@ namespace PhysicalLetters {
         static constexpr Setting kNpcRecentWeight  { "NpcLetters", "RecentWeight",    10,   0, 100 };
         // Spoke to the player within this many days: not drawn at all (0 = off).
         static constexpr Setting kNpcMinDaysApart  { "NpcLetters", "MinDaysApart",    1,    0, 30 };
+        // NPCs drawn each attempt; with more than one, a cheap call picks who writes.
+        static constexpr Setting kNpcCandidates    { "NpcLetters", "CandidatesPerAttempt", 3, 1, 10 };
         // Letters between NPCs (docs/NPC_TO_NPC.md).  KnownOnly: only NPCs the player knows
         // (NpcLetters.MinEvents) write; else anyone SkyrimNet has registered.
         static constexpr Setting kN2nEnabled     { "NpcToNpc", "Enabled",          1,  0, 1   };
@@ -68,7 +70,7 @@ namespace PhysicalLetters {
         static constexpr Setting kSettings[] = {
             kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcNearDistance, kNpcMissedAfter, kNpcRecentWeight,
-            kNpcMinDaysApart, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
+            kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kN2nMinDistance,
         };
 

@@ -30,6 +30,7 @@
 #include "Travel.h"
 
 #include <random>
+#include <regex>
 #include <thread>
 
 namespace PhysicalLetters::NpcLetters {
@@ -39,10 +40,12 @@ namespace PhysicalLetters::NpcLetters {
         using GameTime::Now;
 
         constexpr auto kPrompt = "physical_letters_write_letter";
+        constexpr auto kPickPrompt = "physical_letters_who_writes";
+        constexpr auto kPickVariant = "meta";
         constexpr std::uint32_t kRecordVersion = 1;
-        // NPCs asked in turn when one has nothing to write.
-        constexpr std::size_t kShortlist = 3;
         constexpr int kMaxMemories = 8;
+        // Lines of the latest conversation shown to the pick, per candidate.
+        constexpr std::size_t kPickLines = 8;
         // Lines of the latest conversation passed to the prompt, and the events fetched to find
         // them (not every dialogue event of the NPC's is with the player).
         constexpr std::size_t kMaxLines = 20;
@@ -64,8 +67,10 @@ namespace PhysicalLetters::NpcLetters {
         // tune the prompt and the settings by.  Not saved.
         struct Tally {
             int attempts = 0;
-            int nobody = 0;  // attempts where nobody could write
-            int asked = 0;   // LLM calls
+            int nobody = 0;     // attempts where nobody could write
+            int pickCalls = 0;  // cheap calls choosing among the shortlist
+            int noneHad = 0;    // picks where nobody had a reason
+            int asked = 0;      // full calls writing a letter
             int written = 0;
             int declined = 0;
             int llmFailed = 0;
@@ -74,10 +79,11 @@ namespace PhysicalLetters::NpcLetters {
 
         void LogTally()
         {
-            SKSE::log::info("[NpcLetters] This session: {} attempt(s) ({} with nobody able to write), {} asked, {} letter(s) "
-                            "written, {} declined, {} LLM failure(s), {} timed out",
-                            g_tally.attempts, g_tally.nobody, g_tally.asked, g_tally.written, g_tally.declined,
-                            g_tally.llmFailed, g_tally.timedOut);
+            SKSE::log::info("[NpcLetters] This session: {} attempt(s) ({} with nobody able to write), {} pick call(s) ({} "
+                            "with no reason to write), {} letter call(s), {} letter(s) written, {} declined, {} LLM "
+                            "failure(s), {} timed out",
+                            g_tally.attempts, g_tally.nobody, g_tally.pickCalls, g_tally.noneHad, g_tally.asked,
+                            g_tally.written, g_tally.declined, g_tally.llmFailed, g_tally.timedOut);
         }
 
         // Which attempt, in which session, a result belongs to: anything else answers late.
@@ -95,6 +101,7 @@ namespace PhysicalLetters::NpcLetters {
             int         events = 0;          // with the player
             double      daysSinceSeen = -1;  // since their last exchange with the player; -1 unknown
             json        dialogue = json::array();  // their latest exchanges with the player
+            json        memories = json::array();  // most relevant to the player; fetched once shortlisted
         };
 
         std::mt19937_64& Rng()
@@ -248,8 +255,6 @@ namespace PhysicalLetters::NpcLetters {
             return actor;
         }
 
-        void TryFrom(std::vector<Candidate> shortlist, std::size_t index, Token token);
-
         // The writer's memory of the letter, tagged with it: later readings count the letter
         // as correspondence (docs/NPC_LETTERS.md#the-letter), so it's stored even when the
         // LLM gave no memory text.
@@ -276,11 +281,9 @@ namespace PhysicalLetters::NpcLetters {
             }).detach();
         }
 
-        // Game thread.  The LLM's answer for shortlist[index].
-        void OnAnswer(std::vector<Candidate> shortlist, std::size_t index, Token token, const std::string& response,
-                      bool success)
+        // Game thread.  The LLM's letter, if `candidate` writes one.
+        void OnLetter(const Candidate& candidate, Token token, const std::string& response, bool success)
         {
-            const auto& candidate = shortlist[index];
             if (!token.Current()) {
                 // A load happened (Revert reset the state), or the attempt was given up.
                 SKSE::log::info("[NpcLetters] {}'s answer came after the attempt ended: dropped", candidate.name);
@@ -297,9 +300,9 @@ namespace PhysicalLetters::NpcLetters {
             const auto text = answer.is_object() ? LlmJson::GetString(answer, "letter") : std::string{};
             if (!answer.is_object() || !LlmJson::GetBool(answer, "write") || text.empty()) {
                 ++g_tally.declined;
-                SKSE::log::info("[NpcLetters] {} has nothing to write{}", candidate.name,
+                SKSE::log::info("[NpcLetters] {} has nothing to write after all{}", candidate.name,
                                 answer.is_object() ? "" : std::format(" (unreadable answer: {})", response.substr(0, 300)));
-                TryFrom(std::move(shortlist), index + 1, token);
+                Finish();
                 return;
             }
 
@@ -327,64 +330,154 @@ namespace PhysicalLetters::NpcLetters {
             Remember(candidate, letter, answer, token.generation);
         }
 
-        // Game thread.  Asks the LLM whether shortlist[index] writes; the context is gathered
-        // on a worker thread (memory queries block).
-        void Ask(std::vector<Candidate> shortlist, std::size_t index, Token token)
+        // What the worker threads need of the player, read on the game thread.
+        struct PlayerInfo {
+            std::string uuid;
+            std::string name;
+            double now = 0;
+        };
+
+        PlayerInfo ReadPlayer()
         {
-            g_stepSince = std::chrono::steady_clock::now();  // the timeout is per LLM call
-            const auto playerUuid = SkyrimNet::UuidForFormId(kPlayer);
-            const std::string playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-            const double now = Now();
-            std::thread([shortlist = std::move(shortlist), index, token, playerUuid, playerName, now]() mutable {
-                try {
-                    const auto& c = shortlist[index];
-                    auto memories = json::array();
-                    const auto found =
-                        json::parse(SkyrimNet::Memories(c.formId, kMaxMemories, playerName, "physical_letters"), nullptr, false);
-                    if (found.is_array()) {
-                        for (const auto& m : found) {
-                            if (m.contains("content") && m["content"].is_string()) memories.push_back(m["content"]);
-                        }
-                    }
-                    const json context = {
-                        { "npc", { { "UUID", ToUuid(c.uuid) }, { "name", c.name } } },
-                        { "recipient", playerName },
-                        { "days_since_seen", static_cast<int>(c.daysSinceSeen) },
-                        { "correspondence", Reading::Correspondence(c.uuid, playerUuid, c.formId, now) },
-                        { "dialogue", c.dialogue },
-                        { "memories", memories },
-                    };
-                    const bool queued = SkyrimNet::SendPrompt(
-                        kPrompt, context.dump(), [shortlist, index, token](std::string response, bool success) {
-                            SKSE::GetTaskInterface()->AddTask([shortlist, index, token, response = std::move(response),
-                                                               success]() {
-                                // An exception must not cross into the engine.
-                                try {
-                                    OnAnswer(shortlist, index, token, response, success);
-                                } catch (const std::exception& e) {
-                                    SKSE::log::error("[NpcLetters] Handling the answer failed: {}", e.what());
-                                    if (token.Current()) Finish();
-                                }
-                            });
+            return { SkyrimNet::UuidForFormId(kPlayer), RE::PlayerCharacter::GetSingleton()->GetName(), Now() };
+        }
+
+        // Worker thread.  The full call: `candidate` writes their letter, or declines.
+        void Write(Candidate candidate, Token token, const PlayerInfo& player)
+        {
+            try {
+                const json context = {
+                    { "npc", { { "UUID", ToUuid(candidate.uuid) }, { "name", candidate.name } } },
+                    { "recipient", player.name },
+                    { "days_since_seen", static_cast<int>(candidate.daysSinceSeen) },
+                    { "correspondence", Reading::Correspondence(candidate.uuid, player.uuid, candidate.formId, player.now) },
+                    { "dialogue", candidate.dialogue },
+                    { "memories", candidate.memories },
+                };
+                const auto name = candidate.name;
+                const bool queued = SkyrimNet::SendPrompt(
+                    kPrompt, context.dump(), [candidate = std::move(candidate), token](std::string response, bool success) {
+                        SKSE::GetTaskInterface()->AddTask([candidate, token, response = std::move(response), success]() {
+                            // An exception must not cross into the engine.
+                            try {
+                                OnLetter(candidate, token, response, success);
+                            } catch (const std::exception& e) {
+                                SKSE::log::error("[NpcLetters] Handling the letter failed: {}", e.what());
+                                if (token.Current()) Finish();
+                            }
                         });
-                    if (!queued) {
-                        SKSE::log::error("[NpcLetters] SkyrimNet refused the prompt");
-                        FinishLater(token);
-                    } else {
-                        ++g_tally.asked;
-                        SKSE::log::info("[NpcLetters] Asking whether {} writes", c.name);
-                    }
-                } catch (const std::exception& e) {
-                    SKSE::log::error("[NpcLetters] Asking failed: {}", e.what());
+                    });
+                if (!queued) {
+                    SKSE::log::error("[NpcLetters] SkyrimNet refused the prompt");
                     FinishLater(token);
+                    return;
                 }
+                ++g_tally.asked;
+                SKSE::log::info("[NpcLetters] Asking {} to write", name);
+            } catch (const std::exception& e) {
+                SKSE::log::error("[NpcLetters] Asking for the letter failed: {}", e.what());
+                FinishLater(token);
+            }
+        }
+
+        // The pick's answer: {"pick":N,"why":"..."}, read with a regex so an answer cut short
+        // still counts.  0 for nobody, -1 unreadable.
+        std::pair<int, std::string> ReadPick(const std::string& response)
+        {
+            static const std::regex pick{ R"re("pick"\s*:\s*"?(\d+))re" };
+            static const std::regex why{ R"re("why"\s*:\s*"((?:[^"\\]|\\.)*))re" };
+            std::smatch m;
+            if (!std::regex_search(response, m, pick)) return { -1, {} };
+            const int number = std::stoi(m[1].str());
+            return { number, std::regex_search(response, m, why) ? m[1].str() : std::string{} };
+        }
+
+        // Game thread.  The cheap call's choice among the shortlist.
+        void OnPick(std::vector<Candidate> shortlist, Token token, const std::string& response, bool success)
+        {
+            if (!token.Current()) {
+                SKSE::log::info("[NpcLetters] The pick came after the attempt ended: dropped");
+                return;
+            }
+            if (!success) {
+                ++g_tally.llmFailed;
+                SKSE::log::error("[NpcLetters] The pick call failed: {}", response.substr(0, 300));
+                Finish();
+                return;
+            }
+            SKSE::log::debug("[NpcLetters] The pick's answer: {}", response.substr(0, 500));
+            const auto [number, why] = ReadPick(response);
+            if (number <= 0 || static_cast<std::size_t>(number) > shortlist.size()) {
+                ++g_tally.noneHad;
+                SKSE::log::info("[NpcLetters] Nobody has a reason to write{}", number == 0 ? std::string{}
+                                : std::format(" (unreadable answer: {})", response.substr(0, 300)));
+                Finish();
+                return;
+            }
+            auto& candidate = shortlist[static_cast<std::size_t>(number) - 1];
+            SKSE::log::info("[NpcLetters] Picked {}: {}", candidate.name, why.empty() ? "no reason given" : why);
+            std::string whyNot;
+            if (!Writer(candidate, whyNot)) {
+                SKSE::log::info("[NpcLetters] {} can't write now ({})", candidate.name, whyNot);
+                Finish();
+                return;
+            }
+            g_stepSince = std::chrono::steady_clock::now();  // the timeout is per LLM call
+            std::thread([candidate = std::move(candidate), token, player = ReadPlayer()]() mutable {
+                Write(std::move(candidate), token, player);
             }).detach();
         }
 
+        // Worker thread.  The cheap call: which of the shortlist, if anyone, has a reason to
+        // write now (docs/NPC_LETTERS.md#the-pick).
+        void Pick(std::vector<Candidate> shortlist, Token token, const PlayerInfo& player)
+        {
+            try {
+                auto list = json::array();
+                for (std::size_t i = 0; i < shortlist.size(); ++i) {
+                    const auto& c = shortlist[i];
+                    auto lines = c.dialogue;
+                    if (lines.size() > kPickLines) lines.erase(lines.begin(), lines.end() - kPickLines);
+                    list.push_back({ { "number", i + 1 },
+                                     { "UUID", ToUuid(c.uuid) },
+                                     { "name", c.name },
+                                     { "days_since_seen", static_cast<int>(c.daysSinceSeen) },
+                                     { "dialogue", lines },
+                                     { "memories", c.memories } });
+                }
+                const json context = { { "candidates", list }, { "player", player.name } };
+                const bool queued = SkyrimNet::SendPrompt(
+                    kPickPrompt, context.dump(),
+                    [shortlist = std::move(shortlist), token](std::string response, bool success) {
+                        SKSE::GetTaskInterface()->AddTask([shortlist, token, response = std::move(response), success]() {
+                            // An exception must not cross into the engine.
+                            try {
+                                OnPick(shortlist, token, response, success);
+                            } catch (const std::exception& e) {
+                                SKSE::log::error("[NpcLetters] Handling the pick failed: {}", e.what());
+                                if (token.Current()) Finish();
+                            }
+                        });
+                    },
+                    kPickVariant);
+                if (!queued) {
+                    SKSE::log::error("[NpcLetters] SkyrimNet refused the pick prompt");
+                    FinishLater(token);
+                    return;
+                }
+                ++g_tally.pickCalls;
+                SKSE::log::info("[NpcLetters] Asking which of {} NPC(s) has a reason to write", list.size());
+            } catch (const std::exception& e) {
+                SKSE::log::error("[NpcLetters] Asking for the pick failed: {}", e.what());
+                FinishLater(token);
+            }
+        }
+
         // Game thread.  Of the pool, those who can write now (Writer), drawn at random by
-        // Weight without replacement, up to kShortlist.
+        // Weight without replacement, up to CandidatesPerAttempt.
         std::vector<Candidate> Shortlist(std::vector<Candidate> pool)
         {
+            const auto count = static_cast<std::size_t>(Config::GetSingleton()->Get(Config::kNpcCandidates));
             const auto total = pool.size();
             std::vector<Candidate> eligible;
             std::vector<double> weights;
@@ -403,7 +496,7 @@ namespace PhysicalLetters::NpcLetters {
                 eligible.push_back(std::move(candidate));
             }
             std::vector<Candidate> shortlist;
-            while (shortlist.size() < kShortlist && !eligible.empty()) {
+            while (shortlist.size() < count && !eligible.empty()) {
                 std::discrete_distribution<std::size_t> draw(weights.begin(), weights.end());
                 const auto i = draw(Rng());
                 SKSE::log::info("[NpcLetters] Drew {} ({} events with the player, last seen {} days ago, weight {:.2f})",
@@ -419,22 +512,33 @@ namespace PhysicalLetters::NpcLetters {
             return shortlist;
         }
 
-        // Game thread.  The first NPC from shortlist[index] on who can still write is asked;
-        // none left, and the letter waits for the next interval.
-        void TryFrom(std::vector<Candidate> shortlist, std::size_t index, Token token)
+        // Game thread.  Nobody shortlisted: no call.  One: straight to the letter.  More: the
+        // cheap pick first.  Their memories are fetched on a worker thread (the query blocks).
+        void Start(std::vector<Candidate> shortlist, Token token)
         {
-            if (!token.Current()) return;
-            for (; index < shortlist.size(); ++index) {
-                std::string why;
-                if (Writer(shortlist[index], why)) {
-                    Ask(std::move(shortlist), index, token);
-                    return;
-                }
-                SKSE::log::info("[NpcLetters] {} can't write now ({})", shortlist[index].name, why);
+            if (shortlist.empty()) {
+                SKSE::log::info("[NpcLetters] Nobody can write this time");
+                ++g_tally.nobody;
+                Finish();
+                return;
             }
-            SKSE::log::info("[NpcLetters] No NPC wrote this time");
-            if (index == 0 && shortlist.empty()) ++g_tally.nobody;
-            Finish();
+            g_stepSince = std::chrono::steady_clock::now();  // the timeout is per LLM call
+            std::thread([shortlist = std::move(shortlist), token, player = ReadPlayer()]() mutable {
+                try {
+                    for (auto& c : shortlist) {
+                        const auto found =
+                            json::parse(SkyrimNet::Memories(c.formId, kMaxMemories, player.name, "physical_letters"), nullptr, false);
+                        if (!found.is_array()) continue;
+                        for (const auto& m : found) {
+                            if (m.contains("content") && m["content"].is_string()) c.memories.push_back(m["content"]);
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    SKSE::log::error("[NpcLetters] Reading memories failed: {}", e.what());
+                }
+                if (shortlist.size() == 1) Write(std::move(shortlist.front()), token, player);
+                else Pick(std::move(shortlist), token, player);
+            }).detach();
         }
     }
 
@@ -474,7 +578,7 @@ namespace PhysicalLetters::NpcLetters {
                 // An exception must not cross into the engine.
                 try {
                     if (!token.Current()) return;
-                    TryFrom(Shortlist(std::move(pool)), 0, token);
+                    Start(Shortlist(std::move(pool)), token);
                 } catch (const std::exception& e) {
                     SKSE::log::error("[NpcLetters] Picking a writer failed: {}", e.what());
                     if (token.Current()) Finish();

@@ -1,0 +1,35 @@
+{# Physical Letters: a cheap pass that picks which of a few NPCs, if any, has a reason to write
+   to the player now; physical_letters_write_letter then writes it.  Sent with
+   PublicSendCustomPromptToLLM on the "meta" variant, whose output may be capped short
+   (SkyrimNet's default: 100 tokens), so the answer is a number.  Context:
+     candidates  [{ number, UUID, name, days_since_seen, dialogue, memories }]: dialogue is
+                 their last lines with the player (speaker, text), memories their most
+                 relevant to the player; days_since_seen -1 is unknown
+     player      the player's name #}
+[ system ]
+    You decide which of these people in Skyrim, if any, would write a letter to {{ player }} now, unprompted. Use what their profiles, memories and talks with {{ player }} say. Answer with compact JSON only, no explanation.
+[ end system ]
+
+[ user ]
+    {% for c in candidates %}
+    ## {{ c.number }}. {{ c.name }}
+    {{ render_character_profile("short_inline", c.UUID) }}
+    {% if c.days_since_seen == 0 %}Dealt with {{ player }} earlier today.{% else if c.days_since_seen == 1 %}Last dealt with {{ player }} a day ago.{% else if c.days_since_seen > 1 %}Last dealt with {{ player }} {{ c.days_since_seen }} days ago.{% endif %}
+    {% if c.dialogue and length(c.dialogue) > 0 %}
+    The last time they spoke:
+    {% for line in c.dialogue -%}
+    {{ line.speaker }}: {{ line.text }}
+    {% endfor %}
+    {% endif %}
+    {% if c.memories and length(c.memories) > 0 %}
+    What {{ c.name }} remembers of {{ player }}:
+    {% for memory in c.memories -%}
+    - {{ memory }}
+    {% endfor %}
+    {% endif %}
+
+    {% endfor %}
+    People write when they have a reason: news of their own, something unfinished with {{ player }}, gratitude, worry, a favour to ask, a grudge, or missing them. Someone who barely knows {{ player }}, or has nothing to say, doesn't write.
+
+    Pick the person with the strongest reason, or 0 if nobody has one, with the reason in a few words: {"pick":2,"why":"..."}
+[ end user ]

@@ -12,7 +12,7 @@ SKSE plugin (CommonLibSSE-NG, C++23; one DLL for SE, AE and VR). The player writ
 - Every persistence change must survive: save → reload, reload without saving, loading an older save with SkyrimNet **Keep and Clear**, and a second character.
 - Whether a delivery was read is SkyrimNet's tagged memory (the delivery tag), not our records.
 - Game state only on the game thread (`SKSE::GetTaskInterface()->AddTask`), and every task catches exceptions. SkyrimNet callbacks run on its thread pool: no `RE::` there.
-- SkyrimNet content (the prompt, the manifest) follows SkyrimNet's modding docs (`C:\Modding\MO2\mods\SkyrimNet - Dev\docs\modding`): Beta 25 plugin layout under `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/`, and its prompt style guide.
+- SkyrimNet content (the prompt, the manifest) follows SkyrimNet's modding docs (`docs/modding` in the SkyrimNet-GamePlugin repo): Beta 25 plugin layout under `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/`, and its prompt style guide.
 - Text the player sees goes in `include/Strings.h`.
 - Requires SkyrimNet public API v11.
 

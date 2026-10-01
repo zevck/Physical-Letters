@@ -44,12 +44,12 @@ endfunction
 ; having run first (on the first open it hadn't, and the page came up empty).  Rebuilt
 ; every time: OnConfigInit runs once per save, so a script update would keep old arrays.
 function Setup()
-    _names = new string[20]
-    _labels = new string[20]
-    _tips = new string[20]
-    _formats = new string[20]
-    _steps = new int[20]
-    _oids = new int[20]
+    _names = new string[21]
+    _labels = new string[21]
+    _tips = new string[21]
+    _formats = new string[21]
+    _steps = new int[21]
+    _oids = new int[21]
     Slider(0, "Delivery.Postage", "$PL_Postage", "$PL_TipPostage", 5)
     Slider(1, "Delivery.WritingHours", "$PL_WritingHours", "$PL_TipWritingHours", 1)
     Slider(2, "Delivery.MinHours", "$PL_MinHours", "$PL_TipMinHours", 1)
@@ -71,6 +71,7 @@ function Setup()
     Slider(17, "NpcToNpc.NamesPerWriter", "$PL_N2nNames", "$PL_TipN2nNames", 1)
     Slider(18, "NpcToNpc.MemoriesPerWriter", "$PL_N2nMemories", "$PL_TipN2nMemories", 1)
     Slider(19, "NpcToNpc.MinDistance", "$PL_N2nMinDistance", "$PL_TipN2nMinDistance", 1024)
+    Slider(20, "NpcLetters.CandidatesPerAttempt", "$PL_NpcCandidates", "$PL_TipNpcCandidates", 1)
 
     _toggleNames = new string[4]
     _toggleLabels = new string[4]
@@ -103,6 +104,7 @@ event OnPageReset(string page)
     AddHeaderOption("$PL_HeaderNpcLetters")
     AddToggle(0)
     AddSliders(5, 11)
+    AddSliders(20, 20)
     AddEmptyOption()
     AddHeaderOption("$PL_HeaderN2n")
     AddToggle(2)

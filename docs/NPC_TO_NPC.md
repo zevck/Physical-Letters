@@ -32,7 +32,7 @@ So an attempt costs **0 LLM calls** with no writer, **1** when no proposed name 
 
 **Memories involve the player**, since things mostly happen around the player; that's how news of the player travels ("Grandpa, I met the Dragonborn!"). The skew stays bounded: writers are drawn uniformly, so most never met the player; `MemoriesPerWriter` 0 keeps letters to their own lives. The prompts give guidance only where it's needed: another place, a tie they really have (a shared trade isn't friendship, but can be a reason for a letter of that kind), a tone matching the tie, not to the player.
 
-Before the letter is created, the writer and the recipient are checked again (the world may have moved during the calls). Each attempt carries a token (session generation and attempt id) and each LLM call a 5-minute timeout, as for letters to the player ([NPC_LETTERS.md](NPC_LETTERS.md#the-prompt)).
+Before the letter is created, the writer and the recipient are checked again (the world may have moved during the calls). Each attempt carries a token (session generation and attempt id) and each LLM call a 5-minute timeout, as for letters to the player ([NPC_LETTERS.md](NPC_LETTERS.md#the-letter-prompt)).
 
 ## The recipient
 

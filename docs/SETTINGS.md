@@ -19,6 +19,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[NpcLetters] CooldownDays` | 14 | 0–120 | After an NPC writes to the player (first or in reply), game days before they may write first again |
 | `[NpcLetters] MinEvents` | 5 | 1–200 | Events with the player SkyrimNet must have recorded for an NPC to be picked |
 | `[NpcLetters] MinDaysApart` | 1 | 0–30 | Game days since their last exchange with the player below which an NPC isn't picked (0 = off) |
+| `[NpcLetters] CandidatesPerAttempt` | 3 | 1–10 | NPCs drawn each attempt; with more than one, a cheap call (`meta`) picks who writes, then one full call writes it ([NPC_LETTERS.md](NPC_LETTERS.md#the-pick)) |
 | `[NpcLetters] MissedAfterDays` | 3 | 0–30 | Game days apart for an NPC's full weight; 0 ignores recency |
 | `[NpcLetters] RecentWeight` | 10 | 0–100 | Weight (percent of full) of someone the player spoke to today; it grows to full over `MissedAfterDays` |
 | `[NpcLetters] NearDistance` | 8192 | 0–65536 | Game units within which an NPC is around the player, besides the same area (it also catches a farm just outside a town) |

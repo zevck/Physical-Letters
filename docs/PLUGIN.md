@@ -30,7 +30,7 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 
 The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`).
 
-The vanilla masters in the same format (`C:\dev\Mutagen Tools\Spriggit Dumps\skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
+The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 
 ## Tools
 
