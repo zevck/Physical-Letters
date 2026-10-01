@@ -44,12 +44,12 @@ endfunction
 ; having run first (on the first open it hadn't, and the page came up empty).  Rebuilt
 ; every time: OnConfigInit runs once per save, so a script update would keep old arrays.
 function Setup()
-    _names = new string[21]
-    _labels = new string[21]
-    _tips = new string[21]
-    _formats = new string[21]
-    _steps = new int[21]
-    _oids = new int[21]
+    _names = new string[22]
+    _labels = new string[22]
+    _tips = new string[22]
+    _formats = new string[22]
+    _steps = new int[22]
+    _oids = new int[22]
     Slider(0, "Delivery.Postage", "$PL_Postage", "$PL_TipPostage", 5)
     Slider(1, "Delivery.WritingHours", "$PL_WritingHours", "$PL_TipWritingHours", 1)
     Slider(2, "Delivery.MinHours", "$PL_MinHours", "$PL_TipMinHours", 1)
@@ -72,15 +72,17 @@ function Setup()
     Slider(18, "NpcToNpc.MemoriesPerWriter", "$PL_N2nMemories", "$PL_TipN2nMemories", 1)
     Slider(19, "NpcToNpc.MinDistance", "$PL_N2nMinDistance", "$PL_TipN2nMinDistance", 1024)
     Slider(20, "NpcLetters.CandidatesPerAttempt", "$PL_NpcCandidates", "$PL_TipNpcCandidates", 1)
+    Slider(21, "Courier.WaitHours", "$PL_CourierWait", "$PL_TipCourierWait", 1)
 
-    _toggleNames = new string[4]
-    _toggleLabels = new string[4]
-    _toggleTips = new string[4]
-    _toggleOids = new int[4]
+    _toggleNames = new string[5]
+    _toggleLabels = new string[5]
+    _toggleTips = new string[5]
+    _toggleOids = new int[5]
     Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
     Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
     Toggle(2, "NpcToNpc.Enabled", "$PL_N2n", "$PL_TipN2n")
     Toggle(3, "NpcToNpc.KnownOnly", "$PL_N2nKnownOnly", "$PL_TipN2nKnownOnly")
+    Toggle(4, "Courier.Enabled", "$PL_Courier", "$PL_TipCourier")
 endfunction
 
 function AddSliders(int first, int last)
@@ -100,6 +102,8 @@ event OnPageReset(string page)
     SetCursorFillMode(TOP_TO_BOTTOM)
     AddHeaderOption("$PL_HeaderDelivery")
     AddSliders(0, 4)
+    AddToggle(4)
+    AddSliders(21, 21)
     AddEmptyOption()
     AddHeaderOption("$PL_HeaderNpcLetters")
     AddToggle(0)

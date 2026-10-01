@@ -27,6 +27,7 @@
 #include "Reading.h"
 #include "Session.h"
 #include "Courier.h"
+#include "CourierErrand.h"
 #include "SkyrimNet.h"
 #include "Strings.h"
 #include "Travel.h"
@@ -41,6 +42,8 @@ namespace PhysicalLetters::Transit {
             kAwaitingReading = 1,  // in the recipient's inventory, not yet read
             kToPlayer = 2,         // on its way to the courier: an NPC's letter to the player, or
                                    // the player's own coming back undelivered
+            kAwaitingCourier = 3,  // due, its recipient in the player's town: waits for the courier
+            kOnCourier = 4,        // the courier carries it to the recipient (docs/COURIER.md)
         };
 
         struct Parcel {
@@ -58,6 +61,7 @@ namespace PhysicalLetters::Transit {
             int               failures = 0;
             Clock::time_point startedAt{};
             Clock::time_point retryAt{};
+            bool              offScreen = false;  // no courier: delivered straight into their inventory
         };
 
         std::vector<Parcel> g_parcels;
@@ -66,8 +70,8 @@ namespace PhysicalLetters::Transit {
         std::vector<std::string> g_reportedWaiting;
 
         // v1 (dev builds only) had no state: every parcel was in transit.  v2 had no delivery id,
-        // v3 no returned letters.
-        constexpr std::uint32_t kRecordVersion = 4;
+        // v3 no returned letters, v4 no courier states.
+        constexpr std::uint32_t kRecordVersion = 5;
 
         // A reading SkyrimNet never answers (it drops cancelled LLM tasks) counts as failed.
         constexpr auto kReadingTimeout = std::chrono::minutes(5);
@@ -111,7 +115,7 @@ namespace PhysicalLetters::Transit {
             return actor;
         }
 
-        enum class Delivery { kDelivered, kReturning, kWaiting, kLost, kToCourier };
+        enum class Delivery { kDelivered, kReturning, kWaiting, kLost, kToCourier, kAwaitCourier };
 
         // The letter goes back to the player through the courier, after the travel time from
         // the recipient; if they can't be found, at once (the wait was the delay).
@@ -128,6 +132,37 @@ namespace PhysicalLetters::Transit {
             parcel.state = State::kToPlayer;
         }
 
+        bool CourierHas(RE::Actor* courier, RE::TESObjectBOOK* book)
+        {
+            return courier && book && courier->GetInventoryCounts([book](RE::TESBoundObject& item) { return &item == book; })[book] > 0;
+        }
+
+        // The courier no longer has the letter: the player took it.  Lost to delivery; a
+        // letter between NPCs ends its thread (docs/COURIER.md).
+        void Lost(const Parcel& parcel)
+        {
+            const auto letter = LetterDB::GetSingleton()->Get(parcel.letterId);
+            SKSE::log::info("[Transit] The courier no longer has letter {} to {}: it's lost", parcel.letterId, parcel.recipientName);
+            if (letter && NpcToNpc::IsNpcLetter(*letter)) NpcToNpc::ThreadEnded(*letter);
+        }
+
+        // The errand ends without a handover: the courier's copy goes, and the letter is
+        // delivered off-screen.  False if he hadn't it any more (Lost): drop the parcel.
+        bool TakeBack(Parcel& parcel, RE::Actor* courier)
+        {
+            auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
+            if (!CourierHas(courier, book)) {
+                Lost(parcel);
+                return false;
+            }
+            courier->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+            parcel.state = State::kInTransit;
+            parcel.offScreen = true;
+            SKSE::log::info("[Transit] The courier's errand to {} ended without the handover: letter {} goes in off-screen",
+                            parcel.recipientName, parcel.letterId);
+            return true;
+        }
+
         Delivery Deliver(Parcel& parcel)
         {
             auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
@@ -136,6 +171,7 @@ namespace PhysicalLetters::Transit {
                 return Delivery::kLost;
             }
             if (parcel.state == State::kToPlayer) {
+                if (CourierErrand::IsLive()) return Delivery::kWaiting;  // he's out on an errand
                 // From here the courier and his container hold it; the engine saves both.
                 if (!Courier::Give(book)) {
                     ReportWaiting(parcel, "the courier can't be reached");
@@ -173,6 +209,8 @@ namespace PhysicalLetters::Transit {
                 TurnBack(parcel, recipient, Letters::Returned::kDead, "is dead");
                 return Delivery::kReturning;
             }
+
+            if (!parcel.offScreen && CourierErrand::ShouldWait(recipient)) return Delivery::kAwaitCourier;
 
             recipient->AddObjectToContainer(book, nullptr, 1, nullptr);
             LetterDB::GetSingleton()->MarkDelivered(parcel.letterId, Now());
@@ -282,9 +320,7 @@ namespace PhysicalLetters::Transit {
 
     bool IsLetterPendingFor(const std::string& uuid)
     {
-        return std::ranges::any_of(g_parcels, [&](const Parcel& p) {
-            return p.recipientUuid == uuid && (p.state == State::kInTransit || p.state == State::kAwaitingReading);
-        });
+        return std::ranges::any_of(g_parcels, [&](const Parcel& p) { return p.recipientUuid == uuid && p.state != State::kToPlayer; });
     }
 
     void QueueToPlayer(const Letter& letter, double hours)
@@ -310,9 +346,47 @@ namespace PhysicalLetters::Transit {
     {
         std::vector<std::string> ids;
         for (const auto& p : g_parcels) {
-            if (p.state == State::kInTransit || p.state == State::kAwaitingReading) ids.push_back(p.letterId);
+            if (p.state != State::kToPlayer) ids.push_back(p.letterId);
         }
         return ids;
+    }
+
+    RE::Actor* TakeForCourier(RE::Actor* courier)
+    {
+        for (auto& parcel : g_parcels) {
+            if (parcel.state != State::kAwaitingCourier) continue;
+            auto* recipient = FindActor(parcel.recipientUuid);
+            auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
+            if (!courier || !book || !CourierErrand::IsHere(recipient)) continue;
+            courier->AddObjectToContainer(book, nullptr, 1, nullptr);
+            parcel.state = State::kOnCourier;
+            SKSE::log::info("[Transit] The courier takes letter {} to {}", parcel.letterId, parcel.recipientName);
+            return recipient;
+        }
+        return nullptr;
+    }
+
+    void HandOver(RE::Actor* courier)
+    {
+        const auto it = std::ranges::find(g_parcels, State::kOnCourier, &Parcel::state);
+        if (it == g_parcels.end()) return;
+        auto* recipient = FindActor(it->recipientUuid);
+        auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(it->letterId));
+        if (!recipient || recipient->IsDead() || !CourierHas(courier, book)) {
+            if (!TakeBack(*it, courier)) g_parcels.erase(it);
+            return;
+        }
+        courier->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kStoreInContainer, nullptr, recipient);
+        LetterDB::GetSingleton()->MarkDelivered(it->letterId, Now());
+        it->state = State::kAwaitingReading;
+        SKSE::log::info("[Transit] The courier handed letter {} to {} (0x{:X})", it->letterId, it->recipientName,
+                        recipient->GetFormID());
+    }
+
+    void CourierDone(RE::Actor* courier)
+    {
+        const auto it = std::ranges::find(g_parcels, State::kOnCourier, &Parcel::state);
+        if (it != g_parcels.end() && !TakeBack(*it, courier)) g_parcels.erase(it);
     }
 
     void Tick()
@@ -322,10 +396,28 @@ namespace PhysicalLetters::Transit {
         const auto clock = Clock::now();
 
         std::erase_if(g_parcels, [now](Parcel& parcel) {
+            if (parcel.state == State::kOnCourier) {
+                // The errand went with a load, or it ended without telling us.
+                return !CourierErrand::IsLive() && !TakeBack(parcel, CourierErrand::Courier());
+            }
+            if (parcel.state == State::kAwaitingCourier) {
+                const double wait = Config::GetSingleton()->Get(Config::kCourierWaitHours) / 24.0;
+                if (now - parcel.dueAt < wait && CourierErrand::ShouldWait(FindActor(parcel.recipientUuid))) return false;
+                SKSE::log::info("[Transit] No courier for letter {} to {}: it goes in off-screen", parcel.letterId,
+                                parcel.recipientName);
+                parcel.state = State::kInTransit;
+                parcel.offScreen = true;
+            }
             if (parcel.state == State::kAwaitingReading || parcel.dueAt > now) return false;
             switch (Deliver(parcel)) {
             case Delivery::kDelivered:
                 parcel.state = State::kAwaitingReading;
+                return false;
+            case Delivery::kAwaitCourier:
+                parcel.state = State::kAwaitingCourier;
+                parcel.dueAt = now;  // the wait counts from here
+                SKSE::log::info("[Transit] {} is in the player's town: letter {} waits for the courier", parcel.recipientName,
+                                parcel.letterId);
                 return false;
             case Delivery::kWaiting:
             case Delivery::kReturning:
@@ -334,6 +426,9 @@ namespace PhysicalLetters::Transit {
                 return true;
             }
         });
+
+        CourierErrand::SetPending(static_cast<int>(
+            std::ranges::count_if(g_parcels, [](const Parcel& p) { return p.state == State::kAwaitingCourier; })));
 
         // Readings report back in a later task, so nothing here erases a parcel (a
         // timed-out reading is a kRetry, which keeps it).
@@ -402,7 +497,7 @@ namespace PhysicalLetters::Transit {
                 SKSE::log::error("[Transit] Co-save record is truncated after {} of {} letter(s)", i, count);
                 break;
             }
-            p.state = state <= 2 ? static_cast<State>(state) : State::kInTransit;
+            p.state = state <= 4 ? static_cast<State>(state) : State::kInTransit;
             if (p.deliveryId.empty()) p.deliveryId = p.letterId;  // v1/v2: one delivery per letter
             g_parcels.push_back(std::move(p));
         }
@@ -418,8 +513,9 @@ namespace PhysicalLetters::Transit {
         const auto inState = [](State state) {
             return std::ranges::count_if(g_parcels, [state](const Parcel& p) { return p.state == state; });
         };
-        SKSE::log::info("[Transit] {} letter(s) in transit, {} awaiting reading, {} to the player", inState(State::kInTransit),
-                        inState(State::kAwaitingReading), inState(State::kToPlayer));
+        SKSE::log::info("[Transit] {} letter(s) in transit, {} awaiting reading, {} to the player, {} with or waiting for "
+                        "the courier", inState(State::kInTransit), inState(State::kAwaitingReading), inState(State::kToPlayer),
+                        inState(State::kAwaitingCourier) + inState(State::kOnCourier));
     }
 
     void Revert()

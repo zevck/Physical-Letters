@@ -1,0 +1,10 @@
+FormKey: 00082E:Physical Letters.esp
+Flags: {}
+FavorLevel: None
+ResponseData: 0B80B8:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIsVoiceTypeConditionData
+    VoiceTypeOrList: 013AD8:Skyrim.esm
+  ComparisonValue: 1

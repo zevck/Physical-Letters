@@ -1,0 +1,155 @@
+FormKey: 00080E:Physical Letters.esp
+EditorID: PhysicalLettersCourierScene
+Flags: []
+Phases:
+- Name: Approach
+  CompletionConditions:
+  - MutagenObjectType: ConditionFloat
+    CompareOperator: LessThan
+    Data:
+      MutagenObjectType: GetDistanceConditionData
+      RunOnType: QuestAlias
+      RunOnTypeIndex: 2
+      UseAliases: True
+      Target: 4
+    ComparisonValue: 250
+  - MutagenObjectType: ConditionFloat
+    Data:
+      MutagenObjectType: IsMovingConditionData
+      RunOnType: QuestAlias
+      RunOnTypeIndex: 2
+  Unused2: {}
+  EditorWidth: 200
+- Name: LookingForYou
+  Unused2: {}
+  EditorWidth: 200
+- Name: LetsSeeHere
+  Unused2: {}
+  EditorWidth: 200
+- Name: HandOver
+  Unused2: {}
+  EditorWidth: 200
+- Name: Reply
+  Unused2: {}
+  EditorWidth: 200
+- Name: GotToGo
+  Unused2: {}
+  EditorWidth: 200
+Actors:
+- ID: 2
+  Flags: []
+  BehaviorFlags:
+  - DeathEnd
+  - CombatEnd
+  - DialoguePause
+- ID: 4
+  Flags: []
+  BehaviorFlags:
+  - DeathEnd
+  - CombatEnd
+  - DialoguePause
+Actions:
+- Type: Package
+  Name: CourierApproachesTarget
+  ActorID: 2
+  Index: 1
+  StartPhase: 0
+  EndPhase: 0
+  Packages:
+  - 00080C:Physical Letters.esp
+- Name: LookingForYou
+  ActorID: 2
+  Index: 2
+  Flags:
+  - FaceTarget
+  StartPhase: 1
+  EndPhase: 1
+  Topic: 00080F:Physical Letters.esp
+  HeadtrackActorID: 4
+  LoopingMax: 10
+  LoopingMin: 1
+  Emotion: Neutral
+  EmotionValue: 0
+- Name: LetsSeeHere
+  ActorID: 2
+  Index: 3
+  Flags:
+  - FaceTarget
+  StartPhase: 2
+  EndPhase: 2
+  Topic: 000811:Physical Letters.esp
+  HeadtrackActorID: 4
+  LoopingMax: 10
+  LoopingMin: 1
+  Emotion: Neutral
+  EmotionValue: 0
+- Name: LetterForYou
+  ActorID: 2
+  Index: 4
+  Flags:
+  - FaceTarget
+  StartPhase: 3
+  EndPhase: 3
+  Topic: 000813:Physical Letters.esp
+  HeadtrackActorID: 4
+  LoopingMax: 10
+  LoopingMin: 1
+  Emotion: Neutral
+  EmotionValue: 0
+- Name: GotToGo
+  ActorID: 2
+  Index: 5
+  Flags:
+  - FaceTarget
+  StartPhase: 5
+  EndPhase: 5
+  Topic: 000815:Physical Letters.esp
+  HeadtrackActorID: 4
+  LoopingMax: 10
+  LoopingMin: 1
+  Emotion: Neutral
+  EmotionValue: 0
+- Type: Package
+  Name: TargetStaysPut
+  ActorID: 4
+  Index: 6
+  StartPhase: 1
+  EndPhase: 5
+  Packages:
+  - 02C30B:Skyrim.esm
+- Name: TargetFacesCourier
+  ActorID: 4
+  Index: 7
+  Flags:
+  - FaceTarget
+  StartPhase: 1
+  EndPhase: 3
+  Topic: Null
+  HeadtrackActorID: 2
+  LoopingMax: 10
+  LoopingMin: 1
+  Emotion: Neutral
+  EmotionValue: 0
+- Name: TargetReplies
+  ActorID: 4
+  Index: 8
+  Flags:
+  - FaceTarget
+  StartPhase: 4
+  EndPhase: 4
+  Topic: 000817:Physical Letters.esp
+  HeadtrackActorID: 2
+  LoopingMax: 10
+  LoopingMin: 1
+  Emotion: Neutral
+  EmotionValue: 0
+- Type: Package
+  Name: CourierStaysPut
+  ActorID: 2
+  Index: 9
+  StartPhase: 1
+  EndPhase: 5
+  Packages:
+  - 02C30B:Skyrim.esm
+Quest: 00080A:Physical Letters.esp
+LastActionIndex: 9

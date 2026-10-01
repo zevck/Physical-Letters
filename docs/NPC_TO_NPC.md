@@ -66,11 +66,11 @@ Co-save record `LN2N` (version 1): the next attempt's time (`double`, game days;
 
 ## Not built yet
 
-- **The courier in the world** (phase 2): when the player and the recipient share a cell at delivery, a courier walks up and hands the letter over; public interiors in business hours, never homes. Until then every delivery is off-screen.
-- **Better Courier** integration, after completion.
+- **The courier on the road**, and intercepting letters there (phase 3, after [COURIER.md](COURIER.md)): an occasional encounter with a cooldown; pickpocketing him is a crime, and he's essential.
+- **Handing letters in person** to their recipient.
 
 ## Testing
 
 F8 makes the next attempt due now (with the letters in transit, which also delivers letters between NPCs and starts their readings). The log (`[NpcToNpc]`) names the writers drawn and where they live, each proposed name and why it was refused or that it's usable, the letter written with its tie and purpose (or the tie of one declined); debug logging adds the raw proposals and letters. After every attempt a **tally for the play session** (not saved, not reset by loads): attempts, those with no writer (no LLM call), proposal calls, names proposed and refused by reason, attempts with no usable name, letter calls, written, declined, LLM failures and timeouts. `[NpcLetters]` logs one for letters to the player.
 
-First tests on AE (2026-09-30), with two earlier versions: writers naming a recipient with a retry (3 attempts, 17 LLM calls, nothing written; right refusals: same town, unresolved names, rabbits as writers), then pairs from relationship records with a cheap pick (the pairs were neighbours, the pick declined). The current version isn't tested yet.
+First tests on AE (2026-09-30), with two earlier versions: writers naming a recipient with a retry (3 attempts, 17 LLM calls, nothing written; right refusals: same town, unresolved names, rabbits as writers), then pairs from relationship records with a cheap pick (the pairs were neighbours, the pick declined). The current version, tested 2026-09-30: letters written in two calls, and two threads ran to three letters and closed with the pair cooldown.

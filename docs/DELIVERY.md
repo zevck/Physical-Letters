@@ -39,6 +39,8 @@ Tested on AE (2026-09-30): Solitude (Winking Skeever) to Katarina in Whiterun's 
 
 Letters to an NPC arrive after the travel time from whoever took them (the innkeeper or courier; the player with the F7 dev key). A reply goes to the courier after 12 game hours of writing (`WritingHours`) plus the travel time from the NPC to the player.
 
+**In the player's town**, the courier may bring the letter in person instead ([COURIER.md](COURIER.md)).
+
 ## Undeliverable letters
 
 When a letter is due, its recipient must be found (`FindActor`: SkyrimNet's UUID to a FormID in memory, and back to the same UUID). An NPC who isn't persistent is only in memory while their cell is loaded, so a letter to them waits until the player comes near.

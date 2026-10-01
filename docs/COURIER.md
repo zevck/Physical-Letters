@@ -1,0 +1,48 @@
+# The courier in town
+
+When a letter to an NPC comes due while its recipient is in the player's town, the vanilla courier can bring it in person: he arrives during one of the player's load transitions, walks up to the recipient, says his vanilla lines and hands it over. Everywhere else, and whenever this can't happen, the letter goes into the recipient's inventory unseen, as before ([DELIVERY.md](DELIVERY.md)). It applies to the player's letters and to letters between NPCs. Code: `src/CourierErrand.cpp` (the courier, the natives, the global) and `src/Transit.cpp` (the letters); records in [PLUGIN.md](PLUGIN.md#records); settings `[Courier]` in [SETTINGS.md](SETTINGS.md).
+
+## Why the vanilla courier
+
+No new NPC: added NPCs rarely match the look of the game, and a copy of the courier would be his twin. The courier is one unique, essential actor (`WICourierNPC`, placed reference `0x039FB7`), who waits in a holding cell (`WICourierCell`, `0x039F67`) next to his marker (`0x039FBA`) when he isn't working. Vanilla's mail quest (`WICourier`, `0x039F82`) moves him to the town's centre marker when the player enters a town with mail waiting (`WICourierItemCount` ≥ 1); the player never sees him arrive, because the Story Manager starts it on a change of location, during the load.
+
+**Other courier mods**, checked from their records (2026-10-01):
+
+- **Courier Delivers to NPCs** borrows the same actor for an ambient scene (no item changes hands): when the player enters a town, at a 15% chance, while `WICourier` isn't running. It sends him back to his marker afterwards.
+- **Better Courier** doesn't use the vanilla courier at all: its mail quest and its own deliveries to NPCs fill the courier from its own generated couriers. With it installed, the vanilla man delivers our letters among its couriers.
+
+So an errand uses him only while he's in his holding cell (the Story Manager node checks it) and no other running quest holds him in an alias (`HeldByAnotherQuest`, checked when the errand starts and every 5 seconds). If another quest takes him mid-errand, ours ends and the letter goes in unseen; he isn't sent back, he's theirs.
+
+## An errand
+
+1. **The letter waits.** When a letter to an NPC is due (`Transit::Deliver`) and its recipient is in the player's town (`CourierErrand::ShouldWait`: courier errands on, the recipient alive, and `Travel::Area` the same settlement, with `LocTypeHabitation`, for both), the parcel becomes *awaiting the courier* instead of going into their inventory. The global `PhysicalLettersCourierPending` counts these letters; the Story Manager node reads it.
+2. **The Story Manager starts the quest** on the player's next change of location (`CLOC`, the same event as vanilla's mail), under the same conditions as vanilla, plus: a letter is pending, no mail waits for the player (`WICourierItemCount` 0, so vanilla's courier isn't also coming), the player is outdoors, and the courier is in his holding cell. The node sits right after vanilla's courier node and shares the event, so the quests after it still get it. Only the town itself has `LocTypeHabitation` (inns, stores and houses don't), so this is the player stepping out into the town or arriving in it.
+3. **The quest asks for a target** (`OnStoryChangeLocation` → `TakeTarget`). The DLL picks the first waiting letter whose recipient the courier can reach now (`CourierErrand::IsHere`: loaded, outdoors, in the town the player is outdoors in), puts the letter in the courier's inventory, marks it *with the courier* and returns the recipient; none, and the quest stops. The script fills the Target alias, moves the courier to the town's centre marker (as vanilla) and starts the scene.
+4. **The scene**: he jogs to the recipient (`PhysicalLettersCourierApproach`, a travel package to the Target alias, with the vanilla courier package's interrupt flags). Once he's within 250 units and has stopped moving, both stay where they are (vanilla `DefaultStayAtCurrentLocationScene` for each) and he says the vanilla courier's lines, voiced (see below): "I've been looking for you. Got something I'm supposed to deliver - your hands only." / "Let's see here..." / "I have a letter here for you." The third line's script (`PhysicalLetters_TIF_CourierHandOver`) calls `HandOver`: the letter moves from his inventory to the recipient's, it counts as delivered, and the reading starts as for any delivery ([READING.md](READING.md)). The recipient, facing him, thanks him, and he ends with "Looks like that's it. Got to go."
+
+   **Talking needs him off the travel package.** In the first test he spoke while walking away (his travel package had ended and he was sandboxing); in the next two, with the travel package held through the talking, none of his lines played and the scene skipped to the recipient's reply, while the recipient spoke under the stay package.
+
+   **His lines are copies.** A shared line (`ResponseData`) only plays when it points at an info in a SharedInfo topic (Misc / SharedInfo, `IDAT`); the courier's vanilla lines are in ordinary topics of `WICourier` (`WICourierTopic`, `WICourierDeliveries`), so pointing at them played nothing and the scene skipped each line (three silent tests). His four infos carry the text themselves, limited to him (`GetIsID` `WICourierNPC`), and the mod ships the vanilla voice files, extracted from `Skyrim - Voices_en0.bsa` (`maleyoungeager/wicourier_wicouriertopic_00039f79_1.fuz` and the `wicourierdeliver` ones for `0x03DF63`, `0x071440`, `0x039F81`), renamed for our infos: `Sound/Voice/Physical Letters.esp/MaleYoungEager/plcourierquest__00000810_1.fuz` and so on. The name is the quest's EditorID, two underscores because the scene topics have no EditorID, and the info's FormID without the load-order prefix (for an ESL plugin too: confirmed in game). The quest's EditorID is short (`PLCourierQuest`) to stay clear of the engine's truncation of long names. Only English audio exists; other languages show the English subtitle. The letter line plays vanilla `IdleGive` (the hand-over).
+
+   **The thanks** is vanilla's `WISharedThanks` line for the recipient's voice type (the world-interaction lines, e.g. after healing someone), 37 voice types: from "Thank you.", "Thanks a lot!" and "Thanks. I guess." to "Yes, yes, thank you and all that.", "Azura bless you." and "Gods' blessings on you.". The grander ones are a lot for a letter, but vanilla has nothing plainer for those voices (checked 2026-10-01: every SharedInfo line for them, and every voice-limited thanks in any topic; the rest are healing reactions or agreements such as "That is so."), and a line beats silence. A voice type in `DefaultNPCVoiceTypes` without one (male guard, bandit, Forsworn) says "Of course." (the shared line `0x0DBA22`); the form list `PhysicalLettersCourierThanksVoices` keeps the two apart. Unique voices say nothing.
+5. **Afterwards** he sandboxes around the town's centre (`PhysicalLettersCourierLinger`, the Courier alias's package). Every 5 seconds the quest checks that the errand is still ours and that he and the player are still in the same town (as vanilla's mail quest does); when not, it ends the errand: `ErrandEnded`, he's moved back to his marker (if no other quest holds him), and the quest stops. The player is leaving through a load by then, so he isn't seen to vanish.
+
+While he's out, the player's own mail is held (`Transit` doesn't hand letters to `WICourier`), so `WICourierItemCount` stays 0 and neither vanilla's mail quest nor Better Courier's starts because of us.
+
+## When it doesn't happen
+
+The letter goes into the recipient's inventory unseen (the parcel's `offScreen` flag, for this session):
+
+- nobody brought it within `WaitHours` (2 game hours by default) of it falling due, or the player and the recipient are no longer in the same town: they may be indoors, the player may not change location, or the courier is busy;
+- the errand ends before the handover: the player left town, another quest took him, or a load;
+- at the handover the recipient is dead or gone.
+
+**The courier lost it.** If he no longer has the letter at the handover or when the errand ends, the player took it (pickpocketing him is a crime as usual; he's essential, so he can't be killed for it). The letter is lost to delivery: a letter between NPCs ends its thread ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)); the player keeps the letter.
+
+## Saves
+
+Two parcel states in `LTRN` version 5 ([PERSISTENCE.md](PERSISTENCE.md)): 3 *awaiting the courier* (its `dueAt` is when it started waiting) and 4 *with the courier*. The engine saves the quest, the courier and his inventory. After a load, an errand in progress is over for the DLL (`IsLive` is false in the new session): `Transit::Tick` takes the letter back from the courier and delivers it unseen, and the quest's next check ends the errand.
+
+## Testing
+
+Outdoors in a town, look at an NPC who is also outdoors, F6 (an example letter to them) and F7 (send it), then F8 (due now): the log says the letter waits for the courier. Step into a building and back out: the courier should arrive at the town's centre and walk to them. The log (`[Transit]`) says when he takes the letter, hands it over, or why it went in off-screen. First run on AE (2026-10-01): the courier came and spoke to Adrianne, but walked off while talking and she ignored him; the scene now holds both. Second and third runs: he said nothing, and she said "Of course."; the talking now runs off the travel package. Fourth run (2026-10-01): with his lines copied and voiced, the whole scene played: he stopped, spoke, handed the letter over with IdleGive, Adrianne thanked him, he left; the ESL voice-file names work.

@@ -13,6 +13,8 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[Delivery] WritingHours` | 12 | 0–168 | Game hours an NPC takes to write back, before the reply travels |
 | `[Delivery] MinHours` | 2 | 0–48 | Shortest travel time ([DELIVERY.md](DELIVERY.md#travel-time)) |
 | `[Delivery] FallbackHours` | 48 | 1–336 | Travel time between worldspaces, or when a place can't be found |
+| `[Courier] Enabled` | 1 | 0/1 | The courier brings letters in person to NPCs in the player's town ([COURIER.md](COURIER.md)) |
+| `[Courier] WaitHours` | 2 | 0–24 | Game hours a letter for someone in the player's town waits for the courier before it goes in unseen |
 | `[Delivery] ReturnAfterDays` | 3 | 1–30 | Game days a due letter waits for a recipient who can't be found before the courier brings it back ([DELIVERY.md](DELIVERY.md#undeliverable-letters)) |
 | `[NpcLetters] Enabled` | 1 | 0/1 | NPCs write to the player first ([NPC_LETTERS.md](NPC_LETTERS.md)) |
 | `[NpcLetters] IntervalDays` | 7 | 1–60 | Game days between attempts, times 0.5–1.5 at random |

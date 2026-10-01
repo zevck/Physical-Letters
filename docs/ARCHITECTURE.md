@@ -4,7 +4,7 @@
 
 1. **A letter is created** (for now by the F6 dev key): `Letters::Create` makes a runtime book form, records the letter in LetterDB, and the player gets it.
 2. **It is sent**: given to an innkeeper or the courier through the postage dialogue (or the F7 dev key); `Transit::Send` takes it from whoever holds it and queues it, due after the travel time to the recipient ([DELIVERY.md](DELIVERY.md)).
-3. **It is delivered** when due: `Transit::Tick` puts it in the recipient's inventory. The parcel stays in the queue as *awaiting reading*.
+3. **It is delivered** when due: `Transit::Tick` puts it in the recipient's inventory, or, if they're in the player's town, the courier may bring it in person ([COURIER.md](COURIER.md)). The parcel stays in the queue as *awaiting reading*.
 4. **The recipient reads it**: `Reading::Read` sends one prompt to the LLM through SkyrimNet and stores the NPC's memory of the letter. Only then does the parcel leave the queue. See [READING.md](READING.md).
 5. **If they reply**, the same step creates the reply letter and queues it to the player. When due (writing time plus travel), it goes to the vanilla courier, who brings it to the player in a town.
 
@@ -27,6 +27,7 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | NpcLetters | `src/NpcLetters.cpp` | NPCs writing to the player first: the schedule, the pick, the prompt, cooldowns |
 | Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula); areas and distances (`Area`, `Distance`) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
+| CourierErrand | `src/CourierErrand.cpp` | The courier carrying a letter to an NPC in the player's town: the quest's natives, who holds him, the Story Manager global ([COURIER.md](COURIER.md)) |
 | Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |
 | DynamicForms | `src/DynamicForms.cpp` | Runtime forms the engine saves itself (shared with SNPD) |

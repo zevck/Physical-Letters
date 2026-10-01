@@ -45,6 +45,7 @@ set(sources
     src/Transit.cpp
     src/Travel.cpp
     src/Courier.cpp
+    src/CourierErrand.cpp
     src/Postage.cpp
     src/Papyrus.cpp
     src/NpcLetters.cpp

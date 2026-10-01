@@ -27,6 +27,16 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x806` | DialogResponses | | Accept: "Of course." (shared line), TIF `PhysicalLetters_TIF_Postage`. Innkeeper or courier, gold ≥ postage, carrying a letter the player wrote |
 | `0x807` | DialogResponses | | Refuse: "Nah. I don't think so." (shared line). Same, with gold < postage |
 | `0x808` | Quest | `PhysicalLettersMCMQuest` | The MCM: script `PhysicalLetters_MCM`; player alias with `SKI_PlayerLoadGameAlias`. Starts with the game; no dialogue, so not in the SEQ file |
+| `0x809` | Global (short) | `PhysicalLettersCourierPending` | Letters waiting for the courier; set by the DLL, read by the Story Manager node ([COURIER.md](COURIER.md)) |
+| `0x80A` | Quest | `PLCourierQuest` | The courier's errand: script `PhysicalLetters_CourierQuest`; aliases Location (from the event), LocationCenterMarker, Courier (vanilla `0x039FB7`, package `0x80D`), CourierMarker (`0x039FBA`), Target (filled by the script). Started by the Story Manager, not with the game |
+| `0x80B` | Story Manager quest node | `PhysicalLettersCourierNode` | Change of location, after vanilla's courier node (`0x039FBD`), shares the event; conditions in [COURIER.md](COURIER.md#an-errand) |
+| `0x80C` | Package | `PhysicalLettersCourierApproach` | Travel (jog) to the Target alias, radius 150; the scene's first action |
+| `0x80D` | Package | `PhysicalLettersCourierLinger` | Sandbox around the town's centre marker, radius 1024 |
+| `0x80E` | Scene | `PhysicalLettersCourierScene` | Approach, then both stay put (vanilla `DefaultStayAtCurrentLocationScene`): the courier's lines, the recipient's reply; ends on death or combat |
+| `0x80F`–`0x816` | DialogTopic + DialogResponses ×4 | (no EditorID) | Scene topics with the courier's four lines, their text in the info and the vanilla voice copied under `Sound/Voice/Physical Letters.esp/MaleYoungEager` ([COURIER.md](COURIER.md#an-errand)); only `WICourierNPC` says them; the third plays `IdleGive`, and its TIF `PhysicalLetters_TIF_CourierHandOver` hands the letter over |
+| `0x817`, `0x818` | DialogTopic + DialogResponses | `PhysicalLettersCourierReply` | The recipient's thanks (scene topic); `0x818` is "Of course." (`ResponseData` `0x0DBA22`) for `DefaultNPCVoiceTypes` not in `0x819` |
+| `0x819` | FormList | `PhysicalLettersCourierThanksVoices` | The voice types that thank the courier |
+| `0x81A`–`0x83E` | DialogResponses ×37 | | The thanks, one per voice type: `ResponseData` the vanilla `WISharedThanks…` line, its voice-type conditions copied ([COURIER.md](COURIER.md#an-errand)) |
 
 The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`).
 
@@ -38,7 +48,7 @@ The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` a
 
 ## Build
 
-`Build_Local.ps1` runs `convert-to-plugin` into `build\esp\Physical Letters.esp` when any source file is newer than it, and deploys it with the DLL. `-skipEsp` skips both.
+`Build_Local.ps1` runs `convert-to-plugin` into `build\esp\Physical Letters.esp` when any source file or folder is newer than it (a folder counts so a deleted record also rebuilds it), and deploys it with the DLL. `-skipEsp` skips both.
 
 **The deploy never overwrites an edited plugin.** If the `.esp` in a deploy folder is newer than the build, someone edited it there, and the deploy reports that instance as failed instead of copying over it.
 
@@ -55,7 +65,7 @@ If a record is easier to make in the Creation Kit or xEdit, edit the deployed `.
 
 ## Papyrus
 
-The scripts' sources (the TIF and the MCM) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
+The scripts' sources (the two TIFs, the MCM and the courier quest) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
 
 ## The SEQ file
 

@@ -19,6 +19,7 @@
 
 #include "Papyrus.h"
 #include "Config.h"
+#include "CourierErrand.h"
 #include "Postage.h"
 
 namespace PhysicalLetters::Papyrus {
@@ -82,14 +83,14 @@ namespace PhysicalLetters::Papyrus {
             vm->RegisterFunction("GetSettingDefault", kScript, GetSettingDefault);
             vm->RegisterFunction("GetSettingMin", kScript, GetSettingMin);
             vm->RegisterFunction("GetSettingMax", kScript, GetSettingMax);
-            return true;
+            return CourierErrand::RegisterFunctions(vm);
         }
     }
 
     void Register()
     {
         if (auto* papyrus = SKSE::GetPapyrusInterface(); !papyrus || !papyrus->Register(RegisterFunctions)) {
-            SKSE::log::error("[Papyrus] Registering the MCM natives failed");
+            SKSE::log::error("[Papyrus] Registering the natives failed");
         }
     }
 

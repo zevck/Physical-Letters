@@ -8,6 +8,7 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [PERSISTENCE.md](PERSISTENCE.md) | Letter forms, the co-save, LetterDB, and what happens on save, load, Keep and Clear |
 | [READING.md](READING.md) | How a recipient reads a letter: the prompt, the memory, retries |
 | [DELIVERY.md](DELIVERY.md) | Travel time (fast travel's navmesh path), the hand-over, undeliverable letters, replies and the courier |
+| [COURIER.md](COURIER.md) | The vanilla courier carrying a letter to an NPC in the player's town: the errand, other courier mods, when it falls back to unseen delivery |
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
 | [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
 | [SETTINGS.md](SETTINGS.md) | The INI, the MCM, adding a setting |

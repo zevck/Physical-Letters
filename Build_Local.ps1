@@ -58,6 +58,7 @@ $mirroredFolders = @(
     "Source\Scripts",
     "Interface\Translations",
     "Seq",
+    "Sound\Voice\Physical Letters.esp",
     "SKSE\Plugins\SkyrimNet\external\zevick.physical-letters"
 )
 
@@ -222,9 +223,10 @@ if (-not $skipSwf -and (Test-Path swf)) {
 }
 
 # --- ESP (Spriggit) ----------------------------------------------------------------
-# The .esp is built from its text source when any source file is newer than it.
+# The .esp is built from its text source when any source file or folder is newer than it
+# (a folder's time changes when a record file in it is deleted).
 if (-not $skipEsp -and (Test-Path -LiteralPath $PluginSourceDir)) {
-    $sourceNewest = Get-ChildItem -LiteralPath $PluginSourceDir -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $sourceNewest = Get-ChildItem -LiteralPath $PluginSourceDir -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not (Test-Path -LiteralPath $builtEsp) -or (Get-Item -LiteralPath $builtEsp).LastWriteTime -lt $sourceNewest.LastWriteTime) {
         try { $spriggitCli = Get-SpriggitCli $spriggitPath }
         catch { Complete-Build -Status 'FAILURE' -Stage 'esp' -Message $_.Exception.Message }

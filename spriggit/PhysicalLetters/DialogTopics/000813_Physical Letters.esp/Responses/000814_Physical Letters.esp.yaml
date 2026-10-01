@@ -1,0 +1,32 @@
+FormKey: 000814:Physical Letters.esp
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_TIF_CourierHandOver
+  ScriptFragments:
+    MutagenObjectType: ScriptFragments
+    FileName: PhysicalLetters_TIF_CourierHandOver
+    OnEnd:
+      ExtraBindDataVersion: 1
+      ScriptName: PhysicalLetters_TIF_CourierHandOver
+      FragmentName: Fragment_0
+Flags: {}
+FavorLevel: None
+Responses:
+- EmotionValue: 50
+  ResponseNumber: 1
+  Unknown2: 0x000000
+  Flags:
+  - UseEmotionAnimation
+  Unknown3: 0x000000
+  Text:
+    TargetLanguage: English
+    Value: I have a letter here for you.
+  ScriptNotes: ''
+  Edits: ''
+  SpeakerIdleAnimation: 0B5E20:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIsIDConditionData
+    Object: 039F83:Skyrim.esm
+  ComparisonValue: 1

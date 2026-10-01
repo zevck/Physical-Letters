@@ -22,6 +22,7 @@
 #include "Letters.h"
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
+#include "CourierErrand.h"
 #include "Transit.h"
 
 namespace PhysicalLetters::Serialization {
@@ -51,6 +52,7 @@ namespace PhysicalLetters::Serialization {
             DynamicForms::Revert();
             Letters::Revert();
             Transit::Revert();
+            CourierErrand::Revert();
             NpcLetters::Revert();
             NpcToNpc::Revert();
         }

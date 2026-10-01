@@ -1,0 +1,78 @@
+FormKey: 00080A:Physical Letters.esp
+EditorID: PLCourierQuest
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_CourierQuest
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: Courier
+      Object: 00080A:Physical Letters.esp
+      Alias: 2
+    - MutagenObjectType: ScriptObjectProperty
+      Name: CourierMarker
+      Object: 00080A:Physical Letters.esp
+      Alias: 3
+    - MutagenObjectType: ScriptObjectProperty
+      Name: DeliveryScene
+      Object: 00080E:Physical Letters.esp
+    - MutagenObjectType: ScriptObjectProperty
+      Name: LocationCenterMarker
+      Object: 00080A:Physical Letters.esp
+      Alias: 1
+    - MutagenObjectType: ScriptObjectProperty
+      Name: LocTypeHabitation
+      Object: 039793:Skyrim.esm
+    - MutagenObjectType: ScriptObjectProperty
+      Name: Target
+      Object: 00080A:Physical Letters.esp
+      Alias: 4
+  FileName: ''
+Name:
+  TargetLanguage: English
+  Value: Physical Letters courier
+Priority: 40
+QuestFormVersion: 0
+Event: CLOC
+Stages:
+- Flags:
+  - StartUpStage
+  LogEntries:
+  - Flags: []
+- Index: 200
+  Flags:
+  - ShutDownStage
+  LogEntries:
+  - Flags: []
+NextAliasID: 5
+Aliases:
+- Type: Location
+  Name: Location
+  Flags: []
+  FindMatchingRefFromEvent:
+    FromEvent: CLOC
+    EventData: NewLocation
+- ID: 1
+  Name: LocationCenterMarker
+  Flags: []
+  Location:
+    AliasID: 0
+    RefType: 01BDF1:Skyrim.esm
+  VoiceTypes: Null
+- ID: 2
+  Name: Courier
+  Flags:
+  - AllowDisabled
+  ForcedReference: 039FB7:Skyrim.esm
+  PackageData:
+  - 00080D:Physical Letters.esp
+  VoiceTypes: Null
+- ID: 3
+  Name: CourierMarker
+  Flags: []
+  ForcedReference: 039FBA:Skyrim.esm
+  VoiceTypes: Null
+- ID: 4
+  Name: Target
+  Flags:
+  - Optional
+  VoiceTypes: Null
