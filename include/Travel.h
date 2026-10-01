@@ -37,4 +37,7 @@ namespace PhysicalLetters::Travel {
     // open wilderness (the hold itself) or when it has no location.
     const RE::BGSLocation* Area(RE::TESObjectREFR* a_ref);
 
+    // A settlement: the location has LocTypeHabitation.
+    bool IsTown(const RE::BGSLocation* a_location);
+
 } // namespace PhysicalLetters::Travel

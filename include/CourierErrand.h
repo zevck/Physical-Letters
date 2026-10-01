@@ -20,7 +20,7 @@
 #pragma once
 
 // The vanilla courier carrying a letter to an NPC near the player (docs/COURIER.md).  The
-// quest PhysicalLettersCourierQuest runs the errand; Transit owns the letters.  Game thread.
+// quest PLCourierQuest (script PhysicalLetters_CourierQuest) runs the errand; Transit owns the letters.
 namespace PhysicalLetters::CourierErrand {
 
     // Whether a letter due to `recipient` waits for the courier: errands are on, and the
@@ -34,7 +34,7 @@ namespace PhysicalLetters::CourierErrand {
     // The vanilla courier (Skyrim.esm 0x039FB7).
     RE::Actor* Courier();
 
-    // An errand is under way in this session (the courier carries a letter).
+    // An errand is under way in this session (the courier carries a letter).  Game thread.
     bool IsLive();
 
     // How many letters wait for the courier: the Story Manager node's global.

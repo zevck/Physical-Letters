@@ -132,6 +132,17 @@ namespace PhysicalLetters::Transit {
             parcel.state = State::kToPlayer;
         }
 
+        RE::TESObjectBOOK* BookOf(const Parcel& parcel)
+        {
+            return RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
+        }
+
+        // The letter the courier carries, if any (one errand at a time).
+        std::vector<Parcel>::iterator OnCourier()
+        {
+            return std::ranges::find(g_parcels, State::kOnCourier, &Parcel::state);
+        }
+
         bool CourierHas(RE::Actor* courier, RE::TESObjectBOOK* book)
         {
             return courier && book && courier->GetInventoryCounts([book](RE::TESBoundObject& item) { return &item == book; })[book] > 0;
@@ -150,7 +161,7 @@ namespace PhysicalLetters::Transit {
         // delivered off-screen.  False if he hadn't it any more (Lost): drop the parcel.
         bool TakeBack(Parcel& parcel, RE::Actor* courier)
         {
-            auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
+            auto* book = BookOf(parcel);
             if (!CourierHas(courier, book)) {
                 Lost(parcel);
                 return false;
@@ -165,7 +176,7 @@ namespace PhysicalLetters::Transit {
 
         Delivery Deliver(Parcel& parcel)
         {
-            auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
+            auto* book = BookOf(parcel);
             if (!book) {
                 SKSE::log::error("[Transit] Letter {} has no form in this save: dropped from the queue", parcel.letterId);
                 return Delivery::kLost;
@@ -356,7 +367,7 @@ namespace PhysicalLetters::Transit {
         for (auto& parcel : g_parcels) {
             if (parcel.state != State::kAwaitingCourier) continue;
             auto* recipient = FindActor(parcel.recipientUuid);
-            auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(parcel.letterId));
+            auto* book = BookOf(parcel);
             if (!courier || !book || !CourierErrand::IsHere(recipient)) continue;
             courier->AddObjectToContainer(book, nullptr, 1, nullptr);
             parcel.state = State::kOnCourier;
@@ -368,10 +379,10 @@ namespace PhysicalLetters::Transit {
 
     void HandOver(RE::Actor* courier)
     {
-        const auto it = std::ranges::find(g_parcels, State::kOnCourier, &Parcel::state);
+        const auto it = OnCourier();
         if (it == g_parcels.end()) return;
         auto* recipient = FindActor(it->recipientUuid);
-        auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(Letters::FormFor(it->letterId));
+        auto* book = BookOf(*it);
         if (!recipient || recipient->IsDead() || !CourierHas(courier, book)) {
             if (!TakeBack(*it, courier)) g_parcels.erase(it);
             return;
@@ -385,7 +396,7 @@ namespace PhysicalLetters::Transit {
 
     void CourierDone(RE::Actor* courier)
     {
-        const auto it = std::ranges::find(g_parcels, State::kOnCourier, &Parcel::state);
+        const auto it = OnCourier();
         if (it != g_parcels.end() && !TakeBack(*it, courier)) g_parcels.erase(it);
     }
 

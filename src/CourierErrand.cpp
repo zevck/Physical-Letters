@@ -31,7 +31,6 @@ namespace PhysicalLetters::CourierErrand {
         constexpr RE::FormID kPendingGlobal = 0x809;
         constexpr RE::FormID kQuest = 0x80A;
         constexpr RE::FormID kCourierRef = 0x039FB7;  // Skyrim.esm: the vanilla courier, WICourierNPC
-        constexpr RE::FormID kHabitation = 0x039793;  // LocTypeHabitation
 
         bool g_live = false;  // this session: the courier carries a letter
 
@@ -41,22 +40,25 @@ namespace PhysicalLetters::CourierErrand {
             return data ? data->LookupForm<RE::TESQuest>(kQuest, kPlugin) : nullptr;
         }
 
-        // Another running quest holds the courier in an alias: the vanilla mail quest, or a
-        // mod's (Courier Delivers to NPCs borrows him too).  He's theirs now.
-        bool HeldByAnotherQuest(RE::Actor* courier)
+        // The other quest holding the courier in an alias (vanilla's mail quest, or a mod's:
+        // Courier Delivers to NPCs borrows him too), or nullptr.  He's theirs then.
+        const RE::TESQuest* HeldBy(RE::Actor* courier)
         {
             const auto* aliases = courier ? courier->extraList.GetByType<RE::ExtraAliasInstanceArray>() : nullptr;
-            if (!aliases) return false;
+            if (!aliases) return nullptr;
             const auto* ours = OurQuest();
             RE::BSReadLockGuard lock{ aliases->lock };
-            return std::ranges::any_of(aliases->aliases, [ours](const RE::BGSRefAliasInstanceData* a) {
-                return a && a->quest && a->quest != ours && a->quest->IsRunning();
-            });
+            for (const auto* a : aliases->aliases) {
+                // IsStopped, not IsRunning: CommonLib's IsRunning is true for a stopped quest too.
+                if (a && a->quest && a->quest != ours && !a->quest->IsStopped()) return a->quest;
+            }
+            return nullptr;
         }
 
-        bool IsTown(const RE::BGSLocation* area)
+        std::string Name(const RE::TESQuest* quest)
         {
-            return area && area->HasKeywordID(kHabitation);
+            const char* editorId = quest->GetFormEditorID();
+            return std::format("{} (0x{:08X})", editorId && *editorId ? editorId : "a quest", quest->GetFormID());
         }
 
         bool IsOutdoors(RE::TESObjectREFR* ref)
@@ -68,8 +70,18 @@ namespace PhysicalLetters::CourierErrand {
         RE::Actor* TakeTarget(RE::StaticFunctionTag*)
         {
             auto* courier = Courier();
-            if (!Session::IsReady() || g_live || !courier || HeldByAnotherQuest(courier)) return nullptr;
+            const RE::TESQuest* holder = courier ? HeldBy(courier) : nullptr;
+            std::string why;
+            if (!Session::IsReady()) why = "the session isn't ready";
+            else if (g_live) why = "an errand is already under way";
+            else if (!courier) why = "the vanilla courier (Skyrim.esm 0x039FB7) wasn't found";
+            else if (holder) why = std::format("{} holds him", Name(holder));
+            if (!why.empty()) {
+                SKSE::log::info("[Courier] No errand: {}", why);
+                return nullptr;
+            }
             auto* recipient = Transit::TakeForCourier(courier);
+            if (!recipient) SKSE::log::info("[Courier] No errand: no waiting letter's recipient is outdoors in this town");
             g_live = recipient != nullptr;
             return recipient;
         }
@@ -81,7 +93,12 @@ namespace PhysicalLetters::CourierErrand {
 
         bool IsErrandCurrent(RE::StaticFunctionTag*)
         {
-            return g_live && !HeldByAnotherQuest(Courier());
+            if (!g_live) return false;
+            if (const auto* holder = HeldBy(Courier())) {
+                SKSE::log::info("[Courier] {} took the courier: the errand ends", Name(holder));
+                return false;
+            }
+            return true;
         }
 
         bool ErrandEnded(RE::StaticFunctionTag*)
@@ -89,7 +106,7 @@ namespace PhysicalLetters::CourierErrand {
             auto* courier = Courier();
             Transit::CourierDone(courier);
             g_live = false;
-            return courier && !HeldByAnotherQuest(courier);
+            return courier && !HeldBy(courier);
         }
     }
 
@@ -97,7 +114,7 @@ namespace PhysicalLetters::CourierErrand {
     {
         if (!Config::GetSingleton()->Get(Config::kCourierEnabled) || !OurQuest() || !recipient || recipient->IsDead()) return false;
         const auto* area = Travel::Area(recipient);
-        return IsTown(area) && area == Travel::Area(RE::PlayerCharacter::GetSingleton());
+        return Travel::IsTown(area) && area == Travel::Area(RE::PlayerCharacter::GetSingleton());
     }
 
     bool IsHere(RE::Actor* recipient)
@@ -107,7 +124,7 @@ namespace PhysicalLetters::CourierErrand {
             return false;
         }
         const auto* area = Travel::Area(recipient);
-        return IsTown(area) && area == Travel::Area(player);
+        return Travel::IsTown(area) && area == Travel::Area(player);
     }
 
     RE::Actor* Courier()
@@ -117,6 +134,11 @@ namespace PhysicalLetters::CourierErrand {
 
     bool IsLive()
     {
+        // Our quest stopped without ErrandEnded (the console, a mod resetting quests).
+        if (const auto* quest = OurQuest(); g_live && (!quest || quest->IsStopped())) {
+            SKSE::log::warn("[Courier] The courier quest stopped mid-errand: the errand is over");
+            g_live = false;
+        }
         return g_live;
     }
 

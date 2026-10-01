@@ -36,9 +36,9 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x80F`–`0x816` | DialogTopic + DialogResponses ×4 | (no EditorID) | Scene topics with the courier's four lines, their text in the info and the vanilla voice copied under `Sound/Voice/Physical Letters.esp/MaleYoungEager` ([COURIER.md](COURIER.md#an-errand)); only `WICourierNPC` says them; the third plays `IdleGive`, and its TIF `PhysicalLetters_TIF_CourierHandOver` hands the letter over |
 | `0x817`, `0x818` | DialogTopic + DialogResponses | `PhysicalLettersCourierReply` | The recipient's thanks (scene topic); `0x818` is "Of course." (`ResponseData` `0x0DBA22`) for `DefaultNPCVoiceTypes` not in `0x819` |
 | `0x819` | FormList | `PhysicalLettersCourierThanksVoices` | The voice types that thank the courier |
-| `0x81A`–`0x83E` | DialogResponses ×37 | | The thanks, one per voice type: `ResponseData` the vanilla `WISharedThanks…` line, its voice-type conditions copied ([COURIER.md](COURIER.md#an-errand)) |
+| `0x81A`–`0x83E` | DialogResponses ×37 | | The thanks, one per vanilla `WISharedThanks` line (39 voice types: two lines serve two each): `ResponseData` the vanilla `WISharedThanks…` line, its voice-type conditions copied ([COURIER.md](COURIER.md#an-errand)) |
 
-The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`).
+The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`).
 
 The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 

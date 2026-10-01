@@ -32,6 +32,30 @@ Conditions:
     Member: NewLocation
     Record: 0130E9:Skyrim.esm
 - MutagenObjectType: ConditionFloat
+  CompareOperator: GreaterThanOrEqualTo
+  Data:
+    MutagenObjectType: GetKeywordDataForCurrentLocationConditionData
+    RunOnType: Reference
+    Reference: 000014:Skyrim.esm
+    Keyword: 0C4EC8:Skyrim.esm
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetEventDataConditionData
+    Member: NewLocation
+    Record: 076F3A:Skyrim.esm
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetInCurrentLocConditionData
+    RunOnType: Reference
+    Reference: 000014:Skyrim.esm
+    Location: 076F3A:Skyrim.esm
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetInCurrentLocConditionData
+    RunOnType: Reference
+    Reference: 000014:Skyrim.esm
+    Location: 018A4A:Skyrim.esm
+- MutagenObjectType: ConditionFloat
   Data:
     MutagenObjectType: IsInInteriorConditionData
     RunOnType: Reference

@@ -139,16 +139,21 @@ namespace PhysicalLetters::Travel {
         }
     }
 
+    bool IsTown(const RE::BGSLocation* a_location)
+    {
+        static auto* habitation = RE::TESForm::LookupByID<RE::BGSKeyword>(0x039793);  // LocTypeHabitation
+        return a_location && habitation && a_location->HasKeyword(habitation);
+    }
+
     const RE::BGSLocation* Area(RE::TESObjectREFR* a_ref)
     {
         if (!a_ref) return nullptr;
-        static auto* habitation = RE::TESForm::LookupByID<RE::BGSKeyword>(0x039793);  // LocTypeHabitation
         static auto* hold = RE::TESForm::LookupByID<RE::BGSKeyword>(0x016771);        // LocTypeHold
         const RE::BGSLocation* start = a_ref->GetCurrentLocation();
         if (!start) start = a_ref->GetEditorLocation();
         const RE::BGSLocation* belowHold = nullptr;
         for (auto* location = start; location; location = location->parentLoc) {
-            if (habitation && location->HasKeyword(habitation)) return location;
+            if (IsTown(location)) return location;
             if (hold && location->HasKeyword(hold)) break;
             belowHold = location;
         }

@@ -21,7 +21,15 @@ ReferenceAlias Property Target Auto
 Scene Property DeliveryScene Auto
 Keyword Property LocTypeHabitation Auto
 
+; Checks (5 s apart) before a scene still playing counts as stalled: 3 minutes.
+int Property MaxChecks = 36 AutoReadOnly
+
+bool released  ; the errand is over for the DLL; he lingers until the player leaves
+int checks
+
 Event OnStoryChangeLocation(ObjectReference akActor, Location akOldLocation, Location akNewLocation)
+    released = false
+    checks = 0
     Actor recipient = TakeTarget()
     if !recipient
         Stop()
@@ -40,11 +48,24 @@ EndEvent
 Event OnUpdate()
     Location courierAt = Courier.GetReference().GetCurrentLocation()
     Location playerAt = Game.GetPlayer().GetCurrentLocation()
-    if IsErrandCurrent() && courierAt && playerAt && courierAt.IsSameLocation(playerAt, LocTypeHabitation)
-        RegisterForSingleUpdate(5.0)
-    else
+    checks += 1
+    if !courierAt || !playerAt || !courierAt.IsSameLocation(playerAt, LocTypeHabitation)
         EndErrand()
+        return
     endif
+    if !released
+        if !IsErrandCurrent()
+            EndErrand()
+            return
+        endif
+        ; Handed over, cut short (combat, no start) or stalled: a letter not handed over goes in unseen.
+        if !DeliveryScene.IsPlaying() || checks > MaxChecks
+            DeliveryScene.Stop()
+            ErrandEnded()
+            released = true
+        endif
+    endif
+    RegisterForSingleUpdate(5.0)
 EndEvent
 
 Function EndErrand()

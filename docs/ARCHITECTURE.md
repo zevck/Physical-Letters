@@ -25,7 +25,7 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | Reading | `src/Reading.cpp`, `include/LlmJson.h` | The LLM call and the SkyrimNet memory; the correspondence history; reading the LLM's JSON |
 | NpcToNpc | `src/NpcToNpc.cpp` | Letters between NPCs: the schedule, the proposals, the recipient checks, the letter, thread limits, pair cooldowns |
 | NpcLetters | `src/NpcLetters.cpp` | NPCs writing to the player first: the schedule, the pick, the prompt, cooldowns |
-| Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula); areas and distances (`Area`, `Distance`) |
+| Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula); areas, towns and distances (`Area`, `IsTown`, `Distance`) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
 | CourierErrand | `src/CourierErrand.cpp` | The courier carrying a letter to an NPC in the player's town: the quest's natives, who holds him, the Story Manager global ([COURIER.md](COURIER.md)) |
 | Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |
