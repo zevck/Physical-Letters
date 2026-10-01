@@ -44,12 +44,12 @@ endfunction
 ; having run first (on the first open it hadn't, and the page came up empty).  Rebuilt
 ; every time: OnConfigInit runs once per save, so a script update would keep old arrays.
 function Setup()
-    _names = new string[12]
-    _labels = new string[12]
-    _tips = new string[12]
-    _formats = new string[12]
-    _steps = new int[12]
-    _oids = new int[12]
+    _names = new string[20]
+    _labels = new string[20]
+    _tips = new string[20]
+    _formats = new string[20]
+    _steps = new int[20]
+    _oids = new int[20]
     Slider(0, "Delivery.Postage", "$PL_Postage", "$PL_TipPostage", 5)
     Slider(1, "Delivery.WritingHours", "$PL_WritingHours", "$PL_TipWritingHours", 1)
     Slider(2, "Delivery.MinHours", "$PL_MinHours", "$PL_TipMinHours", 1)
@@ -63,13 +63,23 @@ function Setup()
     Slider(10, "NpcLetters.RecentWeight", "$PL_NpcRecentWeight", "$PL_TipNpcRecentWeight", 5)
     _formats[10] = "{0}%"
     Slider(11, "NpcLetters.NearDistance", "$PL_NpcNearDistance", "$PL_TipNpcNearDistance", 512)
+    Slider(12, "NpcToNpc.IntervalDays", "$PL_N2nInterval", "$PL_TipN2nInterval", 1)
+    Slider(13, "NpcToNpc.MaxOpenThreads", "$PL_N2nMaxThreads", "$PL_TipN2nMaxThreads", 1)
+    Slider(14, "NpcToNpc.MaxLettersPerThread", "$PL_N2nMaxLetters", "$PL_TipN2nMaxLetters", 1)
+    Slider(15, "NpcToNpc.PairCooldownDays", "$PL_N2nPairCooldown", "$PL_TipN2nPairCooldown", 1)
+    Slider(16, "NpcToNpc.WritersPerAttempt", "$PL_N2nWriters", "$PL_TipN2nWriters", 1)
+    Slider(17, "NpcToNpc.NamesPerWriter", "$PL_N2nNames", "$PL_TipN2nNames", 1)
+    Slider(18, "NpcToNpc.MemoriesPerWriter", "$PL_N2nMemories", "$PL_TipN2nMemories", 1)
+    Slider(19, "NpcToNpc.MinDistance", "$PL_N2nMinDistance", "$PL_TipN2nMinDistance", 1024)
 
-    _toggleNames = new string[2]
-    _toggleLabels = new string[2]
-    _toggleTips = new string[2]
-    _toggleOids = new int[2]
+    _toggleNames = new string[4]
+    _toggleLabels = new string[4]
+    _toggleTips = new string[4]
+    _toggleOids = new int[4]
     Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
     Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
+    Toggle(2, "NpcToNpc.Enabled", "$PL_N2n", "$PL_TipN2n")
+    Toggle(3, "NpcToNpc.KnownOnly", "$PL_N2nKnownOnly", "$PL_TipN2nKnownOnly")
 endfunction
 
 function AddSliders(int first, int last)
@@ -93,6 +103,11 @@ event OnPageReset(string page)
     AddHeaderOption("$PL_HeaderNpcLetters")
     AddToggle(0)
     AddSliders(5, 11)
+    AddEmptyOption()
+    AddHeaderOption("$PL_HeaderN2n")
+    AddToggle(2)
+    AddToggle(3)
+    AddSliders(12, 19)
     AddEmptyOption()
     AddHeaderOption("$PL_HeaderLogging")
     AddToggle(1)

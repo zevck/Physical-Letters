@@ -60,7 +60,7 @@ extern "C" {
  *                  9 = per-actor world knowledge for prompt enrichment,
  *                 10 = filtered memory queries,
  *                 11 = timeline state, diary write-order queries, diary add/edit/delete,
- *                      memory edit/delete.
+ *                      memory edit/delete, actor search.
  */
 int (*PublicGetVersion)() = nullptr;
 
@@ -654,7 +654,7 @@ bool (*PublicSendCustomPromptToLLM)(const char* promptName, const char* variant,
                                     std::function<void(const char* response, int success)> callback) = nullptr;
 
 // =============================================================================
-// Timeline State, Diary Writes and Memory Edits (v11+)
+// Timeline State, Diary Writes, Memory Edits and Actor Search (v11+)
 // =============================================================================
 
 /**
@@ -755,6 +755,22 @@ bool (*PublicUpdateMemory)(int memoryId, const char* changesJSON) = nullptr;
  *         world knowledge or plugin-installed.
  */
 bool (*PublicDeleteMemory)(int memoryId) = nullptr;
+
+/**
+ * Search the actors SkyrimNet has resolved (every actor it has registered in this save, loaded or not)
+ * by name. Use it to find an actor you can't see, e.g. an address line as the player types.
+ * Thread-safe, touches no game objects. Returns "[]" before a save is loaded.
+ *
+ * @param nameContains Case-insensitive substring of the actor's name (Unicode-aware). "" = everyone.
+ * @param maxCount     Result cap (<=0 = 25, at most 500).
+ * @return JSON array, best match first (exact name, then prefix, then a word starting with the
+ *         query, then anywhere; ties by name):
+ *         [{"uuid": 1234..., "formId": 106097, "name": "Mikael", "isPlayer": false}, ...]
+ *         One entry per actor under its current UUID. Duplicate names are all returned; telling
+ *         them apart (alive, location, unique base) is up to the caller. `formId` is the runtime
+ *         FormID SkyrimNet last saw for the actor, the same value PublicUUIDToFormID returns.
+ */
+std::string (*PublicSearchActors)(const char* nameContains, int maxCount) = nullptr;
 
 // =============================================================================
 // Initialization
@@ -913,6 +929,8 @@ inline bool FindFunctions() {
                     GetProcAddress(hDLL, "PublicUpdateMemory"));
                 PublicDeleteMemory = reinterpret_cast<bool(*)(int)>(
                     GetProcAddress(hDLL, "PublicDeleteMemory"));
+                PublicSearchActors = reinterpret_cast<std::string(*)(const char*, int)>(
+                    GetProcAddress(hDLL, "PublicSearchActors"));
             }
         }
         return true;

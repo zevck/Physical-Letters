@@ -9,6 +9,7 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [READING.md](READING.md) | How a recipient reads a letter: the prompt, the memory, retries |
 | [DELIVERY.md](DELIVERY.md) | Travel time (fast travel's navmesh path), the hand-over, undeliverable letters, replies and the courier |
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
+| [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
 | [SETTINGS.md](SETTINGS.md) | The INI, the MCM, adding a setting |
 | [PLUGIN.md](PLUGIN.md) | The ESP: Spriggit source in git, building it, editing it in the CK; its Papyrus scripts and SEQ file |
 

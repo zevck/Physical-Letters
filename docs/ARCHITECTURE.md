@@ -8,7 +8,7 @@
 4. **The recipient reads it**: `Reading::Read` sends one prompt to the LLM through SkyrimNet and stores the NPC's memory of the letter. Only then does the parcel leave the queue. See [READING.md](READING.md).
 5. **If they reply**, the same step creates the reply letter and queues it to the player. When due (writing time plus travel), it goes to the vanilla courier, who brings it to the player in a town.
 
-Separately, every few days an NPC the player has dealt with may **write first**: `NpcLetters` picks one, the LLM decides whether they write, and the letter takes the same road to the courier ([NPC_LETTERS.md](NPC_LETTERS.md)).
+Separately, every few days an NPC the player has dealt with may **write first**: `NpcLetters` picks one, the LLM decides whether they write, and the letter takes the same road to the courier ([NPC_LETTERS.md](NPC_LETTERS.md)). And NPCs write **to each other**: `NpcToNpc` starts a correspondence, and its letters go through steps 3 to 5 like the player's, with replies going to the other NPC ([NPC_TO_NPC.md](NPC_TO_NPC.md)).
 
 If the recipient is dead when the letter is due, or can't be found for `ReturnAfterDays`, the letter turns back at step 3 and reaches the player through the courier ([DELIVERY.md](DELIVERY.md#undeliverable-letters)).
 
@@ -23,6 +23,7 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | LetterDB | `src/LetterDB.cpp` | SQLite store of each letter's text, per SkyrimNet save folder |
 | Transit | `src/Transit.cpp` | The queue: delivery, the reading owed (with retries), replies, NPC letters and undeliverable letters to the courier |
 | Reading | `src/Reading.cpp`, `include/LlmJson.h` | The LLM call and the SkyrimNet memory; the correspondence history; reading the LLM's JSON |
+| NpcToNpc | `src/NpcToNpc.cpp` | Letters between NPCs: the schedule, the proposals, the recipient checks, the letter, thread limits, pair cooldowns |
 | NpcLetters | `src/NpcLetters.cpp` | NPCs writing to the player first: the schedule, the pick, the prompt, cooldowns |
 | Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula); areas and distances (`Area`, `Distance`) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
@@ -46,9 +47,9 @@ Nothing reads or writes letters, LetterDB or SkyrimNet until the session is **re
 
 ## Threading
 
-- **Game thread:** everything that touches game state: the SKSE messages, the load callbacks, the heartbeat task (`Session::Poll`, `Transit::Tick`, `NpcLetters::Tick`), the dev keys, and the result of every reading (`Reading` reports back with `AddTask`). Each task catches exceptions so none crosses into the engine.
+- **Game thread:** everything that touches game state: the SKSE messages, the load callbacks, the heartbeat task (`Session::Poll`, `Transit::Tick`, `NpcLetters::Tick`, `NpcToNpc::Tick`), the dev keys, and the result of every reading (`Reading` reports back with `AddTask`). Each task catches exceptions so none crosses into the engine.
 - **Any thread:** the `GetDescription` hook (the book menu and other readers, including the engine's "Poll controls" job). It reads only the `Letters` snapshot, under its mutex.
-- **Worker threads:** a reading's memory queries, the LLM call (SkyrimNet's pool calls back) and storing the memory, which blocks while SkyrimNet embeds it; an NPC letter's pool (the engagement list and each NPC's dialogue events), its prompt context and the writer's memory. Work that finishes after a load is dropped: it carries the session generation and checks it before writing, and again after the blocking `AddMemory`. NPC letters also carry an attempt id, so an attempt given up after its timeout can't act later ([NPC_LETTERS.md](NPC_LETTERS.md#the-prompt)).
+- **Worker threads:** a reading's memory queries, the LLM call (SkyrimNet's pool calls back) and storing the memory, which blocks while SkyrimNet embeds it; an NPC letter's pool (the engagement list and each NPC's dialogue events), its prompt context and the writer's memory; the same for letters between NPCs (the actor list, related actors, recent memories). Work that finishes after a load is dropped: it carries the session generation and checks it before writing, and again after the blocking `AddMemory`. NPC letters also carry an attempt id, so an attempt given up after its timeout can't act later ([NPC_LETTERS.md](NPC_LETTERS.md#the-prompt)).
 - **LetterDB** has its own mutex; readings write to it from worker threads.
 
 ## Code shared with SkyrimNet Physical Diaries

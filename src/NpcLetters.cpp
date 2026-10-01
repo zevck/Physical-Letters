@@ -60,6 +60,26 @@ namespace PhysicalLetters::NpcLetters {
         std::chrono::steady_clock::time_point g_stepSince;  // the pool scan, or the current LLM call
         std::uint64_t g_attempt = 0;                        // the running attempt; bumped when it's given up
 
+        // This play session's attempts and what came of them, logged after each attempt: to
+        // tune the prompt and the settings by.  Not saved.
+        struct Tally {
+            int attempts = 0;
+            int nobody = 0;  // attempts where nobody could write
+            int asked = 0;   // LLM calls
+            int written = 0;
+            int declined = 0;
+            int llmFailed = 0;
+            int timedOut = 0;
+        } g_tally;
+
+        void LogTally()
+        {
+            SKSE::log::info("[NpcLetters] This session: {} attempt(s) ({} with nobody able to write), {} asked, {} letter(s) "
+                            "written, {} declined, {} LLM failure(s), {} timed out",
+                            g_tally.attempts, g_tally.nobody, g_tally.asked, g_tally.written, g_tally.declined,
+                            g_tally.llmFailed, g_tally.timedOut);
+        }
+
         // Which attempt, in which session, a result belongs to: anything else answers late.
         struct Token {
             std::uint32_t generation = 0;
@@ -96,6 +116,7 @@ namespace PhysicalLetters::NpcLetters {
         {
             Schedule();
             g_busy = false;
+            LogTally();
         }
 
         // From a worker thread: ends the attempt on the game thread, if it's still current.
@@ -205,7 +226,7 @@ namespace PhysicalLetters::NpcLetters {
                 return nullptr;
             }
             if (Transit::IsLetterPendingFor(candidate.uuid)) {
-                why = "has a letter from the player to answer";
+                why = "has a letter to answer";
                 return nullptr;
             }
             const auto* config = Config::GetSingleton();
@@ -266,6 +287,7 @@ namespace PhysicalLetters::NpcLetters {
                 return;
             }
             if (!success) {
+                ++g_tally.llmFailed;
                 SKSE::log::error("[NpcLetters] The LLM call for {} failed: {}", candidate.name, response.substr(0, 300));
                 Finish();
                 return;
@@ -274,6 +296,7 @@ namespace PhysicalLetters::NpcLetters {
             const auto answer = LlmJson::ParseResponse(response);
             const auto text = answer.is_object() ? LlmJson::GetString(answer, "letter") : std::string{};
             if (!answer.is_object() || !LlmJson::GetBool(answer, "write") || text.empty()) {
+                ++g_tally.declined;
                 SKSE::log::info("[NpcLetters] {} has nothing to write{}", candidate.name,
                                 answer.is_object() ? "" : std::format(" (unreadable answer: {})", response.substr(0, 300)));
                 TryFrom(std::move(shortlist), index + 1, token);
@@ -296,6 +319,7 @@ namespace PhysicalLetters::NpcLetters {
             const double hours = Travel::Hours(writer, player);
             Transit::QueueToPlayer(letter, hours);
             StartCooldown(candidate.uuid);
+            ++g_tally.written;
             SKSE::log::info("[NpcLetters] {} wrote letter {}, due at the courier in {:.1f} game hours", candidate.name,
                             letter.id, hours);
             Finish();
@@ -319,7 +343,7 @@ namespace PhysicalLetters::NpcLetters {
                         json::parse(SkyrimNet::Memories(c.formId, kMaxMemories, playerName, "physical_letters"), nullptr, false);
                     if (found.is_array()) {
                         for (const auto& m : found) {
-                            if (m.contains("text") && m["text"].is_string()) memories.push_back(m["text"]);
+                            if (m.contains("content") && m["content"].is_string()) memories.push_back(m["content"]);
                         }
                     }
                     const json context = {
@@ -347,6 +371,7 @@ namespace PhysicalLetters::NpcLetters {
                         SKSE::log::error("[NpcLetters] SkyrimNet refused the prompt");
                         FinishLater(token);
                     } else {
+                        ++g_tally.asked;
                         SKSE::log::info("[NpcLetters] Asking whether {} writes", c.name);
                     }
                 } catch (const std::exception& e) {
@@ -408,6 +433,7 @@ namespace PhysicalLetters::NpcLetters {
                 SKSE::log::info("[NpcLetters] {} can't write now ({})", shortlist[index].name, why);
             }
             SKSE::log::info("[NpcLetters] No NPC wrote this time");
+            if (index == 0 && shortlist.empty()) ++g_tally.nobody;
             Finish();
         }
     }
@@ -418,6 +444,7 @@ namespace PhysicalLetters::NpcLetters {
             SKSE::log::warn("[NpcLetters] No answer after {} minutes: the attempt is given up",
                             std::chrono::duration_cast<std::chrono::minutes>(kStepTimeout).count());
             ++g_attempt;  // whatever it answers later is dropped
+            ++g_tally.timedOut;
             Finish();
             return;
         }
@@ -431,6 +458,7 @@ namespace PhysicalLetters::NpcLetters {
 
         g_busy = true;
         g_stepSince = std::chrono::steady_clock::now();
+        ++g_tally.attempts;
         const Token token{ Session::Generation(), ++g_attempt };
         const int minEvents = Config::GetSingleton()->Get(Config::kNpcMinEvents);
         std::thread([now, cooldowns = g_cooldownUntil, minEvents, token,

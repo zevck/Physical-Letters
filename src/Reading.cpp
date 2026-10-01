@@ -53,8 +53,8 @@ namespace PhysicalLetters::Reading {
 
         // Its own thread (AddMemory blocks while the memory is embedded): the memory, then
         // the reading kept in LetterDB.
-        Outcome Store(const Letter& letter, const std::string& deliveryId, RE::FormID recipientFormId, std::uint32_t generation,
-                      const std::string& response)
+        Outcome Store(const Letter& letter, const std::string& deliveryId, RE::FormID recipientFormId, bool canReply,
+                      std::uint32_t generation, const std::string& response)
         {
             const auto reading = ParseResponse(response);
             if (!reading.is_object()) {
@@ -79,7 +79,8 @@ namespace PhysicalLetters::Reading {
 
             const float importance = std::clamp(GetFloat(reading, "importance", kDefaultImportance), 0.0f, 1.0f);
             const auto emotion = GetString(reading, "emotion");
-            const bool replies = GetBool(reading, "reply");
+            // A thread between NPCs at its limit: a reply would be dropped, so none is kept.
+            const bool replies = canReply && GetBool(reading, "reply");
             const auto replyText = GetString(reading, "reply_text");
 
             // The summary first: SkyrimNet embeds only the start of a long memory, so the
@@ -88,8 +89,11 @@ namespace PhysicalLetters::Reading {
             if (replies && !replyText.empty()) content += std::format("\n\nMy reply:\n{}", replyText);
 
             const auto tags = json::array({ "physical_letters", "letter_received", LetterTag(letter.id), tag }).dump();
+            // The writer, the player or an NPC.
+            RE::FormID author = SkyrimNet::FormIdForUuid(letter.authorUuid);
+            if (author == 0) author = kPlayer;
             const int memoryId = SkyrimNet::AddMemory(recipientFormId, content, importance, "RELATIONSHIP", emotion, tags,
-                                                      std::format("[{}]", kPlayer));
+                                                      std::format("[{}]", author));
             if (memoryId == 0) {
                 SKSE::log::error("[Reading] SkyrimNet didn't store {}'s memory of letter {}", letter.recipientName, letter.id);
                 return { Result::kRetry };
@@ -162,7 +166,7 @@ namespace PhysicalLetters::Reading {
         return entries;
     }
 
-    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId,
+    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId, bool canReply,
               std::function<void(Outcome)> done)
     {
         auto letter = LetterDB::GetSingleton()->Get(letterId);
@@ -175,7 +179,8 @@ namespace PhysicalLetters::Reading {
         const auto generation = Session::Generation();
         const double now = RE::Calendar::GetSingleton()->GetDaysPassed();
         // Memory queries and the LLM call block: off the game thread.
-        std::thread([letter = std::move(*letter), deliveryId, recipientFormId, generation, now, done = std::move(done)]() {
+        std::thread([letter = std::move(*letter), deliveryId, recipientFormId, canReply, generation, now,
+                     done = std::move(done)]() {
             try {
                 // This delivery again after loading an older save: after Keep the memory is
                 // still there, after Clear it was deleted with the rest of that history.
@@ -190,7 +195,7 @@ namespace PhysicalLetters::Reading {
                     SkyrimNet::Memories(recipientFormId, kMaxMemories, letter.authorName, "physical_letters"), nullptr, false);
                 if (found.is_array()) {
                     for (const auto& m : found) {
-                        if (m.contains("text") && m["text"].is_string()) memories.push_back(m["text"]);
+                        if (m.contains("content") && m["content"].is_string()) memories.push_back(m["content"]);
                     }
                 }
 
@@ -205,22 +210,25 @@ namespace PhysicalLetters::Reading {
                       { { "author", letter.authorName },
                         { "recipient", letter.recipientName },
                         { "body", letter.body },
-                        { "read_before", readBefore } } },
+                        { "read_before", readBefore },
+                        { "can_reply", canReply } } },
                     { "correspondence", Correspondence(letter.recipientUuid, letter.authorUuid, recipientFormId, now, letter.id, readBefore) },
                     { "memories", memories },
                 };
 
                 const bool queued = SkyrimNet::SendPrompt(
-                    kPrompt, context.dump(), [letter, deliveryId, recipientFormId, generation, done](std::string response, bool success) {
+                    kPrompt, context.dump(),
+                    [letter, deliveryId, recipientFormId, canReply, generation, done](std::string response, bool success) {
                         if (!success) {
                             SKSE::log::error("[Reading] The LLM call for letter {} failed: {}", letter.id, response);
                             Report(done, { Result::kRetry });
                             return;
                         }
-                        std::thread([letter, deliveryId, recipientFormId, generation, done, response = std::move(response)]() {
+                        std::thread([letter, deliveryId, recipientFormId, canReply, generation, done,
+                                     response = std::move(response)]() {
                             Outcome outcome;
                             try {
-                                outcome = Store(letter, deliveryId, recipientFormId, generation, response);
+                                outcome = Store(letter, deliveryId, recipientFormId, canReply, generation, response);
                             } catch (const std::exception& e) {
                                 SKSE::log::error("[Reading] Storing the reading of letter {} failed: {}", letter.id, e.what());
                             }

@@ -35,8 +35,14 @@ namespace PhysicalLetters::Transit {
     // An NPC's letter to the player (already created): it goes to the courier after `hours`.
     void QueueToPlayer(const Letter& letter, double hours);
 
+    // An NPC's letter to another NPC (already created): delivered after `hours`, then read.
+    void QueueToNpc(const Letter& letter, double hours);
+
+    // The letters on their way to an NPC or delivered and not yet read.
+    std::vector<std::string> PendingLetterIds();
+
     // Whether a letter to this NPC is on its way or delivered and not yet read: they have one
-    // to answer, so they don't write first (docs/NPC_LETTERS.md#who).
+    // to answer, so they don't write first (docs/NPC_LETTERS.md#who, docs/NPC_TO_NPC.md).
     bool IsLetterPendingFor(const std::string& uuid);
 
     // Delivers what is due, starts (or retries) the readings owed, and hands replies to the

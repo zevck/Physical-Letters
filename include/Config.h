@@ -50,11 +50,26 @@ namespace PhysicalLetters {
         static constexpr Setting kNpcRecentWeight  { "NpcLetters", "RecentWeight",    10,   0, 100 };
         // Spoke to the player within this many days: not drawn at all (0 = off).
         static constexpr Setting kNpcMinDaysApart  { "NpcLetters", "MinDaysApart",    1,    0, 30 };
+        // Letters between NPCs (docs/NPC_TO_NPC.md).  KnownOnly: only NPCs the player knows
+        // (NpcLetters.MinEvents) write; else anyone SkyrimNet has registered.
+        static constexpr Setting kN2nEnabled     { "NpcToNpc", "Enabled",          1,  0, 1   };
+        static constexpr Setting kN2nInterval    { "NpcToNpc", "IntervalDays",     5,  1, 60  };
+        static constexpr Setting kN2nKnownOnly   { "NpcToNpc", "KnownOnly",        0,  0, 1   };
+        static constexpr Setting kN2nMaxThreads  { "NpcToNpc", "MaxOpenThreads",   3,  1, 10  };
+        static constexpr Setting kN2nMaxLetters  { "NpcToNpc", "MaxLettersPerThread", 3, 1, 10 };
+        static constexpr Setting kN2nPairCooldown { "NpcToNpc", "PairCooldownDays", 21, 0, 120 };
+        // An attempt: writers drawn, names each may propose, memories each is shown, and how far
+        // apart writer and recipient must be (game units) besides living in different places.
+        static constexpr Setting kN2nWriters     { "NpcToNpc", "WritersPerAttempt", 4,  1, 10 };
+        static constexpr Setting kN2nNames       { "NpcToNpc", "NamesPerWriter",    3,  1, 5  };
+        static constexpr Setting kN2nMemories    { "NpcToNpc", "MemoriesPerWriter", 3,  0, 10 };
+        static constexpr Setting kN2nMinDistance { "NpcToNpc", "MinDistance",       16384, 0, 131072 };
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcNearDistance, kNpcMissedAfter, kNpcRecentWeight,
-            kNpcMinDaysApart,
+            kNpcMinDaysApart, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
+            kN2nWriters, kN2nNames, kN2nMemories, kN2nMinDistance,
         };
 
         static Config* GetSingleton()

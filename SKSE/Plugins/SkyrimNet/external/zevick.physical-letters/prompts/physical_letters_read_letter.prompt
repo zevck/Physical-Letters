@@ -2,7 +2,8 @@
    PublicSendCustomPromptToLLM; context variables:
      npc             UUID, name of the recipient
      letter          author, recipient, body of the letter being read; read_before is
-                     true when the recipient already received this same letter once
+                     true when the recipient already received this same letter once;
+                     can_reply is false when the correspondence has run its course (no reply)
      correspondence  earlier letters between the two that the recipient knows of, oldest
                      first (up to 20): from, to, days_ago, body
      memories        the recipient's other memories most relevant to the writer #}
@@ -54,7 +55,11 @@
 
     1. **React in character.** Decide how {{ actor.name }} feels on reading the letter, given {{ actor.possessiveAdjective }} personality and history with {{ letter.author }}: warmly, coldly, with suspicion, indifference or anything in between. Not everyone is glad to receive a letter.
 
+    {% if letter.can_reply %}
     2. **Decide whether {{ actor.name }} replies.** Someone close to {{ letter.author }}, or with something to say, usually does; a stranger, a busy or proud person, or someone who resents {{ letter.author }} may not.
+    {% else %}
+    2. **{{ actor.name }} doesn't reply this time**: the exchange has run its course for now. Set 'reply' to false and 'reply_text' to "".
+    {% endif %}
 
     3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessiveAdjective }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessiveAdjective }} life. If there are earlier letters, this is a correspondence: answer what is new, stay consistent with what was already written, and don't repeat it.{% if letter.read_before %} Receiving the same letter twice is odd: {{ actor.name }} notices, may be puzzled, amused or irritated, and need not answer it all over again.{% endif %}
 

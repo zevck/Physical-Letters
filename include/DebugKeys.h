@@ -23,7 +23,8 @@
 //   F6  gives the player an example letter to the NPC under the crosshair
 //   F7  sends the newest letter the player wrote and carries (arrives after Travel::Hours)
 //   F8  makes every letter in transit due now, replies included (they go to the courier),
-//       and the next letter an NPC writes first (docs/NPC_LETTERS.md)
+//       and the next letter an NPC writes first and between NPCs (docs/NPC_LETTERS.md,
+//       docs/NPC_TO_NPC.md)
 namespace PhysicalLetters::DebugKeys {
 
     // kDataLoaded.

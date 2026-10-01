@@ -242,6 +242,21 @@ namespace PhysicalLetters {
         return letters;
     }
 
+    std::vector<Letter> LetterDB::Involving(const std::string& uuid, int limit)
+    {
+        std::lock_guard lock{ mutex_ };
+        if (!db_) return {};
+        const auto sql = std::format(
+            "SELECT {} FROM letters WHERE author_uuid = ?1 OR recipient_uuid = ?1 ORDER BY written_at DESC, rowid DESC "
+            "LIMIT ?2;",
+            kLetterColumns);
+        Statement s{ db_, sql.c_str(), "Involving" };
+        s.Bind(1, uuid).Bind(2, limit);
+        std::vector<Letter> letters;
+        while (s.Next()) letters.push_back(ReadLetter(s));
+        return letters;
+    }
+
     bool LetterDB::MarkDelivered(const std::string& id, double gameDays)
     {
         std::lock_guard lock{ mutex_ };

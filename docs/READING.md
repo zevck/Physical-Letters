@@ -11,7 +11,7 @@ Context variables the plugin sets:
 | Variable | Value |
 |---|---|
 | `npc` | `{ UUID, name }` of the recipient; the template uses `decnpc(npc.UUID)` and `render_character_profile("full", npc.UUID)` |
-| `letter` | `{ author, recipient, body, read_before }`; `read_before` is true when the recipient already has a memory of this letter (it was sent again) |
+| `letter` | `{ author, recipient, body, read_before, can_reply }`; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)): the prompt then says not to reply, and a reply is ignored |
 | `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. |
 | `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
 
@@ -30,7 +30,7 @@ It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importan
 
 ## The memory
 
-`PublicAddMemory` for the recipient: type `RELATIONSHIP`, the player as related actor, the emotion, the importance, and the tags `physical_letters`, `letter_received`, `physical_letters_letter:<letter id>` and `physical_letters_delivery:<delivery id>` ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). The content:
+`PublicAddMemory` for the recipient: type `RELATIONSHIP`, the letter's author as related actor (the player, or the NPC who wrote it), the emotion, the importance, and the tags `physical_letters`, `letter_received`, `physical_letters_letter:<letter id>` and `physical_letters_delivery:<delivery id>` ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). The content:
 
 ```
 <the first-person memory>

@@ -23,6 +23,7 @@
 #include "GameTime.h"
 #include "Letters.h"
 #include "NpcLetters.h"
+#include "NpcToNpc.h"
 #include "Reading.h"
 #include "Session.h"
 #include "Courier.h"
@@ -143,16 +144,32 @@ namespace PhysicalLetters::Transit {
                 SKSE::log::info("[Transit] Letter {} to {} is with the courier", parcel.letterId, parcel.recipientName);
                 return Delivery::kToCourier;
             }
+            // A letter between NPCs that can't be delivered is dropped, and its thread ends;
+            // the player's own comes back to them.
+            const auto letter = LetterDB::GetSingleton()->Get(parcel.letterId);
+            const bool betweenNpcs = letter && NpcToNpc::IsNpcLetter(*letter);
             auto* recipient = FindRecipient(parcel);
             if (!recipient) {
                 // Someone not persistent is only found while their cell is loaded: wait, but
                 // not forever (a recipient a mod removed never turns up).
                 const int days = Config::GetSingleton()->Get(Config::kReturnAfterDays);
                 if (Now() - parcel.dueAt < days) return Delivery::kWaiting;
+                if (betweenNpcs) {
+                    SKSE::log::info("[Transit] {} wasn't found in {} days: letter {} from {} is dropped", parcel.recipientName,
+                                    days, parcel.letterId, letter->authorName);
+                    NpcToNpc::ThreadEnded(*letter);
+                    return Delivery::kLost;
+                }
                 TurnBack(parcel, nullptr, Letters::Returned::kNotFound, std::format("wasn't found in {} days", days));
                 return Delivery::kReturning;
             }
             if (recipient->IsDead()) {
+                if (betweenNpcs) {
+                    SKSE::log::info("[Transit] {} is dead: letter {} from {} is dropped", parcel.recipientName, parcel.letterId,
+                                    letter->authorName);
+                    NpcToNpc::ThreadEnded(*letter);
+                    return Delivery::kLost;
+                }
                 TurnBack(parcel, recipient, Letters::Returned::kDead, "is dead");
                 return Delivery::kReturning;
             }
@@ -164,11 +181,12 @@ namespace PhysicalLetters::Transit {
             return Delivery::kDelivered;
         }
 
-        // The recipient's reply to the player's letter: a new letter form, and a parcel that
-        // goes to the courier once the NPC has written it and it has travelled.
+        // The recipient's reply: a new letter form, and a parcel that travels once the NPC has
+        // written it, to the courier for the player, or to the NPC who wrote the letter.
         std::optional<Parcel> MakeReply(const Parcel& original, const std::string& text)
         {
             const auto sent = LetterDB::GetSingleton()->Get(original.letterId);
+            const bool betweenNpcs = sent && NpcToNpc::IsNpcLetter(*sent);
             auto* player = RE::PlayerCharacter::GetSingleton();
             const Letter reply{ .id = Letters::NewId(),
                                 .authorUuid = original.recipientUuid,
@@ -181,17 +199,19 @@ namespace PhysicalLetters::Transit {
             if (!Letters::Create(reply)) return std::nullopt;
 
             // Writing the reply, then the travel.
+            RE::TESObjectREFR* destination = betweenNpcs ? FindActor(reply.recipientUuid) : player;
             const double hours = Config::GetSingleton()->Get(Config::kWritingHours) +
-                                 Travel::Hours(FindActor(original.recipientUuid), player);
-            SKSE::log::info("[Transit] {} replies to letter {} with letter {}, due at the courier in {:.1f} game hours",
-                            reply.authorName, original.letterId, reply.id, hours);
-            NpcLetters::StartCooldown(reply.authorUuid);
+                                 Travel::Hours(FindActor(original.recipientUuid), destination);
+            SKSE::log::info("[Transit] {} replies to letter {} with letter {}, due {} in {:.1f} game hours", reply.authorName,
+                            original.letterId, reply.id, betweenNpcs ? "to " + reply.recipientName : std::string{ "at the courier" },
+                            hours);
+            if (!betweenNpcs) NpcLetters::StartCooldown(reply.authorUuid);
             return Parcel{ .letterId = reply.id,
                            .deliveryId = Letters::NewId(),
                            .recipientUuid = reply.recipientUuid,
                            .recipientName = reply.recipientName,
                            .dueAt = Now() + hours / 24.0,
-                           .state = State::kToPlayer };
+                           .state = betweenNpcs ? State::kInTransit : State::kToPlayer };
         }
 
         void OnReadingDone(const std::string& deliveryId, std::uint64_t attempt, std::uint32_t generation,
@@ -214,8 +234,14 @@ namespace PhysicalLetters::Transit {
             }
             // Read, or it never can be.  The reply is queued in the same step, so no save
             // holds a finished reading without its reply.
+            const auto letter = LetterDB::GetSingleton()->Get(it->letterId);
+            const bool betweenNpcs = letter && NpcToNpc::IsNpcLetter(*letter);
             std::optional<Parcel> reply;
-            if (outcome.result == Reading::Result::kRead && !outcome.reply.empty()) reply = MakeReply(*it, outcome.reply);
+            if (outcome.result == Reading::Result::kRead && !outcome.reply.empty() &&
+                (!betweenNpcs || NpcToNpc::CanReply(it->letterId))) {
+                reply = MakeReply(*it, outcome.reply);
+            }
+            if (betweenNpcs && !reply) NpcToNpc::ThreadEnded(*letter);
             g_parcels.erase(it);
             if (reply) g_parcels.push_back(std::move(*reply));
         }
@@ -224,10 +250,12 @@ namespace PhysicalLetters::Transit {
         {
             auto* recipient = FindRecipient(parcel);
             if (!recipient) return;
+            const auto letter = LetterDB::GetSingleton()->Get(parcel.letterId);
+            const bool canReply = !letter || !NpcToNpc::IsNpcLetter(*letter) || NpcToNpc::CanReply(parcel.letterId);
             parcel.reading = true;
             parcel.attempt = ++g_lastAttempt;
             parcel.startedAt = Clock::now();
-            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(),
+            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(), canReply,
                           [deliveryId = parcel.deliveryId, attempt = parcel.attempt,
                            generation = Session::Generation()](const Reading::Outcome& outcome) {
                               OnReadingDone(deliveryId, attempt, generation, outcome);
@@ -267,6 +295,24 @@ namespace PhysicalLetters::Transit {
                               .recipientName = letter.recipientName,
                               .dueAt = Now() + hours / 24.0,
                               .state = State::kToPlayer });
+    }
+
+    void QueueToNpc(const Letter& letter, double hours)
+    {
+        g_parcels.push_back({ .letterId = letter.id,
+                              .deliveryId = Letters::NewId(),
+                              .recipientUuid = letter.recipientUuid,
+                              .recipientName = letter.recipientName,
+                              .dueAt = Now() + hours / 24.0 });
+    }
+
+    std::vector<std::string> PendingLetterIds()
+    {
+        std::vector<std::string> ids;
+        for (const auto& p : g_parcels) {
+            if (p.state == State::kInTransit || p.state == State::kAwaitingReading) ids.push_back(p.letterId);
+        }
+        return ids;
     }
 
     void Tick()

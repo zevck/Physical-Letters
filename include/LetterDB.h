@@ -55,6 +55,8 @@ namespace PhysicalLetters {
         // Every letter between the two, either way, oldest first.  From every save of the
         // character: the caller decides which belong to this one.
         std::vector<Letter> Between(const std::string& uuidA, const std::string& uuidB);
+        // Every letter the actor wrote or received, newest first, at most `limit`.
+        std::vector<Letter> Involving(const std::string& uuid, int limit);
 
         bool MarkDelivered(const std::string& id, double gameDays);
 

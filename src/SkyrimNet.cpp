@@ -56,6 +56,9 @@ namespace PhysicalLetters::SkyrimNet {
         }
         g_available = true;
         SKSE::log::info("[SkyrimNet] Public API v{} ready", version);
+        if (!PublicSearchActors) {
+            SKSE::log::warn("[SkyrimNet] No PublicSearchActors in this SkyrimNet: letters between NPCs are off");
+        }
         return true;
     }
 
@@ -131,6 +134,34 @@ namespace PhysicalLetters::SkyrimNet {
         return PublicGetActorEngagement(0, true, true, kDay, 7 * kDay);
     }
 
+    bool CanSearchActors()
+    {
+        return g_available && PublicSearchActors;
+    }
+
+    std::string SearchActors(const std::string& name, int maxCount)
+    {
+        if (!CanSearchActors()) return "[]";
+        return PublicSearchActors(name.c_str(), maxCount);
+    }
+
+    std::string RelatedActors(RE::FormID formId, int maxCount)
+    {
+        if (!g_available || !PublicGetRelatedActors) return "[]";
+        constexpr double kDay = 86400.0;
+        return PublicGetRelatedActors(formId, maxCount, kDay, 7 * kDay);
+    }
+
+    std::string RecentMemories(RE::FormID formId, int maxCount, const std::string& excludeTag)
+    {
+        if (!g_available) return "[]";
+        MemoryQuery memoryQuery;
+        memoryQuery.maxCount = maxCount;
+        memoryQuery.excludeTags = { excludeTag };
+        memoryQuery.orderBy = MemoryOrder::GameTimeDesc;
+        return QueryMemoriesForActor(formId, memoryQuery);
+    }
+
     std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types)
     {
         if (!g_available || !PublicGetRecentEvents) return "[]";
@@ -146,10 +177,10 @@ namespace PhysicalLetters::SkyrimNet {
     }
 
     bool SendPrompt(const std::string& promptName, const std::string& contextJson,
-                    std::function<void(std::string response, bool success)> callback)
+                    std::function<void(std::string response, bool success)> callback, const std::string& variant)
     {
         if (!g_available) return false;
-        return PublicSendCustomPromptToLLM(promptName.c_str(), "", contextJson.c_str(),
+        return PublicSendCustomPromptToLLM(promptName.c_str(), variant.c_str(), contextJson.c_str(),
                                            [callback = std::move(callback)](const char* response, int success) {
                                                callback(response ? response : "", success == 1);
                                            });

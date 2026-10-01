@@ -1,0 +1,37 @@
+{# Physical Letters: a cheap pass that proposes, for a few NPCs, whom each would write a letter
+   to.  Sent with PublicSendCustomPromptToLLM on the "meta" variant, whose output may be capped
+   short (SkyrimNet's default: 100 tokens), so the answer is names only.  Context:
+     writers  [{ number, UUID, name, place, memories, letters }]: memories are their newest,
+              letters their recent letters with other NPCs ("wrote to X, 5 days ago")
+     player   the player's name (letters to the player are a separate feature)
+     names    at most this many names per writer, best first #}
+[ system ]
+    You decide whom each of these people in Skyrim would plausibly write a letter to, if anyone. Use what their profiles and memories say, and what you know of Skyrim. Answer with compact JSON only, no explanation.
+[ end system ]
+
+[ user ]
+    {% for w in writers %}
+    ## {{ w.number }}. {{ w.name }}, {{ w.place }}
+    {{ render_character_profile("short_inline", w.UUID) }}
+    {% if w.memories and length(w.memories) > 0 %}
+    Lately:
+    {% for memory in w.memories -%}
+    - {{ memory }}
+    {% endfor %}
+    {% endif %}
+    {% if w.letters and length(w.letters) > 0 %}
+    Letters:
+    {% for line in w.letters -%}
+    - {{ line }}
+    {% endfor %}
+    {% endif %}
+
+    {% endfor %}
+    For each person, name up to {{ names }} people they'd write to, best first:
+
+    - A specific person, by the name they go by, not a description of them ("Nilsine Shatter-Shield", not "Torsten's daughter" or "Windhelm's steward"). Someone who lives somewhere else, not someone they live with or next to.
+    - Only a tie they really have, from their profile, memories or Skyrim's lore. Sharing a trade or a town isn't friendship, but it can be a reason for a letter of that kind.
+    - Not {{ player }}.
+
+    Return only names, on one line, keyed by the person's number; leave out anyone with no one to write to: {"1":["Name","Name"],"3":["Name"]}
+[ end user ]

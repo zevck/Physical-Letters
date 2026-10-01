@@ -67,6 +67,18 @@ namespace PhysicalLetters::SkyrimNet {
     // (UUIDs), gameTime (game seconds), ... }.  Blocks: not on the game thread.
     std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types);
 
+    // Whether this SkyrimNet has PublicSearchActors (letters between NPCs need it).
+    bool CanSearchActors();
+    // Actors SkyrimNet has registered in this save whose name contains `name` ("" = all), best
+    // match first: [{ uuid (number), formId, name, isPlayer }].  Same-named actors are all
+    // listed.  "[]" on error or without the export.  Touches no game objects.
+    std::string SearchActors(const std::string& name, int maxCount);
+    // Actors sharing events with the actor (PublicGetRelatedActors): [{ formId, name,
+    // sharedEventCount, ... }]; its times are unusable (docs/NPC_LETTERS.md#who).  Blocks.
+    std::string RelatedActors(RE::FormID formId, int maxCount);
+    // The actor's newest memories, without those tagged `excludeTag`.  Blocks.
+    std::string RecentMemories(RE::FormID formId, int maxCount, const std::string& excludeTag);
+
     // Stores a memory for the actor.  Blocks while it is embedded: not on the game thread.
     // Returns the memory id, 0 on error.
     int AddMemory(RE::FormID formId, const std::string& content, float importance, const std::string& type,
@@ -75,7 +87,9 @@ namespace PhysicalLetters::SkyrimNet {
     // Renders the prompt template `promptName` with the context variables and sends it to
     // the LLM.  The callback runs on a SkyrimNet worker thread, never the game thread, and
     // not at all if SkyrimNet cancels the task.
+    // `variant`: the OpenRouter variant in SkyrimNet's config ("meta", ...); "" or one the
+    // config lacks is the default model.
     bool SendPrompt(const std::string& promptName, const std::string& contextJson,
-                    std::function<void(std::string response, bool success)> callback);
+                    std::function<void(std::string response, bool success)> callback, const std::string& variant = {});
 
 } // namespace PhysicalLetters::SkyrimNet

@@ -8,6 +8,7 @@ Three places hold a letter's state, each for a reason:
 | Which letter each form is | Co-save record `LFRM` | The save keeps only a form's flags |
 | Letters in transit, awaiting reading, or on their way to the courier; which of the player's letters came back and why | Co-save record `LTRN` | Must revert with the save |
 | When the next NPC letter is due; NPCs on cooldown | Co-save record `LNPC` ([NPC_LETTERS.md](NPC_LETTERS.md#saves)) | Must revert with the save |
+| When NPCs next start writing to each other; pairs on cooldown | Co-save record `LN2N` ([NPC_TO_NPC.md](NPC_TO_NPC.md#saves)); the letters are `LTRN` parcels | Must revert with the save |
 | A reply the courier holds | The courier's container (`WICourierContainerRef`) | The engine saves it like any other inventory |
 | Each letter's text, author, recipient, reading | LetterDB | The text is written once, so one row serves every save of the character |
 
@@ -64,6 +65,9 @@ A letter an NPC writes first carries its letter tag on the **writer's** memory o
 | NPC letters: a save from before an NPC wrote, **Keep** | The schedule and cooldowns are the save's (`LNPC`), and the letter's parcel isn't in it; the writer's tagged memory of writing stays, so their next reading lists a letter the player never got. Accepted: SkyrimNet's Keep keeps what the NPC lived through |
 | NPC letters: the same, **Clear** | The memory goes with the rest of that history |
 | NPC letters: a save without `LNPC` (older, or new) | The next letter is scheduled when the session is first ready |
+| Letters between NPCs: a load while one is written, read or answered | The result is dropped (session generation, attempt token); the loaded save's parcels and schedule decide |
+| Letters between NPCs: a save from before a letter, **Keep** | The letter's parcel isn't in the save; the writer's tagged memory of writing, and any reader's memory, stay (SkyrimNet's Keep) |
+| Letters between NPCs: the same, **Clear** | The memories go with the rest of that history |
 | SkyrimNet missing or too old | Letters keep their look, show `...`, nothing is delivered; the log says why |
 
 Tested in game on AE (2026-09-30): creation, sending, delivery after the delay, reading and the memory; Keep, Clear and a load during a reading; replies through the courier and the correspondence; the hand-over; returned letters and their card line. Not tested yet: a letter sent again (`read_before`), the retry path, a second character, SE and VR.

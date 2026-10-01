@@ -55,7 +55,9 @@ namespace PhysicalLetters::Reading {
 
     // Game thread.  The work runs on other threads; `done` is then called on the game
     // thread, once, unless SkyrimNet drops the LLM task (the caller times out).
-    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId,
+    // `canReply` false (a thread between NPCs at its limit): the recipient is told not to
+    // reply, and no reply is returned.
+    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID recipientFormId, bool canReply,
               std::function<void(Outcome)> done);
 
 } // namespace PhysicalLetters::Reading

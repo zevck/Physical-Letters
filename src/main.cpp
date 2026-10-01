@@ -20,6 +20,7 @@
 #include "DebugKeys.h"
 #include "Postage.h"
 #include "NpcLetters.h"
+#include "NpcToNpc.h"
 #include "Config.h"
 #include "Papyrus.h"
 #include "DynamicForms.h"
@@ -50,6 +51,7 @@ namespace {
                         PhysicalLetters::Session::Poll();
                         PhysicalLetters::Transit::Tick();
                         PhysicalLetters::NpcLetters::Tick();
+                        PhysicalLetters::NpcToNpc::Tick();
                     } catch (const std::exception& e) {
                         SKSE::log::error("Heartbeat failed: {}", e.what());
                     }

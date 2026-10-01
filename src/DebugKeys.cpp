@@ -23,6 +23,7 @@
 #include "Session.h"
 #include "SkyrimNet.h"
 #include "NpcLetters.h"
+#include "NpcToNpc.h"
 #include "Transit.h"
 
 namespace PhysicalLetters::DebugKeys {
@@ -170,7 +171,8 @@ namespace PhysicalLetters::DebugKeys {
                             } else {
                                 Transit::MakeAllDue();
                                 NpcLetters::MakeDue();
-                                Notify("Letters in transit, and the next NPC letter, are due now.");
+                                NpcToNpc::MakeDue();
+                                Notify("Letters in transit, and the next NPC letters, are due now.");
                             }
                         } catch (const std::exception& e) {
                             SKSE::log::error("[DebugKeys] Key 0x{:X} failed: {}", key, e.what());
