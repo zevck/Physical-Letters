@@ -37,8 +37,26 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x817`, `0x818` | DialogTopic + DialogResponses | `PhysicalLettersCourierReply` | The recipient's thanks (scene topic); `0x818` is "Of course." (`ResponseData` `0x0DBA22`) for `DefaultNPCVoiceTypes` not in `0x819` |
 | `0x819` | FormList | `PhysicalLettersCourierThanksVoices` | The voice types that thank the courier |
 | `0x81A`–`0x83E` | DialogResponses ×37 | | The thanks, one per vanilla `WISharedThanks` line (39 voice types: two lines serve two each): `ResponseData` the vanilla `WISharedThanks…` line, its voice-type conditions copied ([COURIER.md](COURIER.md#an-errand)) |
+| `0x83F` | Global (short) | `PhysicalLettersRoadCourierReady` | 1 while a letter passes the player; set by the DLL, read by the road node ([ROAD_COURIER.md](ROAD_COURIER.md)) |
+| `0x840` | Quest | `PLRoadCourier` | The road encounter: script `PhysicalLetters_RoadCourierQuest`; aliases Trigger (`Ref1` of `WERoadStart`), TravelMarker1/2 (linked `WETravel` markers, as vanilla's road quests), Courier (vanilla `0x039FB7`, packages `0x850`, `0x851`, `0x856`, `0x842`; script `PhysicalLetters_RoadCourierAlias`), CourierMarker, Goal (filled by the script), Recipient (in town). Stages 10 (carrying letters), 15 (refused a threat), 17 (going to the recipient in town), 20 (handed them to the player: rests) and 25 (walks on) |
+| `0x841` | Story Manager quest node | `PhysicalLettersRoadCourierNode` | Under `WEQuestNode`, before `WERoadQuests`; `WERoadStart`, the global, the courier in `WICourierCell`, 8:00 to 20:00; doesn't share the event |
+| `0x842` | Package | `PhysicalLettersRoadCourierTravel` | Travel (jog) to the Goal alias, radius 512, vanilla road traveller interrupt flags |
+| `0x843`, `0x844` | DialogBranch + DialogTopic | `PhysicalLettersRoadBranch`, `PhysicalLettersRoadIntimidate` | "Give me the letters you're carrying. (Intimidate)" |
+| `0x845`–`0x848` | DialogResponses ×4 | | He folds (Speech ≥ `0x84C` or the Intimidation perk, and `GetIntimidateSuccess`; shared `0x0E0CBD`/`BE`/`BF`, random; TIF `PhysicalLetters_TIF_RoadIntimidate`), or refuses (shared `0x0E0CC4`, "Nah. I don't think so."; TIF `PhysicalLetters_TIF_RoadRefuse` sets stage 15; links to `0x84E`) |
+| `0x849`–`0x84B` | DialogBranch + DialogTopic + DialogResponses | `PhysicalLettersRoadHandOverBranch`, `PhysicalLettersRoadHandOver` | "Your letters. Now." while he's intimidated by the player; shared `0x0E0CBE`; TIF `PhysicalLetters_TIF_RoadHandOver` |
+| `0x84C` | Global (short) | `PhysicalLettersRoadIntimidateSpeech` | The Speech the threat needs; set by the DLL from the INI |
+| `0x84D`–`0x84F` | DialogBranch + DialogTopic + DialogResponses | `PhysicalLettersRoadBrawlBranch`, `PhysicalLettersRoadBrawl` | "Then I'll take them. (Brawl)" after a refusal (stage 15); shared `0x0E0CC6`; TIF `PhysicalLetters_TIF_RoadBrawl` |
+| `0x850`, `0x851` | Package | `PhysicalLettersRoadCourierRest`, `PhysicalLettersRoadCourierWalkOn` | After handing his letters to the player: stand (stage 20, vanilla stay-put data), then walk to the Goal (stage ≥ 25); the jog package `0x842` only below stage 20 |
+| `0x852`, `0x853` | DialogTopic + DialogResponses | (no EditorID) | Scene topic: "I have a letter here for you." in the road delivery scene; the courier's voice copied as `plroadcourier__00000853_1.fuz`; `IdleGive`; TIF `PhysicalLetters_TIF_RoadDeliver` hands the letter over |
+| `0x854`, `0x855` | DialogTopic + DialogResponses | (no EditorID) | "Whatever you say!" (shared `0x0E0CBE`), said by the script as he hands his letters over after losing a brawl |
+| `0x856` | Package | `PhysicalLettersRoadCourierDeliver` | Jog to the Goal alias (the recipient in town), radius 128, at stage 17 |
+| `0x857` | Scene | `PhysicalLettersRoadDeliveryScene` | The town delivery scene, copied into the road quest: Courier (alias 3) and Recipient (alias 6) |
+| `0x858`–`0x85D` | DialogTopic + DialogResponses ×3 | (no EditorID) | The courier's other three scene lines, voices copied as `plroadcourier__00000859/5B/5D_1.fuz` |
+| `0x85E`–`0x884` | DialogTopic + DialogResponses ×38 | `PhysicalLettersRoadCourierReply` | The recipient's thanks, a copy of `0x817`–`0x83E` (`0x85F` is "Of course.") |
+| `0x885` | Package | `PhysicalLettersRoadSceneApproach` | The scene's approach: jog to the Recipient alias, radius 150 |
+| `0x886` | DialogResponses in vanilla `DGIntimidateVictoryTopic` (`0x047AC6`, overridden to hold it) | | The courier's yield after losing vanilla's brawl, "Don't hurt me! You win." (shared `0x0E0CBF`); otherwise a copy of vanilla's generic `0x047ADB` (script `TIF__00047ADB`, links, walk-away topic). Previous info `0x0F07B9`, so it comes just before vanilla's generic yields (`0x047ADB`, `0x078F76`, `0x047ADC`), the last in the topic; without the link a new info lands after them |
 
-The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`).
+The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`).
 
 The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 
@@ -65,7 +83,7 @@ If a record is easier to make in the Creation Kit or xEdit, edit the deployed `.
 
 ## Papyrus
 
-The scripts' sources (the two TIFs, the MCM and the courier quest) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
+The scripts' sources (the TIFs, the MCM and the two courier quests) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
 
 ## The SEQ file
 

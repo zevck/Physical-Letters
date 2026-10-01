@@ -1,0 +1,10 @@
+FormKey: 000855:Physical Letters.esp
+Flags: {}
+FavorLevel: None
+ResponseData: 0E0CBE:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIsIDConditionData
+    Object: 039F83:Skyrim.esm
+  ComparisonValue: 1

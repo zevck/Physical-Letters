@@ -16,6 +16,10 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[Delivery] ReturnAfterDays` | 3 | 1–30 | Game days a due letter waits for a recipient who can't be found before the courier brings it back ([DELIVERY.md](DELIVERY.md#undeliverable-letters)) |
 | `[Courier] Enabled` | 1 | 0/1 | The courier brings letters in person to NPCs in the player's town ([COURIER.md](COURIER.md)) |
 | `[Courier] WaitHours` | 2 | 0–24 | Game hours a letter for someone in the player's town waits for the courier before it goes in unseen |
+| `[Courier] RoadEncounters` | 1 | 0/1 | The courier may be met on the road with letters passing there ([ROAD_COURIER.md](ROAD_COURIER.md)) |
+| `[Courier] RoadCooldownDays` | 3 | 0–30 | Game days after meeting him on the road before he can be met again |
+| `[Courier] IntimidateSpeech` | 40 | 0–100 | Speech needed to threaten the courier on the road into handing over his letters (or the Intimidation perk); otherwise he refuses and only a brawl gets them |
+| `[Courier] RobberyBounty` | 40 | 0–1000 | Bounty (gold, non-violent) the courier reports in that hold when threatened or brawled into handing over his letters; 0 = none |
 | `[NpcLetters] Enabled` | 1 | 0/1 | NPCs write to the player first ([NPC_LETTERS.md](NPC_LETTERS.md)) |
 | `[NpcLetters] IntervalDays` | 7 | 1–60 | Game days between attempts, times 0.5–1.5 at random |
 | `[NpcLetters] CooldownDays` | 14 | 0–120 | After an NPC writes to the player (first or in reply), game days before they may write first again |

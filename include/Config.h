@@ -70,12 +70,20 @@ namespace PhysicalLetters {
         // waits for him at most WaitHours (game hours), then goes in off-screen.
         static constexpr Setting kCourierEnabled   { "Courier", "Enabled",   1, 0, 1  };
         static constexpr Setting kCourierWaitHours { "Courier", "WaitHours", 2, 0, 24 };
+        // The courier met on the road with letters passing there (docs/ROAD_COURIER.md).
+        static constexpr Setting kRoadEncounters   { "Courier", "RoadEncounters",   1, 0, 1  };
+        static constexpr Setting kRoadCooldown     { "Courier", "RoadCooldownDays", 3, 0, 30 };
+        // Speech needed to threaten him (or the Intimidation perk), besides the engine's check.
+        static constexpr Setting kRoadIntimidate   { "Courier", "IntimidateSpeech", 40, 0, 100 };
+        // Bounty (gold, non-violent) he reports when he was threatened or beaten into handing over.
+        static constexpr Setting kRobberyBounty    { "Courier", "RobberyBounty",    40, 0, 1000 };
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcNearDistance, kNpcMissedAfter, kNpcRecentWeight,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kN2nMinDistance, kCourierEnabled, kCourierWaitHours,
+            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty,
         };
 
         static Config* GetSingleton()

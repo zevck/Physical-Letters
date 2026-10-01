@@ -1,0 +1,37 @@
+FormKey: 000841:Physical Letters.esp
+EditorID: PhysicalLettersRoadCourierNode
+Parent: 0896A8:Skyrim.esm
+PreviousSibling: 0F2199:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetEventDataConditionData
+    Member: Keyword
+    Record: 1027A6:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionFloat
+  CompareOperator: GreaterThanOrEqualTo
+  Data:
+    MutagenObjectType: GetGlobalValueConditionData
+    Global: 00083F:Physical Letters.esp
+  ComparisonValue: 1
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetInCellConditionData
+    RunOnType: Reference
+    Reference: 039FB7:Skyrim.esm
+    Cell: 039F67:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionFloat
+  CompareOperator: GreaterThanOrEqualTo
+  Data:
+    MutagenObjectType: GetCurrentTimeConditionData
+  ComparisonValue: 8
+- MutagenObjectType: ConditionFloat
+  CompareOperator: LessThan
+  Data:
+    MutagenObjectType: GetCurrentTimeConditionData
+  ComparisonValue: 20
+MaxConcurrentQuests: 0
+Quests:
+- Quest: 000840:Physical Letters.esp

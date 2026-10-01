@@ -1,0 +1,156 @@
+FormKey: 000840:Physical Letters.esp
+EditorID: PLRoadCourier
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_RoadCourierQuest
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: Courier
+      Object: 000840:Physical Letters.esp
+      Alias: 3
+    - MutagenObjectType: ScriptObjectProperty
+      Name: CourierMarker
+      Object: 000840:Physical Letters.esp
+      Alias: 4
+    - MutagenObjectType: ScriptObjectProperty
+      Name: DeliveryScene
+      Object: 000857:Physical Letters.esp
+    - MutagenObjectType: ScriptObjectProperty
+      Name: GameHour
+      Object: 000038:Skyrim.esm
+    - MutagenObjectType: ScriptObjectProperty
+      Name: GiveUpTopic
+      Object: 000854:Physical Letters.esp
+    - MutagenObjectType: ScriptObjectProperty
+      Name: Goal
+      Object: 000840:Physical Letters.esp
+      Alias: 5
+    - MutagenObjectType: ScriptObjectProperty
+      Name: RecipientAlias
+      Object: 000840:Physical Letters.esp
+      Alias: 6
+    - MutagenObjectType: ScriptObjectProperty
+      Name: RoadTrigger
+      Object: 000840:Physical Letters.esp
+      Alias: 0
+    - MutagenObjectType: ScriptObjectProperty
+      Name: TravelMarker1
+      Object: 000840:Physical Letters.esp
+      Alias: 1
+    - MutagenObjectType: ScriptObjectProperty
+      Name: TravelMarker2
+      Object: 000840:Physical Letters.esp
+      Alias: 2
+  FileName: ''
+  Aliases:
+  - Property:
+      Name: ''
+      Object: 000840:Physical Letters.esp
+      Alias: 3
+    Scripts:
+    - Name: PhysicalLetters_RoadCourierAlias
+      Properties:
+      - MutagenObjectType: ScriptObjectProperty
+        Name: DGIntimidateQuest
+        Object: 047AE6:Skyrim.esm
+Name:
+  TargetLanguage: English
+  Value: Physical Letters road courier
+Priority: 50
+QuestFormVersion: 0
+Event: SCPT
+Stages:
+- Flags:
+  - StartUpStage
+  LogEntries:
+  - Flags: []
+- Index: 10
+  LogEntries:
+  - Flags: []
+- Index: 15
+  LogEntries:
+  - Flags: []
+- Index: 17
+  LogEntries:
+  - Flags: []
+- Index: 20
+  LogEntries:
+  - Flags: []
+- Index: 25
+  LogEntries:
+  - Flags: []
+- Index: 255
+  Flags:
+  - ShutDownStage
+  LogEntries:
+  - Flags: []
+NextAliasID: 7
+Aliases:
+- Name: Trigger
+  Flags: []
+  FindMatchingRefFromEvent:
+    FromEvent: SCPT
+    EventData: 12626
+  VoiceTypes: Null
+- ID: 1
+  Name: TravelMarker1
+  Flags: []
+  FindMatchingRefNearAlias:
+    AliasID: 0
+    Type: LinkedRefChild
+  Conditions:
+  - MutagenObjectType: ConditionFloat
+    Data:
+      MutagenObjectType: IsLinkedToConditionData
+      UseAliases: True
+    ComparisonValue: 1
+  - MutagenObjectType: ConditionFloat
+    Data:
+      MutagenObjectType: HasRefTypeConditionData
+      LocationReferenceType: 04A5F5:Skyrim.esm
+    ComparisonValue: 1
+  VoiceTypes: Null
+- ID: 2
+  Name: TravelMarker2
+  Flags: []
+  FindMatchingRefNearAlias:
+    AliasID: 0
+    Type: LinkedRefChild
+  Conditions:
+  - MutagenObjectType: ConditionFloat
+    Data:
+      MutagenObjectType: IsLinkedToConditionData
+      UseAliases: True
+    ComparisonValue: 1
+  - MutagenObjectType: ConditionFloat
+    Data:
+      MutagenObjectType: HasRefTypeConditionData
+      LocationReferenceType: 04A5F5:Skyrim.esm
+    ComparisonValue: 1
+  VoiceTypes: Null
+- ID: 3
+  Name: Courier
+  Flags:
+  - AllowDisabled
+  ForcedReference: 039FB7:Skyrim.esm
+  PackageData:
+  - 000850:Physical Letters.esp
+  - 000851:Physical Letters.esp
+  - 000856:Physical Letters.esp
+  - 000842:Physical Letters.esp
+  VoiceTypes: Null
+- ID: 4
+  Name: CourierMarker
+  Flags: []
+  ForcedReference: 039FBA:Skyrim.esm
+  VoiceTypes: Null
+- ID: 5
+  Name: Goal
+  Flags:
+  - Optional
+  VoiceTypes: Null
+- ID: 6
+  Name: Recipient
+  Flags:
+  - Optional
+  VoiceTypes: Null

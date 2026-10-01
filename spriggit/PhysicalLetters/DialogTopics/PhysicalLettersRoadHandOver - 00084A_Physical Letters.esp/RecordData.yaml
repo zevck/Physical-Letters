@@ -1,0 +1,8 @@
+FormKey: 00084A:Physical Letters.esp
+EditorID: PhysicalLettersRoadHandOver
+Name:
+  TargetLanguage: English
+  Value: Your letters. Now.
+Branch: 000849:Physical Letters.esp
+Quest: 000840:Physical Letters.esp
+SubtypeName: CUST

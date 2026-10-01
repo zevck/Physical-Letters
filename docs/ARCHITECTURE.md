@@ -27,6 +27,7 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | NpcLetters | `src/NpcLetters.cpp` | NPCs writing to the player first: the schedule, the pick, the prompt, cooldowns |
 | Travel | `src/Travel.cpp` | How long a letter travels (the engine's fast-travel formula); areas, towns and distances (`Area`, `IsTown`, `Distance`) |
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
+| RoadCourier | `src/RoadCourier.cpp` | The courier met on the road: which letters pass the player, the Story Manager global, the cooldown, the quest's natives ([ROAD_COURIER.md](ROAD_COURIER.md)) |
 | CourierErrand | `src/CourierErrand.cpp` | The courier carrying a letter to an NPC in the player's town: the quest's natives, who holds him, the Story Manager global ([COURIER.md](COURIER.md)) |
 | Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |

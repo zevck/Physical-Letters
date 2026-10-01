@@ -1,0 +1,54 @@
+FormKey: 000848:Physical Letters.esp
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_TIF_RoadRefuse
+  ScriptFragments:
+    MutagenObjectType: ScriptFragments
+    FileName: PhysicalLetters_TIF_RoadRefuse
+    OnEnd:
+      ExtraBindDataVersion: 1
+      ScriptName: PhysicalLetters_TIF_RoadRefuse
+      FragmentName: Fragment_0
+Flags: {}
+FavorLevel: None
+LinkTo:
+- 00084E:Physical Letters.esp
+ResponseData: 0E0CC4:Skyrim.esm
+Conditions:
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIsIDConditionData
+    Object: 039F83:Skyrim.esm
+  ComparisonValue: 1
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetStageConditionData
+    Quest: 000840:Physical Letters.esp
+  ComparisonValue: 10
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: IsIntimidatedbyPlayerConditionData
+- MutagenObjectType: ConditionGlobal
+  CompareOperator: LessThan
+  Flags:
+  - OR
+  Data:
+    MutagenObjectType: GetActorValueConditionData
+    RunOnType: Reference
+    Reference: 000014:Skyrim.esm
+    ActorValue: Speech
+  ComparisonValue: 00084C:Physical Letters.esp
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIntimidateSuccessConditionData
+- MutagenObjectType: ConditionFloat
+  Flags:
+  - OR
+  Data:
+    MutagenObjectType: HasPerkConditionData
+    RunOnType: Reference
+    Reference: 000014:Skyrim.esm
+    Perk: 105F29:Skyrim.esm
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetIntimidateSuccessConditionData

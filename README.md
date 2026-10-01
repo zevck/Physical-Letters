@@ -2,7 +2,7 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
+**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). On the roads you may meet him carrying a letter that passes there: post a letter with him, threaten or brawl him for his letters, or pick his pocket (built, not yet tested). Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
 
 ## Requirements
 
@@ -18,6 +18,7 @@ SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physi
 | `Physical Letters.esp` | ESL-flagged plugin: the postage dialogue for innkeepers and the courier, and the courier's errand to an NPC in town (quest, scene, lines) |
 | `Scripts/PhysicalLetters_TIF_Postage.pex` | The dialogue's script (opens the gift menu) |
 | `Scripts/PhysicalLetters_CourierQuest.pex`, `Scripts/PhysicalLetters_TIF_CourierHandOver.pex` | The courier's errand |
+| `Scripts/PhysicalLetters_RoadCourierQuest.pex`, `Scripts/PhysicalLetters_TIF_Road*.pex` | The courier on the road |
 | `Sound/Voice/Physical Letters.esp/` | The courier's lines: copies of his vanilla voice files, under the plugin's own records |
 | `Scripts/PhysicalLetters_MCM.pex`, `Interface/Translations/` | The MCM |
 | `Source/Scripts/*.psc` | The scripts' sources |
@@ -28,7 +29,7 @@ At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.
 
 ## Settings
 
-In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, and whether the courier delivers in person in town. See [docs/SETTINGS.md](docs/SETTINGS.md).
+In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, and whether he can be met on the road. See [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Dev keys
 

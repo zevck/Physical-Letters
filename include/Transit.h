@@ -27,6 +27,21 @@
 // loading one made before the reading finished reads it again.  Game thread only.
 namespace PhysicalLetters::Transit {
 
+    // A letter's way, straight from where it set out to where it goes, on one worldspace's
+    // map (docs/ROAD_COURIER.md); world 0 when it can't be placed.
+    struct Route {
+        RE::FormID world = 0;
+        float fromX = 0, fromY = 0, toX = 0, toY = 0;
+        double departAt = 0;  // game days: when it set out (a reply, once written)
+    };
+
+    // A letter on its way now, to an NPC or to the courier for the player.
+    struct OnTheRoad {
+        std::string deliveryId;
+        Route route;
+        double dueAt = 0;
+    };
+
     // Takes the letter from whoever holds it (the player, or the innkeeper it was handed to);
     // it reaches its recipient after the travel time from there (Travel::Hours).  Returns that
     // time in game hours, nothing if the holder hasn't the letter.
@@ -54,6 +69,31 @@ namespace PhysicalLetters::Transit {
 
     // The errand ended: a letter not handed over goes in off-screen.
     void CourierDone(RE::Actor* courier);
+
+    // The letters on their way now, with a route.
+    std::vector<OnTheRoad> LettersOnTheRoad();
+
+    // The road courier (docs/ROAD_COURIER.md): these letters go into his inventory; how many.
+    int TakeForRoad(RE::Actor* courier, const std::vector<std::string>& deliveryIds);
+
+    // The recipient of a letter he carries to an NPC (his destination), or nullptr.
+    RE::Actor* RoadRecipient();
+
+    // The route of a letter he carries, or nothing.
+    std::optional<Route> RoadRoute();
+
+    // He gives his letters to the player: they're the player's now.  The forms to move to them.
+    std::vector<RE::TESForm*> RoadHandOver(RE::Actor* courier);
+
+    // He reached his destination town without its recipient at hand: his letters go on, due
+    // now (delivered in town as any other).
+    void RoadOnward(RE::Actor* courier);
+
+    // He hands his letter for `recipient` over: delivered, then read.  False if he hasn't one.
+    bool RoadDeliver(RE::Actor* courier, RE::Actor* recipient);
+
+    // The encounter ended: letters he still has go on their way; missing ones the player took.
+    void RoadDone(RE::Actor* courier);
 
     // Delivers what is due, starts (or retries) the readings owed, and hands replies to the
     // courier.  Runs every heartbeat once the session is ready.

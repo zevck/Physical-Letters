@@ -1,0 +1,8 @@
+FormKey: 000844:Physical Letters.esp
+EditorID: PhysicalLettersRoadIntimidate
+Name:
+  TargetLanguage: English
+  Value: Give me the letters you're carrying. (Intimidate)
+Branch: 000843:Physical Letters.esp
+Quest: 000840:Physical Letters.esp
+SubtypeName: CUST

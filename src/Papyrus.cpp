@@ -20,6 +20,7 @@
 #include "Papyrus.h"
 #include "Config.h"
 #include "CourierErrand.h"
+#include "RoadCourier.h"
 #include "Postage.h"
 
 namespace PhysicalLetters::Papyrus {
@@ -70,7 +71,9 @@ namespace PhysicalLetters::Papyrus {
             // kSettings holds copies: compare by key.
             const std::string_view key = s->key;
             if (key == Config::kDebugLog.key) {
-                spdlog::default_logger()->set_level(config->Get(*s) ? spdlog::level::debug : spdlog::level::info);
+                const auto level = config->Get(*s) ? spdlog::level::debug : spdlog::level::info;
+                spdlog::default_logger()->set_level(level);
+                spdlog::default_logger()->flush_on(level);
             } else if (key == Config::kPostage.key) {
                 Postage::ApplyPrice();
             }
@@ -83,7 +86,7 @@ namespace PhysicalLetters::Papyrus {
             vm->RegisterFunction("GetSettingDefault", kScript, GetSettingDefault);
             vm->RegisterFunction("GetSettingMin", kScript, GetSettingMin);
             vm->RegisterFunction("GetSettingMax", kScript, GetSettingMax);
-            return CourierErrand::RegisterFunctions(vm);
+            return CourierErrand::RegisterFunctions(vm) && RoadCourier::RegisterFunctions(vm);
         }
     }
 

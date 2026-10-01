@@ -23,6 +23,7 @@
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
 #include "CourierErrand.h"
+#include "RoadCourier.h"
 #include "Transit.h"
 
 namespace PhysicalLetters::Serialization {
@@ -33,6 +34,7 @@ namespace PhysicalLetters::Serialization {
         constexpr std::uint32_t kTransitRecord = 'LTRN';
         constexpr std::uint32_t kNpcLettersRecord = 'LNPC';
         constexpr std::uint32_t kNpcToNpcRecord = 'LN2N';
+        constexpr std::uint32_t kRoadCourierRecord = 'LROD';
 
         void SaveCallback(SKSE::SerializationInterface* a_intfc)
         {
@@ -42,6 +44,7 @@ namespace PhysicalLetters::Serialization {
                 Transit::Save(a_intfc, kTransitRecord);
                 NpcLetters::Save(a_intfc, kNpcLettersRecord);
                 NpcToNpc::Save(a_intfc, kNpcToNpcRecord);
+                RoadCourier::Save(a_intfc, kRoadCourierRecord);
             } catch (const std::exception& e) {
                 SKSE::log::error("SaveCallback exception: {}", e.what());
             }
@@ -53,6 +56,7 @@ namespace PhysicalLetters::Serialization {
             Letters::Revert();
             Transit::Revert();
             CourierErrand::Revert();
+            RoadCourier::Revert();
             NpcLetters::Revert();
             NpcToNpc::Revert();
         }
@@ -68,6 +72,7 @@ namespace PhysicalLetters::Serialization {
                     else if (type == kTransitRecord) Transit::Load(a_intfc, version);
                     else if (type == kNpcLettersRecord) NpcLetters::Load(a_intfc, version);
                     else if (type == kNpcToNpcRecord) NpcToNpc::Load(a_intfc, version);
+                    else if (type == kRoadCourierRecord) RoadCourier::Load(a_intfc, version);
                 }
                 Letters::ConfigureLoaded();
             } catch (const std::exception& e) {

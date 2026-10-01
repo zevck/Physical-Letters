@@ -145,6 +145,20 @@ namespace PhysicalLetters::Travel {
         return a_location && habitation && a_location->HasKeyword(habitation);
     }
 
+    std::optional<MapPoint> PointOf(RE::TESObjectREFR* a_ref)
+    {
+        const auto place = WorldPlace(a_ref);
+        if (!place || !place->world) return std::nullopt;
+        const auto& position = place->ref->GetPosition();
+        return MapPoint{ place->world->GetFormID(), position.x, position.y };
+    }
+
+    RE::TESObjectREFR* MarkerFor(const RE::BGSLocation* a_location)
+    {
+        const auto place = MarkerOf(a_location);
+        return place ? place->ref.get() : nullptr;
+    }
+
     const RE::BGSLocation* Area(RE::TESObjectREFR* a_ref)
     {
         if (!a_ref) return nullptr;

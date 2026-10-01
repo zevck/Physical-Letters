@@ -66,7 +66,6 @@ Co-save record `LN2N` (version 1): the next attempt's time (`double`, game days;
 
 ## Not built yet
 
-- **The courier on the road**, and intercepting letters there (phase 3, after [COURIER.md](COURIER.md)): an occasional encounter with a cooldown; pickpocketing him is a crime, and he's essential.
 - **Handing letters in person** to their recipient.
 
 ## Testing

@@ -40,4 +40,16 @@ namespace PhysicalLetters::Travel {
     // A settlement: the location has LocTypeHabitation.
     bool IsTown(const RE::BGSLocation* a_location);
 
+    // Where a reference is on the exterior map: its root worldspace and position (an interior
+    // counts as its location's marker).
+    struct MapPoint {
+        RE::FormID world = 0;
+        float x = 0;
+        float y = 0;
+    };
+    std::optional<MapPoint> PointOf(RE::TESObjectREFR* a_ref);
+
+    // The location's map marker (or its parent's), or nullptr.
+    RE::TESObjectREFR* MarkerFor(const RE::BGSLocation* a_location);
+
 } // namespace PhysicalLetters::Travel

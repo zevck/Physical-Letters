@@ -38,6 +38,7 @@ set(sources
     src/LetterDB.cpp
     src/Letters.cpp
     src/Reading.cpp
+    src/RoadCourier.cpp
     src/Serialization.cpp
     src/Session.cpp
     src/SkyrimNet.cpp

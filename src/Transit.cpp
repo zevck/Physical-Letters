@@ -25,6 +25,7 @@
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
 #include "Reading.h"
+#include "RoadCourier.h"
 #include "Session.h"
 #include "Courier.h"
 #include "CourierErrand.h"
@@ -44,6 +45,8 @@ namespace PhysicalLetters::Transit {
                                    // the player's own coming back undelivered
             kAwaitingCourier = 3,  // due, its recipient in the player's town: waits for the courier
             kOnCourier = 4,        // the courier carries it to the recipient (docs/COURIER.md)
+            kOnRoad = 5,           // the courier carries it on the road, from kInTransit (docs/ROAD_COURIER.md)
+            kOnRoadToPlayer = 6,   // the same, from kToPlayer
         };
 
         struct Parcel {
@@ -54,6 +57,7 @@ namespace PhysicalLetters::Transit {
             std::string recipientName;
             double      dueAt = 0;  // game days
             State       state = State::kInTransit;
+            Route       route;
 
             // This session only: the reading in progress and its retries.
             bool              reading = false;
@@ -70,8 +74,8 @@ namespace PhysicalLetters::Transit {
         std::vector<std::string> g_reportedWaiting;
 
         // v1 (dev builds only) had no state: every parcel was in transit.  v2 had no delivery id,
-        // v3 no returned letters, v4 no courier states.
-        constexpr std::uint32_t kRecordVersion = 5;
+        // v3 no returned letters, v4 no courier states, v5 no routes.
+        constexpr std::uint32_t kRecordVersion = 6;
 
         // A reading SkyrimNet never answers (it drops cancelled LLM tasks) counts as failed.
         constexpr auto kReadingTimeout = std::chrono::minutes(5);
@@ -117,6 +121,21 @@ namespace PhysicalLetters::Transit {
 
         enum class Delivery { kDelivered, kReturning, kWaiting, kLost, kToCourier, kAwaitCourier };
 
+        // The straight way between the two references, if both are on the same map.
+        Route MakeRoute(RE::TESObjectREFR* from, RE::TESObjectREFR* to, double departAt)
+        {
+            const auto a = Travel::PointOf(from);
+            const auto b = Travel::PointOf(to);
+            if (!a || !b || a->world != b->world) {
+                SKSE::log::debug("[Transit] No route from {} to {}: not on one map", from ? from->GetName() : "nobody",
+                                 to ? to->GetName() : "nobody");
+                return {};
+            }
+            SKSE::log::debug("[Transit] Route from {} ({:.0f}, {:.0f}) to {} ({:.0f}, {:.0f}) in 0x{:X}", from->GetName(), a->x,
+                             a->y, to->GetName(), b->x, b->y, a->world);
+            return { a->world, a->x, a->y, b->x, b->y, departAt };
+        }
+
         // The letter goes back to the player through the courier, after the travel time from
         // the recipient; if they can't be found, at once (the wait was the delay).
         void TurnBack(Parcel& parcel, RE::Actor* recipient, Letters::Returned reason, std::string_view why)
@@ -130,6 +149,7 @@ namespace PhysicalLetters::Transit {
             parcel.recipientName = player->GetName();
             parcel.dueAt = Now() + hours / 24.0;
             parcel.state = State::kToPlayer;
+            parcel.route = MakeRoute(recipient, player, Now());
         }
 
         RE::TESObjectBOOK* BookOf(const Parcel& parcel)
@@ -174,6 +194,52 @@ namespace PhysicalLetters::Transit {
             return true;
         }
 
+        bool ToPlayer(const Parcel& parcel)
+        {
+            return parcel.state == State::kToPlayer || parcel.state == State::kOnRoadToPlayer;
+        }
+
+        // The player has the letter now, from the road courier.  A letter to them is delivered;
+        // any other is lost to delivery (Lost: a thread between NPCs ends).
+        void TakenByPlayer(const Parcel& parcel)
+        {
+            if (ToPlayer(parcel)) {
+                LetterDB::GetSingleton()->MarkDelivered(parcel.letterId, Now());
+                SKSE::log::info("[Transit] The player took letter {} to them from the courier on the road", parcel.letterId);
+                return;
+            }
+            SKSE::log::info("[Transit] The player took letter {} to {} from the courier on the road: lost to delivery",
+                            parcel.letterId, parcel.recipientName);
+            const auto letter = LetterDB::GetSingleton()->Get(parcel.letterId);
+            if (letter && NpcToNpc::IsNpcLetter(*letter)) NpcToNpc::ThreadEnded(*letter);
+        }
+
+        // The road encounter ended: a letter the courier still has goes on its way, as it was.
+        // False if he hadn't it any more (TakenByPlayer): drop the parcel.
+        bool FromRoad(Parcel& parcel, RE::Actor* courier)
+        {
+            auto* book = BookOf(parcel);
+            if (!CourierHas(courier, book)) {
+                TakenByPlayer(parcel);
+                return false;
+            }
+            courier->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+            parcel.state = parcel.state == State::kOnRoadToPlayer ? State::kToPlayer : State::kInTransit;
+            return true;
+        }
+
+        bool ReadRoute(SKSE::SerializationInterface* a_intfc, Route& route)
+        {
+            bool ok = a_intfc->ReadRecordData(route.world) == sizeof(route.world);
+            for (float* v : { &route.fromX, &route.fromY, &route.toX, &route.toY }) {
+                ok = ok && a_intfc->ReadRecordData(*v) == sizeof(*v);
+            }
+            return ok && a_intfc->ReadRecordData(route.departAt) == sizeof(route.departAt);
+        }
+
+        // This encounter's letters given to the player: the forms the script moves to them.
+        std::vector<RE::TESObjectBOOK*> g_roadHanded;
+
         Delivery Deliver(Parcel& parcel)
         {
             auto* book = BookOf(parcel);
@@ -182,7 +248,7 @@ namespace PhysicalLetters::Transit {
                 return Delivery::kLost;
             }
             if (parcel.state == State::kToPlayer) {
-                if (CourierErrand::IsLive()) return Delivery::kWaiting;  // he's out on an errand
+                if (CourierErrand::IsLive() || RoadCourier::IsLive()) return Delivery::kWaiting;  // he's out
                 // From here the courier and his container hold it; the engine saves both.
                 if (!Courier::Give(book)) {
                     ReportWaiting(parcel, "the courier can't be reached");
@@ -255,12 +321,14 @@ namespace PhysicalLetters::Transit {
                             original.letterId, reply.id, betweenNpcs ? "to " + reply.recipientName : std::string{ "at the courier" },
                             hours);
             if (!betweenNpcs) NpcLetters::StartCooldown(reply.authorUuid);
+            const double writtenAt = Now() + Config::GetSingleton()->Get(Config::kWritingHours) / 24.0;
             return Parcel{ .letterId = reply.id,
                            .deliveryId = Letters::NewId(),
                            .recipientUuid = reply.recipientUuid,
                            .recipientName = reply.recipientName,
                            .dueAt = Now() + hours / 24.0,
-                           .state = betweenNpcs ? State::kInTransit : State::kToPlayer };
+                           .state = betweenNpcs ? State::kInTransit : State::kToPlayer,
+                           .route = MakeRoute(FindActor(original.recipientUuid), destination, writtenAt) };
         }
 
         void OnReadingDone(const std::string& deliveryId, std::uint64_t attempt, std::uint32_t generation,
@@ -324,14 +392,17 @@ namespace PhysicalLetters::Transit {
                               .deliveryId = Letters::NewId(),
                               .recipientUuid = letter.recipientUuid,
                               .recipientName = letter.recipientName,
-                              .dueAt = Now() + hours / 24.0 });
+                              .dueAt = Now() + hours / 24.0,
+                              .route = MakeRoute(holder, FindActor(letter.recipientUuid), Now()) });
         SKSE::log::info("[Transit] Sent letter {} to {}, due in {:.1f} game hours", letter.id, letter.recipientName, hours);
         return hours;
     }
 
     bool IsLetterPendingFor(const std::string& uuid)
     {
-        return std::ranges::any_of(g_parcels, [&](const Parcel& p) { return p.recipientUuid == uuid && p.state != State::kToPlayer; });
+        return std::ranges::any_of(g_parcels, [&](const Parcel& p) {
+            return p.recipientUuid == uuid && p.state != State::kToPlayer && p.state != State::kOnRoadToPlayer;
+        });
     }
 
     void QueueToPlayer(const Letter& letter, double hours)
@@ -341,7 +412,8 @@ namespace PhysicalLetters::Transit {
                               .recipientUuid = letter.recipientUuid,
                               .recipientName = letter.recipientName,
                               .dueAt = Now() + hours / 24.0,
-                              .state = State::kToPlayer });
+                              .state = State::kToPlayer,
+                              .route = MakeRoute(FindActor(letter.authorUuid), RE::PlayerCharacter::GetSingleton(), Now()) });
     }
 
     void QueueToNpc(const Letter& letter, double hours)
@@ -350,14 +422,15 @@ namespace PhysicalLetters::Transit {
                               .deliveryId = Letters::NewId(),
                               .recipientUuid = letter.recipientUuid,
                               .recipientName = letter.recipientName,
-                              .dueAt = Now() + hours / 24.0 });
+                              .dueAt = Now() + hours / 24.0,
+                              .route = MakeRoute(FindActor(letter.authorUuid), FindActor(letter.recipientUuid), Now()) });
     }
 
     std::vector<std::string> PendingLetterIds()
     {
         std::vector<std::string> ids;
         for (const auto& p : g_parcels) {
-            if (p.state != State::kToPlayer) ids.push_back(p.letterId);
+            if (p.state != State::kToPlayer && p.state != State::kOnRoadToPlayer) ids.push_back(p.letterId);
         }
         return ids;
     }
@@ -400,6 +473,107 @@ namespace PhysicalLetters::Transit {
         if (it != g_parcels.end() && !TakeBack(*it, courier)) g_parcels.erase(it);
     }
 
+    std::vector<OnTheRoad> LettersOnTheRoad()
+    {
+        std::vector<OnTheRoad> letters;
+        for (const auto& p : g_parcels) {
+            if ((p.state == State::kInTransit || p.state == State::kToPlayer) && p.route.world) {
+                letters.push_back({ p.deliveryId, p.route, p.dueAt });
+            }
+        }
+        return letters;
+    }
+
+    int TakeForRoad(RE::Actor* courier, const std::vector<std::string>& deliveryIds)
+    {
+        int taken = 0;
+        g_roadHanded.clear();
+        for (auto& parcel : g_parcels) {
+            if (!courier || std::ranges::find(deliveryIds, parcel.deliveryId) == deliveryIds.end()) continue;
+            if (parcel.state != State::kInTransit && parcel.state != State::kToPlayer) continue;
+            auto* book = BookOf(parcel);
+            if (!book) continue;
+            courier->AddObjectToContainer(book, nullptr, 1, nullptr);
+            parcel.state = parcel.state == State::kToPlayer ? State::kOnRoadToPlayer : State::kOnRoad;
+            ++taken;
+            SKSE::log::info("[Transit] The courier on the road carries letter {} to {}", parcel.letterId, parcel.recipientName);
+        }
+        return taken;
+    }
+
+    RE::Actor* RoadRecipient()
+    {
+        const auto it = std::ranges::find(g_parcels, State::kOnRoad, &Parcel::state);
+        return it == g_parcels.end() ? nullptr : FindActor(it->recipientUuid);
+    }
+
+    std::optional<Route> RoadRoute()
+    {
+        const auto it = std::ranges::find_if(g_parcels, [](const Parcel& p) {
+            return p.state == State::kOnRoad || p.state == State::kOnRoadToPlayer;
+        });
+        if (it == g_parcels.end()) return std::nullopt;
+        return it->route;
+    }
+
+    std::vector<RE::TESForm*> RoadHandOver(RE::Actor* courier)
+    {
+        std::vector<RE::TESForm*> forms;
+        std::erase_if(g_parcels, [&](const Parcel& parcel) {
+            if (parcel.state != State::kOnRoad && parcel.state != State::kOnRoadToPlayer) return false;
+            auto* book = BookOf(parcel);
+            if (CourierHas(courier, book)) {
+                forms.push_back(book);
+                g_roadHanded.push_back(book);
+            }
+            TakenByPlayer(parcel);
+            return true;
+        });
+        SKSE::log::info("[Transit] The courier on the road gives the player {} letter(s)", forms.size());
+        return forms;
+    }
+
+    void RoadOnward(RE::Actor* courier)
+    {
+        const double now = Now();
+        std::erase_if(g_parcels, [&](Parcel& parcel) {
+            if (parcel.state != State::kOnRoad && parcel.state != State::kOnRoadToPlayer) return false;
+            if (!FromRoad(parcel, courier)) return true;
+            parcel.dueAt = std::min(parcel.dueAt, now);
+            SKSE::log::info("[Transit] The courier on the road reached {}'s town: letter {} is due now", parcel.recipientName,
+                            parcel.letterId);
+            return false;
+        });
+    }
+
+    bool RoadDeliver(RE::Actor* courier, RE::Actor* recipient)
+    {
+        for (auto& parcel : g_parcels) {
+            if (parcel.state != State::kOnRoad || !recipient || FindActor(parcel.recipientUuid) != recipient) continue;
+            auto* book = BookOf(parcel);
+            if (!CourierHas(courier, book)) continue;
+            courier->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kStoreInContainer, nullptr, recipient);
+            LetterDB::GetSingleton()->MarkDelivered(parcel.letterId, Now());
+            parcel.state = State::kAwaitingReading;
+            SKSE::log::info("[Transit] The courier on the road handed letter {} to {}", parcel.letterId, parcel.recipientName);
+            return true;
+        }
+        return false;
+    }
+
+    void RoadDone(RE::Actor* courier)
+    {
+        std::erase_if(g_parcels, [courier](Parcel& parcel) {
+            return (parcel.state == State::kOnRoad || parcel.state == State::kOnRoadToPlayer) && !FromRoad(parcel, courier);
+        });
+        // Given to the player, but still on him (the script didn't get to move them).
+        for (auto* book : g_roadHanded) {
+            if (CourierHas(courier, book)) courier->RemoveItem(book, 1, RE::ITEM_REMOVE_REASON::kStoreInContainer, nullptr,
+                                                             RE::PlayerCharacter::GetSingleton());
+        }
+        g_roadHanded.clear();
+    }
+
     void Tick()
     {
         if (!Session::IsReady() || g_parcels.empty()) return;
@@ -407,6 +581,10 @@ namespace PhysicalLetters::Transit {
         const auto clock = Clock::now();
 
         std::erase_if(g_parcels, [now](Parcel& parcel) {
+            if (parcel.state == State::kOnRoad || parcel.state == State::kOnRoadToPlayer) {
+                // The encounter went with a load, or it ended without telling us.
+                return !RoadCourier::IsLive() && !FromRoad(parcel, CourierErrand::Courier());
+            }
             if (parcel.state == State::kOnCourier) {
                 // The errand went with a load, or it ended without telling us.
                 return !CourierErrand::IsLive() && !TakeBack(parcel, CourierErrand::Courier());
@@ -481,6 +659,9 @@ namespace PhysicalLetters::Transit {
             a_intfc->WriteRecordData(p.dueAt);
             a_intfc->WriteRecordData(static_cast<std::uint8_t>(p.state));
             CoSave::WriteString(a_intfc, p.deliveryId);
+            a_intfc->WriteRecordData(p.route.world);
+            for (const float v : { p.route.fromX, p.route.fromY, p.route.toX, p.route.toY }) a_intfc->WriteRecordData(v);
+            a_intfc->WriteRecordData(p.route.departAt);
         }
         const auto returned = Letters::ReturnedLetters();
         a_intfc->WriteRecordData(static_cast<std::uint32_t>(returned.size()));
@@ -504,11 +685,11 @@ namespace PhysicalLetters::Transit {
             if (!CoSave::ReadString(a_intfc, p.letterId) || !CoSave::ReadString(a_intfc, p.recipientUuid) ||
                 !CoSave::ReadString(a_intfc, p.recipientName) || a_intfc->ReadRecordData(p.dueAt) != sizeof(p.dueAt) ||
                 (a_version >= 2 && a_intfc->ReadRecordData(state) != sizeof(state)) ||
-                (a_version >= 3 && !CoSave::ReadString(a_intfc, p.deliveryId))) {
+                (a_version >= 3 && !CoSave::ReadString(a_intfc, p.deliveryId)) || (a_version >= 6 && !ReadRoute(a_intfc, p.route))) {
                 SKSE::log::error("[Transit] Co-save record is truncated after {} of {} letter(s)", i, count);
                 break;
             }
-            p.state = state <= 4 ? static_cast<State>(state) : State::kInTransit;
+            p.state = state <= 6 ? static_cast<State>(state) : State::kInTransit;
             if (p.deliveryId.empty()) p.deliveryId = p.letterId;  // v1/v2: one delivery per letter
             g_parcels.push_back(std::move(p));
         }
@@ -526,13 +707,15 @@ namespace PhysicalLetters::Transit {
         };
         SKSE::log::info("[Transit] {} letter(s) in transit, {} awaiting reading, {} to the player, {} with or waiting for "
                         "the courier", inState(State::kInTransit), inState(State::kAwaitingReading), inState(State::kToPlayer),
-                        inState(State::kAwaitingCourier) + inState(State::kOnCourier));
+                        inState(State::kAwaitingCourier) + inState(State::kOnCourier) + inState(State::kOnRoad) +
+                            inState(State::kOnRoadToPlayer));
     }
 
     void Revert()
     {
         g_parcels.clear();
         g_reportedWaiting.clear();
+        g_roadHanded.clear();
     }
 
 } // namespace PhysicalLetters::Transit

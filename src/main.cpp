@@ -21,6 +21,7 @@
 #include "Postage.h"
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
+#include "RoadCourier.h"
 #include "Config.h"
 #include "Papyrus.h"
 #include "DynamicForms.h"
@@ -52,6 +53,7 @@ namespace {
                         PhysicalLetters::Transit::Tick();
                         PhysicalLetters::NpcLetters::Tick();
                         PhysicalLetters::NpcToNpc::Tick();
+                        PhysicalLetters::RoadCourier::Tick();
                     } catch (const std::exception& e) {
                         SKSE::log::error("Heartbeat failed: {}", e.what());
                     }
@@ -128,7 +130,11 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
     auto* config = PhysicalLetters::Config::GetSingleton();
     config->Load(std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "PhysicalLetters.ini");
     config->Save();
-    if (config->Get(PhysicalLetters::Config::kDebugLog)) spdlog::default_logger()->set_level(spdlog::level::debug);
+    if (config->Get(PhysicalLetters::Config::kDebugLog)) {
+        // Debug lines are flushed too, or they sit in the buffer until the next info line.
+        spdlog::default_logger()->set_level(spdlog::level::debug);
+        spdlog::default_logger()->flush_on(spdlog::level::debug);
+    }
 
     PhysicalLetters::Papyrus::Register();
 
