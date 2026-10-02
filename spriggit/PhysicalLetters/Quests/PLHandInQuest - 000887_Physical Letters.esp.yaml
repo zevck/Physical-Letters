@@ -1,0 +1,13 @@
+FormKey: 000887:Physical Letters.esp
+EditorID: PLHandInQuest
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_HandInQuest
+  FileName: ''
+Name:
+  TargetLanguage: English
+  Value: Physical Letters hand-in
+Flags:
+- StartGameEnabled
+- 0x10
+QuestFormVersion: 0

@@ -24,6 +24,7 @@
 #include "NpcToNpc.h"
 #include "CourierErrand.h"
 #include "RoadCourier.h"
+#include "HandIn.h"
 #include "Transit.h"
 
 namespace PhysicalLetters::Serialization {
@@ -57,6 +58,7 @@ namespace PhysicalLetters::Serialization {
             Transit::Revert();
             CourierErrand::Revert();
             RoadCourier::Revert();
+            HandIn::Revert();
             NpcLetters::Revert();
             NpcToNpc::Revert();
         }

@@ -18,7 +18,7 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 |---|---|---|
 | Entry point | `src/main.cpp` | Log, the INI, SKSE messages (the postage price on a new game or load), the heartbeat |
 | Session | `src/Session.cpp` | When letters may be touched after a load or new game |
-| SkyrimNet client | `src/SkyrimNet.cpp`, `include/SkyrimNet/PublicAPI.h` (vendored) | SkyrimNet's public API, resolved at run time; requires v11 |
+| SkyrimNet client | `src/SkyrimNet.cpp`, `include/SkyrimNet/PublicAPI.h` (vendored; `PublicRegisterEvent` added from SkyrimNet-Dev's v11 header) | SkyrimNet's public API, resolved at run time; requires v11 |
 | Letters | `src/Letters.cpp` | Letter forms, their look, their rendered text (a thread-safe snapshot) |
 | LetterDB | `src/LetterDB.cpp` | SQLite store of each letter's text, per SkyrimNet save folder |
 | Transit | `src/Transit.cpp` | The queue: delivery, the reading owed (with retries), replies, NPC letters and undeliverable letters to the courier |
@@ -29,7 +29,8 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | Courier | `src/Courier.cpp` | Hands a letter to the vanilla courier (`WICourierScript`) |
 | RoadCourier | `src/RoadCourier.cpp` | The courier met on the road: which letters pass the player, the Story Manager global, the cooldown, the quest's natives ([ROAD_COURIER.md](ROAD_COURIER.md)) |
 | CourierErrand | `src/CourierErrand.cpp` | The courier carrying a letter to an NPC in the player's town: the quest's natives, who holds him, the Story Manager global ([COURIER.md](COURIER.md)) |
-| Postage | `src/Postage.cpp` | The hand-over: a letter given to an innkeeper or the courier in the postage topic's gift menu |
+| Postage | `src/Postage.cpp` | Posting: a letter the player wrote, given to an innkeeper or the courier in a gift menu (HandIn's watcher calls it) |
+| HandIn | `src/HandIn.cpp` | Letters leaving the player's inventory: posted, or handed over in the hand-in topic's gift menu; the private narration of a letter read there; the topic's native and setting global ([HAND_IN.md](HAND_IN.md)) |
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |
 | DynamicForms | `src/DynamicForms.cpp` | Runtime forms the engine saves itself (shared with SNPD) |
 | Serialization | `src/Serialization.cpp`, `include/CoSave.h` | The co-save records |

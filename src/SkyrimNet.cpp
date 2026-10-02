@@ -59,7 +59,24 @@ namespace PhysicalLetters::SkyrimNet {
         if (!PublicSearchActors) {
             SKSE::log::warn("[SkyrimNet] No PublicSearchActors in this SkyrimNet: letters between NPCs are off");
         }
+        if (!PublicRegisterEvent) {
+            SKSE::log::warn("[SkyrimNet] No PublicRegisterEvent in this SkyrimNet: letters handed over are read, not reacted to");
+        }
         return true;
+    }
+
+    int RegisterEvent(const std::string& type, const std::string& content, RE::FormID originator, RE::FormID target,
+                      const std::vector<RE::FormID>& audience)
+    {
+        if (!CanRegisterEvents()) return 0;
+        std::vector<std::uint32_t> ids(audience.begin(), audience.end());
+        return PublicRegisterEvent(type.c_str(), content.c_str(), originator, target, ids.data(),
+                                   static_cast<std::uint32_t>(ids.size()));
+    }
+
+    bool CanRegisterEvents()
+    {
+        return g_available && PublicRegisterEvent;
     }
 
     TimelineState GetTimelineState()

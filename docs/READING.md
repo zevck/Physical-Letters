@@ -54,6 +54,10 @@ A parcel leaves the queue only when the reading succeeds (or can never succeed: 
 
 Retries wait 30 s, then double. After 5 failures the letter waits for the next load, which retries it again. Before every LLM call, and again before storing, the reading checks for the delivery's tagged memory, so a retry never makes a second memory of one delivery.
 
+## Someone else's letter
+
+A letter handed over in person is read by this call too, after the reader's reaction on the spot ([HAND_IN.md](HAND_IN.md#reading-it-there)). One read by someone it isn't addressed to has its own prompt, `physical_letters_read_other_letter`, and is never answered: [HAND_IN.md](HAND_IN.md#someone-elses-letter).
+
 ## Not done yet
 
 - The recipient's location and the time are not in the prompt.

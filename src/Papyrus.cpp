@@ -20,6 +20,7 @@
 #include "Papyrus.h"
 #include "Config.h"
 #include "CourierErrand.h"
+#include "HandIn.h"
 #include "RoadCourier.h"
 #include "Postage.h"
 
@@ -76,6 +77,8 @@ namespace PhysicalLetters::Papyrus {
                 spdlog::default_logger()->flush_on(level);
             } else if (key == Config::kPostage.key) {
                 Postage::ApplyPrice();
+            } else if (key == Config::kHandInDialogue.key) {
+                HandIn::ApplyDialogue();
             }
         }
 
@@ -86,7 +89,7 @@ namespace PhysicalLetters::Papyrus {
             vm->RegisterFunction("GetSettingDefault", kScript, GetSettingDefault);
             vm->RegisterFunction("GetSettingMin", kScript, GetSettingMin);
             vm->RegisterFunction("GetSettingMax", kScript, GetSettingMax);
-            return CourierErrand::RegisterFunctions(vm) && RoadCourier::RegisterFunctions(vm);
+            return CourierErrand::RegisterFunctions(vm) && RoadCourier::RegisterFunctions(vm) && HandIn::RegisterFunctions(vm);
         }
     }
 

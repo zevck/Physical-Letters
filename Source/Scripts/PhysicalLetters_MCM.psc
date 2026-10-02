@@ -77,16 +77,17 @@ function Setup()
     Slider(23, "Courier.IntimidateSpeech", "$PL_RoadSpeech", "$PL_TipRoadSpeech", 5)
     Slider(24, "Courier.RobberyBounty", "$PL_RoadBounty", "$PL_TipRoadBounty", 5)
 
-    _toggleNames = new string[6]
-    _toggleLabels = new string[6]
-    _toggleTips = new string[6]
-    _toggleOids = new int[6]
+    _toggleNames = new string[7]
+    _toggleLabels = new string[7]
+    _toggleTips = new string[7]
+    _toggleOids = new int[7]
     Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
     Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
     Toggle(2, "NpcToNpc.Enabled", "$PL_N2n", "$PL_TipN2n")
     Toggle(3, "NpcToNpc.KnownOnly", "$PL_N2nKnownOnly", "$PL_TipN2nKnownOnly")
     Toggle(4, "Courier.Enabled", "$PL_Courier", "$PL_TipCourier")
     Toggle(5, "Courier.RoadEncounters", "$PL_Road", "$PL_TipRoad")
+    Toggle(6, "Delivery.HandInDialogue", "$PL_HandIn", "$PL_TipHandIn")
 endfunction
 
 function AddSliders(int first, int last)
@@ -106,6 +107,7 @@ event OnPageReset(string page)
     SetCursorFillMode(TOP_TO_BOTTOM)
     AddHeaderOption("$PL_HeaderDelivery")
     AddSliders(0, 4)
+    AddToggle(6)
     AddToggle(4)
     AddSliders(21, 21)
     AddToggle(5)

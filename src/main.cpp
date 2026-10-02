@@ -18,6 +18,7 @@
  */
 
 #include "DebugKeys.h"
+#include "HandIn.h"
 #include "Postage.h"
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
@@ -70,7 +71,7 @@ namespace {
             PhysicalLetters::SkyrimNet::Init();
             PhysicalLetters::Letters::CheckTemplate();
             PhysicalLetters::DebugKeys::Register();
-            PhysicalLetters::Postage::Register();
+            PhysicalLetters::HandIn::Register();
             StartHeartbeat();
             break;
         case SKSE::MessagingInterface::kPreLoadGame:
@@ -80,6 +81,7 @@ namespace {
             PhysicalLetters::Session::End();
             PhysicalLetters::Session::Start();
             PhysicalLetters::Postage::ApplyPrice();
+            PhysicalLetters::HandIn::ApplyDialogue();
             break;
         case SKSE::MessagingInterface::kPostLoadGame:
             // World copies of our letters in the loaded cells were built before the load
@@ -87,6 +89,7 @@ namespace {
             DynamicForms::RebuildLoadedWorldCopies();
             PhysicalLetters::Session::Start();
             PhysicalLetters::Postage::ApplyPrice();
+            PhysicalLetters::HandIn::ApplyDialogue();
             break;
         default:
             break;

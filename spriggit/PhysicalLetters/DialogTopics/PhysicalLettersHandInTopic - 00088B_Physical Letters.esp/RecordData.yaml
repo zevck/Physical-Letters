@@ -1,0 +1,8 @@
+FormKey: 00088B:Physical Letters.esp
+EditorID: PhysicalLettersHandInTopic
+Name:
+  TargetLanguage: English
+  Value: I have a letter for you.
+Branch: 00088A:Physical Letters.esp
+Quest: 000887:Physical Letters.esp
+SubtypeName: CUST

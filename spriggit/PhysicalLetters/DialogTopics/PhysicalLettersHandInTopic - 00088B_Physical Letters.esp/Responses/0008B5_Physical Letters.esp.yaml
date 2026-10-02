@@ -1,0 +1,39 @@
+FormKey: 0008B5:Physical Letters.esp
+VirtualMachineAdapter:
+  Scripts:
+  - Name: PhysicalLetters_TIF_HandIn
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: PhysicalLettersHandInFilter
+      Object: 000889:Physical Letters.esp
+  ScriptFragments:
+    MutagenObjectType: ScriptFragments
+    FileName: PhysicalLetters_TIF_HandIn
+    OnBegin:
+      ExtraBindDataVersion: 1
+      ScriptName: PhysicalLetters_TIF_HandIn
+      FragmentName: Fragment_0
+Flags: {}
+FavorLevel: None
+Responses:
+- EmotionValue: 50
+  ResponseNumber: 1
+  Unknown2: 0x000000
+  Unknown3: 0x000000
+  Text:
+    TargetLanguage: English
+    Value: ' '
+  ScriptNotes: ''
+  Edits: ''
+Conditions:
+- MutagenObjectType: ConditionFloat
+  CompareOperator: GreaterThan
+  Data:
+    MutagenObjectType: GetKeywordItemCountConditionData
+    RunOnType: Target
+    Keyword: 0008B3:Physical Letters.esp
+- MutagenObjectType: ConditionFloat
+  Data:
+    MutagenObjectType: GetGlobalValueConditionData
+    Global: 0008B4:Physical Letters.esp
+  ComparisonValue: 1

@@ -66,6 +66,8 @@ namespace PhysicalLetters {
         static constexpr Setting kN2nNames       { "NpcToNpc", "NamesPerWriter",    3,  1, 5  };
         static constexpr Setting kN2nMemories    { "NpcToNpc", "MemoriesPerWriter", 3,  0, 10 };
         static constexpr Setting kN2nMinDistance { "NpcToNpc", "MinDistance",       16384, 0, 131072 };
+        // "I have a letter for you.": the dialogue topic for handing a letter over (docs/HAND_IN.md).
+        static constexpr Setting kHandInDialogue { "Delivery", "HandInDialogue", 1, 0, 1 };
         // The courier carrying letters to NPCs in the player's town (docs/COURIER.md); a letter
         // waits for him at most WaitHours (game hours), then goes in off-screen.
         static constexpr Setting kCourierEnabled   { "Courier", "Enabled",   1, 0, 1  };
@@ -83,7 +85,7 @@ namespace PhysicalLetters {
             kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcNearDistance, kNpcMissedAfter, kNpcRecentWeight,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kN2nMinDistance, kCourierEnabled, kCourierWaitHours,
-            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty,
+            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue,
         };
 
         static Config* GetSingleton()

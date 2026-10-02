@@ -772,6 +772,41 @@ bool (*PublicDeleteMemory)(int memoryId) = nullptr;
  */
 std::string (*PublicSearchActors)(const char* nameContains, int maxCount) = nullptr;
 
+/**
+ * Register an event, the C++ counterpart of Papyrus SkyrimNetApi.RegisterEvent, optionally perceived by
+ * only a chosen list of actors. Persistent unless the event type is configured as ephemeral.
+ *
+ * Audience, i.e. who has the event in their history, prompts and memories, and who may react to it:
+ *   - audienceCount 0: everyone near the originator, plus the player (same as Papyrus RegisterEvent).
+ *   - audienceCount > 0: exactly the listed actors plus originator and target. Nobody else nearby, no
+ *     virtual NPCs, and not the player unless listed. A `direct_narration` originator still speaks; its
+ *     spoken reply is ordinary dialogue that bystanders hear.
+ *
+ * @param eventType        A registered event type (`direct_narration`, `persistent_generic`, `custom`, ...).
+ * @param content          The type's JSON payload. Plain text is wrapped: `{"narration": ...}` for
+ *                         direct_narration, `{"line": ...}` for persistent_generic, `{"description", "data"}`
+ *                         for custom.
+ * @param originatorFormId Actor the event comes from; 0 = none. Not a loaded actor = ignored (logged).
+ * @param targetFormId     Actor it is aimed at; 0 = none.
+ * @param audienceFormIds  Actors who perceive it (array of audienceCount FormIDs). Unloaded ones are skipped;
+ *                         if none is loaded, nothing is registered (it never falls back to nearby).
+ * @param audienceCount    Number of FormIDs in audienceFormIds; 0 = nearby audience.
+ * @return The stored event's id, or 0 when nothing was stored: empty type, unresolvable audience, a type that
+ *         is disabled or filtered, or an ephemeral type (which only notifies event callbacks).
+ *
+ * Callable from worker threads, like SkyrimNet's own event registration. FormIDs resolve through live
+ * actors, so the originator, target and audience must be loaded.
+ *
+ * @code
+ *   // Only Katarina learns what the letter says; she reacts to it out loud.
+ *   uint32_t audience[] = {katarinaFormId};
+ *   PublicRegisterEvent("direct_narration", "Cole hands Katarina a letter from Hulda. It reads: ...",
+ *                       katarinaFormId, 0, audience, 1);
+ * @endcode
+ */
+int (*PublicRegisterEvent)(const char* eventType, const char* content, uint32_t originatorFormId,
+                           uint32_t targetFormId, const uint32_t* audienceFormIds, uint32_t audienceCount) = nullptr;
+
 // =============================================================================
 // Initialization
 // =============================================================================
@@ -931,6 +966,8 @@ inline bool FindFunctions() {
                     GetProcAddress(hDLL, "PublicDeleteMemory"));
                 PublicSearchActors = reinterpret_cast<std::string(*)(const char*, int)>(
                     GetProcAddress(hDLL, "PublicSearchActors"));
+                PublicRegisterEvent = reinterpret_cast<int(*)(const char*, const char*, uint32_t, uint32_t,
+                    const uint32_t*, uint32_t)>(GetProcAddress(hDLL, "PublicRegisterEvent"));
             }
         }
         return true;

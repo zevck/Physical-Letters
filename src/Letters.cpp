@@ -31,6 +31,7 @@ namespace PhysicalLetters::Letters {
         constexpr RE::FormID kTemplateId = 0x10596A;
         constexpr std::string_view kTemplatePlugin = "Skyrim.esm";
         constexpr RE::FormID kOutgoingKeyword = 0x000800;  // PhysicalLettersOutgoingLetter
+        constexpr RE::FormID kHandInKeyword = 0x0008B3;    // PhysicalLettersHandInLetter
         constexpr std::string_view kPlugin = "Physical Letters.esp";
         constexpr RE::FormID kPlayer = 0x14;
 
@@ -129,6 +130,11 @@ namespace PhysicalLetters::Letters {
             book->value = 0;
             book->data.flags = static_cast<RE::OBJ_BOOK::Flag>(0);
             book->SetFullName(name.c_str());
+            // Any letter can be handed over: the hand-in topic's condition and gift menu look for it.
+            auto* data = RE::TESDataHandler::GetSingleton();
+            if (auto* keyword = data ? data->LookupForm<RE::BGSKeyword>(kHandInKeyword, kPlugin) : nullptr) {
+                if (!book->HasKeyword(keyword)) book->AddKeyword(keyword);
+            }
         }
 
         // The player's own letters carry PhysicalLettersOutgoingLetter, which the postage

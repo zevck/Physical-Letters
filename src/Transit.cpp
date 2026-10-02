@@ -21,6 +21,7 @@
 #include "CoSave.h"
 #include "Config.h"
 #include "GameTime.h"
+#include "HandIn.h"
 #include "Letters.h"
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
@@ -353,12 +354,14 @@ namespace PhysicalLetters::Transit {
             // holds a finished reading without its reply.
             const auto letter = LetterDB::GetSingleton()->Get(it->letterId);
             const bool betweenNpcs = letter && NpcToNpc::IsNpcLetter(*letter);
+            // Someone else's letter (docs/HAND_IN.md#someone-elses-letter): no reply, its thread untouched.
+            const bool addressed = !letter || it->recipientUuid == letter->recipientUuid;
             std::optional<Parcel> reply;
-            if (outcome.result == Reading::Result::kRead && !outcome.reply.empty() &&
+            if (addressed && outcome.result == Reading::Result::kRead && !outcome.reply.empty() &&
                 (!betweenNpcs || NpcToNpc::CanReply(it->letterId))) {
                 reply = MakeReply(*it, outcome.reply);
             }
-            if (betweenNpcs && !reply) NpcToNpc::ThreadEnded(*letter);
+            if (addressed && betweenNpcs && !reply) NpcToNpc::ThreadEnded(*letter);
             g_parcels.erase(it);
             if (reply) g_parcels.push_back(std::move(*reply));
         }
@@ -369,10 +372,12 @@ namespace PhysicalLetters::Transit {
             if (!recipient) return;
             const auto letter = LetterDB::GetSingleton()->Get(parcel.letterId);
             const bool canReply = !letter || !NpcToNpc::IsNpcLetter(*letter) || NpcToNpc::CanReply(parcel.letterId);
+            const auto reader = !letter || parcel.recipientUuid == letter->recipientUuid ? Reading::Reader::kRecipient
+                                                                                         : Reading::Reader::kHandedOther;
             parcel.reading = true;
             parcel.attempt = ++g_lastAttempt;
             parcel.startedAt = Clock::now();
-            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(), canReply,
+            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(), canReply, reader,
                           [deliveryId = parcel.deliveryId, attempt = parcel.attempt,
                            generation = Session::Generation()](const Reading::Outcome& outcome) {
                               OnReadingDone(deliveryId, attempt, generation, outcome);
@@ -396,6 +401,34 @@ namespace PhysicalLetters::Transit {
                               .route = MakeRoute(holder, FindActor(letter.recipientUuid), Now()) });
         SKSE::log::info("[Transit] Sent letter {} to {}, due in {:.1f} game hours", letter.id, letter.recipientName, hours);
         return hours;
+    }
+
+    void HandIn(const Letter& letter, RE::Actor* reader)
+    {
+        const auto readerUuid = SkyrimNet::UuidForFormId(reader->GetFormID());
+        const bool addressed = readerUuid == letter.recipientUuid;
+        if (addressed) {
+            // The player held it, so it's on no way; a stale parcel would deliver it twice.
+            std::erase_if(g_parcels, [&](const Parcel& p) { return p.letterId == letter.id && p.state != State::kAwaitingReading; });
+            Letters::SetReturned(letter.id, std::nullopt);
+            LetterDB::GetSingleton()->MarkDelivered(letter.id, Now());
+        }
+        SKSE::log::info("[Transit] The player handed letter {} from {} to {} {}(0x{:X})", letter.id, letter.authorName,
+                        letter.recipientName, addressed ? "" : std::format("on {} ", reader->GetName()), reader->GetFormID());
+        // There and then, aloud; then the reading, as for a letter delivered: their memory, and maybe a reply.
+        if (HandIn::NearPlayer(reader)) HandIn::ReadThere(letter, reader);
+        if (std::ranges::any_of(g_parcels, [&](const Parcel& p) {
+                return p.letterId == letter.id && p.recipientUuid == readerUuid && p.state == State::kAwaitingReading;
+            })) {
+            SKSE::log::info("[Transit] {} still owed a reading of letter {}: it goes on", reader->GetName(), letter.id);
+            return;
+        }
+        g_parcels.push_back({ .letterId = letter.id,
+                              .deliveryId = Letters::NewId(),
+                              .recipientUuid = readerUuid,
+                              .recipientName = reader->GetName(),
+                              .dueAt = Now(),
+                              .state = State::kAwaitingReading });
     }
 
     bool IsLetterPendingFor(const std::string& uuid)

@@ -14,6 +14,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[Delivery] MinHours` | 2 | 0–48 | Shortest travel time ([DELIVERY.md](DELIVERY.md#travel-time)) |
 | `[Delivery] FallbackHours` | 48 | 1–336 | Travel time between worldspaces, or when a place can't be found |
 | `[Delivery] ReturnAfterDays` | 3 | 1–30 | Game days a due letter waits for a recipient who can't be found before the courier brings it back ([DELIVERY.md](DELIVERY.md#undeliverable-letters)) |
+| `[Delivery] HandInDialogue` | 1 | 0/1 | The "I have a letter for you." topic, shown while the player carries a letter ([HAND_IN.md](HAND_IN.md#the-dialogue)): the way to hand a letter over in person. Written into the ESP's global `PhysicalLettersHandInDialogue`, which the topic's condition reads. Off, letters can only be posted |
 | `[Courier] Enabled` | 1 | 0/1 | The courier brings letters in person to NPCs in the player's town ([COURIER.md](COURIER.md)) |
 | `[Courier] WaitHours` | 2 | 0–24 | Game hours a letter for someone in the player's town waits for the courier before it goes in unseen |
 | `[Courier] RoadEncounters` | 1 | 0/1 | The courier may be met on the road with letters passing there ([ROAD_COURIER.md](ROAD_COURIER.md)) |
@@ -48,7 +49,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 
 `PhysicalLetters_MCM` (`extends SKI_ConfigBase`) on the start-game quest `PhysicalLettersMCMQuest` (`0x808`), whose player alias runs `SKI_PlayerLoadGameAlias`, as SNPD's does. Needs SkyUI; without it the INI still works.
 
-One page, four sections: Delivery (five sliders), NPC letters (the toggle and seven sliders), Letters between NPCs (two toggles and eight sliders), Logging (the debug toggle). Sliders and toggles are rows in two arrays, so a section is a range of them. The script knows only the setting names (`"Delivery.Postage"`): the natives `GetSetting`, `SetSetting`, `GetSettingDefault`, `GetSettingMin` and `GetSettingMax` on `PhysicalLetters_MCM` take them, so defaults and ranges live only in `kSettings`.
+One page, four sections: Delivery (five sliders, the hand-over dialogue toggle, then the courier's two toggles and four sliders), NPC letters (the toggle and seven sliders), Letters between NPCs (two toggles and eight sliders), Logging (the debug toggle). Sliders and toggles are rows in two arrays, so a section is a range of them. The script knows only the setting names (`"Delivery.Postage"`): the natives `GetSetting`, `SetSetting`, `GetSettingDefault`, `GetSettingMin` and `GetSettingMax` on `PhysicalLetters_MCM` take them, so defaults and ranges live only in `kSettings`.
 
 Strings are `$PL_…` keys in `Interface/Translations/Physical Letters_<LANGUAGE>.txt` (UTF-16 LE with BOM, key and text separated by a tab). All nine files hold the English text for now.
 

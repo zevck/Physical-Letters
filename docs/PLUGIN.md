@@ -55,6 +55,13 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x85E`–`0x884` | DialogTopic + DialogResponses ×38 | `PhysicalLettersRoadCourierReply` | The recipient's thanks, a copy of `0x817`–`0x83E` (`0x85F` is "Of course.") |
 | `0x885` | Package | `PhysicalLettersRoadSceneApproach` | The scene's approach: jog to the Recipient alias, radius 150 |
 | `0x886` | DialogResponses in vanilla `DGIntimidateVictoryTopic` (`0x047AC6`, overridden to hold it) | | The courier's yield after losing vanilla's brawl, "Don't hurt me! You win." (shared `0x0E0CBF`); otherwise a copy of vanilla's generic `0x047ADB` (script `TIF__00047ADB`, links, walk-away topic). Previous info `0x0F07B9`, so it comes just before vanilla's generic yields (`0x047ADB`, `0x078F76`, `0x047ADC`), the last in the topic; without the link a new info lands after them |
+| `0x887` | Quest | `PLHandInQuest` | Holds the hand-in topic ([HAND_IN.md](HAND_IN.md#the-dialogue)); script `PhysicalLetters_HandInQuest` (the TIF's native `BeginHandIn`). Starts with the game, listed in the SEQ file. Its 20 recipient aliases were removed 2026-10-02 |
+| `0x889` | FormList | `PhysicalLettersHandInFilter` | Holds the keyword `0x8B3`; the hand-in gift menu's filter |
+| `0x88A` | DialogBranch | `PhysicalLettersHandInBranch` | Top-level, player |
+| `0x88B` | DialogTopic | `PhysicalLettersHandInTopic` | "I have a letter for you." |
+| `0x8B3` | Keyword | `PhysicalLettersHandInLetter` | On every letter (the DLL, when a letter is made or loaded); the hand-in topic's condition and its gift menu's filter |
+| `0x8B4` | Global (short) | `PhysicalLettersHandInDialogue` | 1 with `[Delivery] HandInDialogue` on; set by the DLL on new game, load and MCM change; in the topic's condition |
+| `0x8B5` | DialogResponses | | The topic's one answer: the player carries a letter (`GetKeywordItemCount` `0x8B3` > 0) and the global `0x8B4` is 1; a single space (silent, no visible subtitle), TIF `PhysicalLetters_TIF_HandIn` on begin (the gift menu covers the response). `0x888` (an alias faction), `0x88C`–`0x8B2` (thanks lines) were removed 2026-10-02 |
 
 The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`).
 
@@ -83,8 +90,8 @@ If a record is easier to make in the Creation Kit or xEdit, edit the deployed `.
 
 ## Papyrus
 
-The scripts' sources (the TIFs, the MCM and the two courier quests) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
+The scripts' sources (the TIFs, the MCM, the two courier quests and the hand-in quest) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
 
 ## The SEQ file
 
-`Seq/Physical Letters.seq` lists the plugin's start-game quests with dialogue: raw little-endian `uint32` FormIDs as stored in the plugin (master index in the top byte: `0x01` = the plugin itself after its one master, Skyrim.esm), no header. Today one entry, `0x01000803`. A new start-game quest, or a new master, means regenerating it.
+`Seq/Physical Letters.seq` lists the plugin's start-game quests with dialogue: raw little-endian `uint32` FormIDs as stored in the plugin (master index in the top byte: `0x01` = the plugin itself after its one master, Skyrim.esm), no header. Today two entries, `0x01000803` (postage) and `0x01000887` (hand-in). A new start-game quest, or a new master, means regenerating it.
