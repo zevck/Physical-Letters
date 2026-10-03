@@ -79,13 +79,17 @@ namespace PhysicalLetters {
         static constexpr Setting kRoadIntimidate   { "Courier", "IntimidateSpeech", 40, 0, 100 };
         // Bounty (gold, non-violent) he reports when he was threatened or beaten into handing over.
         static constexpr Setting kRobberyBounty    { "Courier", "RobberyBounty",    40, 0, 1000 };
+        // Who the player can write to besides unique NPCs (docs/WRITING.md#the-recipient): 0 nobody
+        // else, 1 generic NPCs SkyrimNet has memories of, 2 any named NPC.
+        static constexpr Setting kGenericRecipients { "Writing", "GenericRecipients", 1, 0, 2 };
+        static constexpr int kGenericUniqueOnly = 0, kGenericKnown = 1, kGenericAnyone = 2;
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcNearDistance, kNpcMissedAfter, kNpcRecentWeight,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kN2nMinDistance, kCourierEnabled, kCourierWaitHours,
-            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue,
+            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue, kGenericRecipients,
         };
 
         static Config* GetSingleton()

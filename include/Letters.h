@@ -44,6 +44,16 @@ namespace PhysicalLetters::Letters {
     // Nobody holds it yet.  nullptr if the form couldn't be made.
     RE::TESObjectBOOK* Create(const Letter& letter);
 
+    // The letter's text as the book menu reads it (UTF-8 book markup; TextHook converts it), and
+    // as Ink & Quill edits it: the player's letters open with a "To:" line (docs/WRITING.md#the-text).
+    std::string Reading(const Letter& letter);
+    // `bodyLocked`: only the "To:" line can be written in (a new letter until it has a recipient).
+    std::string Marked(const Letter& letter, bool bodyLocked = false);
+
+    // Game thread.  An edit: the letter's form now holds `letter`, a new LetterDB record (the old one
+    // stays, for other saves).  False if it couldn't be stored, and nothing changed.
+    bool Rewrite(RE::TESObjectBOOK* book, const Letter& letter);
+
     // Load callback: gives this save's letter forms their look and name from their
     // records.  Their text shows a placeholder until AttachTexts.
     void ConfigureLoaded();

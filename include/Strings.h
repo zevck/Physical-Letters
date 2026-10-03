@@ -46,6 +46,39 @@ namespace PhysicalLetters::Strings {
     // A letter LetterDB has no text for.
     inline constexpr std::string_view kLetterUnreadable = "The ink has run; the letter can't be read.";
 
+    // The player's letter's first line, before the recipient's name (docs/WRITING.md#the-text).
+    inline constexpr std::string_view kToLabel = "To: ";
+
+    // A save of a letter the player writes, refused (docs/WRITING.md#saving).
+    inline constexpr std::string_view kWriteNotReady = "Letters aren't ready yet. Try again in a moment.";
+    inline constexpr std::string_view kWriteNoName = "The letter isn't addressed yet. Write who it's for after \"To:\".";
+    inline constexpr std::string_view kWriteEmpty = "Nothing is written in the letter yet.";
+    inline constexpr std::string_view kWriteFailed = "The letter couldn't be saved. See PhysicalLetters.log.";
+    inline std::string WriteNobody(const std::string& name)
+    {
+        return std::format("Nobody named \"{}\" can receive a letter.", name);
+    }
+    inline std::string WriteSeveral(const std::string& name, const std::string& addresses, const std::string& example)
+    {
+        return std::format("Several people are named \"{}\" ({}). Write which after the name, as \"{}, {}\".", name, addresses,
+                           name, example);
+    }
+    inline std::string WriteAddress(const std::string& name, const std::string& address)
+    {
+        return std::format("Write {}'s address after the name: \"{}, {}\".", name, name, address);
+    }
+    inline std::string WriteTooMany(const std::string& name)
+    {
+        return std::format("Too many people are named \"{}\" to address a letter to one of them.", name);
+    }
+    inline std::string WriteNoneAt(const std::string& name, const std::string& typed, const std::string& addresses)
+    {
+        return std::format("Nobody named \"{}\" fits \"{}\". The addresses for that name: {}.", name, typed, addresses);
+    }
+
+    // An address's place when the recipient's home can't be placed under a hold (docs/WRITING.md#the-recipient).
+    inline constexpr std::string_view kNoPlace = "Tamriel";
+
     // Added to a returned letter's item card.
     inline std::string_view ReturnToSender(bool dead)
     {

@@ -53,6 +53,10 @@ namespace PhysicalLetters::SkyrimNet {
     // `excludeTag` ("[]" on error).  Blocks: not on the game thread.
     std::string Memories(RE::FormID formId, int maxCount, const std::string& query, const std::string& excludeTag);
 
+    // Whether SkyrimNet holds any memory of the actor's.  One short query, but it blocks: Recipients asks it
+    // on the game thread only for a complete name's people, once per actor and session.
+    bool HasMemories(RE::FormID formId);
+
     // Whether the actor has an active memory carrying `tag`.  Blocks: not on the game thread.
     bool HasMemoryWithTag(RE::FormID formId, const std::string& tag);
 

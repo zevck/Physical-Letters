@@ -40,6 +40,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[NpcToNpc] NamesPerWriter` | 3 | 1–5 | Recipients proposed per person, best first; the first usable one is kept |
 | `[NpcToNpc] MemoriesPerWriter` | 3 | 0–10 | Newest memories each person's proposal and letter see (most involve the player; 0 = none) |
 | `[NpcToNpc] MinDistance` | 16384 | 0–131072 | Game units writer and recipient must be apart, besides living in different places |
+| `[Writing] GenericRecipients` | 1 | 0–2 | Whom the player's letters can be addressed to besides unique NPCs: 0 nobody else, 1 generic NPCs SkyrimNet has memories of, 2 any NPC with the name ([WRITING.md](WRITING.md#the-recipient)). MCM: a menu |
 
 **Every setting is one row in `Config::kSettings`**: section, key, default, range. Reads clamp to the range and fall back to the default on a non-number, so a hand-edited INI can't feed the code nonsense. `Save()` writes only the keys in the table (anything else is dropped at the next start), building the file in memory first so a failure can't leave it half-written.
 
@@ -49,7 +50,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 
 `PhysicalLetters_MCM` (`extends SKI_ConfigBase`) on the start-game quest `PhysicalLettersMCMQuest` (`0x808`), whose player alias runs `SKI_PlayerLoadGameAlias`, as SNPD's does. Needs SkyUI; without it the INI still works.
 
-One page, four sections: Delivery (five sliders, the hand-over dialogue toggle, then the courier's two toggles and four sliders), NPC letters (the toggle and seven sliders), Letters between NPCs (two toggles and eight sliders), Logging (the debug toggle). Sliders and toggles are rows in two arrays, so a section is a range of them. The script knows only the setting names (`"Delivery.Postage"`): the natives `GetSetting`, `SetSetting`, `GetSettingDefault`, `GetSettingMin` and `GetSettingMax` on `PhysicalLetters_MCM` take them, so defaults and ranges live only in `kSettings`.
+One page, five sections: Delivery (five sliders, the hand-over dialogue toggle, then the courier's two toggles and four sliders), NPC letters (the toggle and seven sliders), Letters between NPCs (two toggles and eight sliders), Writing letters (the recipients menu), Logging (the debug toggle). Sliders and toggles are rows in two arrays, so a section is a range of them. The recipients menu (`Writing.GenericRecipients`) is apart from them: its choices are its values (0–2), and it has its own option id and handlers (`OnOptionMenuOpen`, `OnOptionMenuAccept`, and branches in `OnOptionDefault` and `OnOptionHighlight`). The script knows only the setting names (`"Delivery.Postage"`): the natives `GetSetting`, `SetSetting`, `GetSettingDefault`, `GetSettingMin` and `GetSettingMax` on `PhysicalLetters_MCM` take them, so defaults and ranges live only in `kSettings`.
 
 Strings are `$PL_…` keys in `Interface/Translations/Physical Letters_<LANGUAGE>.txt` (UTF-16 LE with BOM, key and text separated by a tab). All nine files hold the English text for now.
 
@@ -57,6 +58,6 @@ Strings are `$PL_…` keys in `Interface/Translations/Physical Letters_<LANGUAGE
 
 1. A row in `Config::kSettings`, and its use in the code.
 2. If changing it must do something at once (like the postage global), a branch in `SetSetting` (`src/Papyrus.cpp`).
-3. A slider (or toggle) in `PhysicalLetters_MCM.psc`: its name, label, tooltip, format and step.
+3. A slider (or toggle) in `PhysicalLetters_MCM.psc`: its name, label, tooltip, format and step; or a menu, as the recipients menu.
 4. Its `$PL_…` label and tooltip in all nine translation files.
 5. This table, and the README.

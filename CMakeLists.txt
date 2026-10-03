@@ -41,6 +41,8 @@ set(sources
     src/RoadCourier.cpp
     src/HandIn.cpp
     src/Parchment.cpp
+    src/Recipients.cpp
+    src/Writing.cpp
     src/Serialization.cpp
     src/Session.cpp
     src/SkyrimNet.cpp

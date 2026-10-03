@@ -39,6 +39,8 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `written_at`, `delivered_at` | Game days; `delivered_at` is 0 until delivered |
 | `reading`, `memory_id` | The LLM's answer (JSON) and the SkyrimNet memory it became, from the latest reading of the letter (a letter sent again is read again). A record only; see below |
 | `in_reply_to` | For a reply, the id of the letter it answers ('' otherwise; replies from before this column have '' too, and so don't appear in the correspondence) |
+| `blood` | A letter the player wrote partly in blood: the body with that text between U+E000 and U+E001, for the book to show red; '' otherwise ([WRITING.md](WRITING.md#the-text)) |
+| `address` | A letter the player wrote: the recipient's address after their name on the "To:" line ("6391 Dawnstar", [WRITING.md](WRITING.md#the-recipient)); '' otherwise, and for letters from before addresses |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 
@@ -62,6 +64,7 @@ A letter an NPC writes first carries its letter tag on the **writer's** memory o
 | Load a save from before a reply reached the courier | The reply's parcel is in that save and goes to the courier when due |
 | A load while a reading is running | The result is dropped; the loaded save's own parcels decide what is read |
 | Second character | Another SkyrimNet save id, so another LetterDB |
+| An edited letter | The edit is a new LetterDB row (a new letter id); the old row stays (LetterDB only grows on edits). The form's `LFRM` key is the new id from the next save on, and the old id's "return to sender" mark is dropped. A save from before the edit (or a reload without saving) still has the old key, so the letter reads as it was then, and its `LTRN` marks are that save's. A second character never sees either: another LetterDB |
 | NPC letters: a load while an attempt runs | The attempt's result is dropped (session generation); the loaded save's schedule decides when the next runs |
 | NPC letters: a save from before an NPC wrote, **Keep** | The schedule and cooldowns are the save's (`LNPC`), and the letter's parcel isn't in it; the writer's tagged memory of writing stays, so their next reading lists a letter the player never got. Accepted: SkyrimNet's Keep keeps what the NPC lived through |
 | NPC letters: the same, **Clear** | The memory goes with the rest of that history |

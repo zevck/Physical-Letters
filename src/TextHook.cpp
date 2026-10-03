@@ -251,6 +251,11 @@ namespace
 
 } // anonymous namespace
 
+std::string PhysicalLetters::TextHook::ForBookMenu(const std::string& text)
+{
+    return HasCyrillic(text) ? Utf8ToWin1251(text) : text;
+}
+
 void PhysicalLetters::TextHook::Install()
 {
     GetDescriptionHook::Install();

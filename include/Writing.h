@@ -16,17 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #pragma once
 
-// Serves each letter's text to everything that reads a book (GetDescription hook).
-namespace PhysicalLetters::TextHook {
+// The player writes letters through Ink & Quill - Writing Framework, its client here
+// (docs/WRITING.md): in parchment (a blank), and in their own letters until sent.
+namespace PhysicalLetters::Writing {
 
-    // SKSEPlugin_Load.
-    void Install();
+    // kPostLoad: finds Ink & Quill's API.
+    void Connect();
 
-    // A letter's rendered text as the hook gives it to the book menu (Win-1251 for Cyrillic): for
-    // Ink & Quill's reading text.  Never for marked text.
-    std::string ForBookMenu(const std::string& text);
+    // kDataLoaded: registers parchment and the player's letters with Ink & Quill, if its writing is on.
+    void Register();
 
-} // namespace PhysicalLetters::TextHook
+} // namespace PhysicalLetters::Writing

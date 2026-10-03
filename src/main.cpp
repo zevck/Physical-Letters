@@ -33,6 +33,7 @@
 #include "SkyrimNet.h"
 #include "TextHook.h"
 #include "Transit.h"
+#include "Writing.h"
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <thread>
@@ -68,12 +69,16 @@ namespace {
     {
         if (!msg) return;
         switch (msg->type) {
+        case SKSE::MessagingInterface::kPostLoad:
+            PhysicalLetters::Writing::Connect();
+            break;
         case SKSE::MessagingInterface::kDataLoaded:
             PhysicalLetters::SkyrimNet::Init();
             PhysicalLetters::Letters::CheckTemplate();
             PhysicalLetters::DebugKeys::Register();
             PhysicalLetters::HandIn::Register();
             PhysicalLetters::Parchment::OnDataLoaded();
+            PhysicalLetters::Writing::Register();
             StartHeartbeat();
             break;
         case SKSE::MessagingInterface::kPreLoadGame:

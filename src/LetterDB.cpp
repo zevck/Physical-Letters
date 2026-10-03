@@ -162,9 +162,13 @@ namespace PhysicalLetters {
                 delivered_at    REAL NOT NULL DEFAULT 0,
                 reading         TEXT NOT NULL DEFAULT '',
                 memory_id       INTEGER NOT NULL DEFAULT 0,
-                in_reply_to     TEXT NOT NULL DEFAULT ''
+                in_reply_to     TEXT NOT NULL DEFAULT '',
+                blood           TEXT NOT NULL DEFAULT '',
+                address         TEXT NOT NULL DEFAULT ''
             );
-        )") && AddColumn("ALTER TABLE letters ADD COLUMN in_reply_to TEXT NOT NULL DEFAULT '';");
+        )") && AddColumn("ALTER TABLE letters ADD COLUMN in_reply_to TEXT NOT NULL DEFAULT '';") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN blood TEXT NOT NULL DEFAULT '';") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN address TEXT NOT NULL DEFAULT '';");
     }
 
     bool LetterDB::AddColumn(const char* sql)
@@ -186,7 +190,7 @@ namespace PhysicalLetters {
         if (!db_) return false;
         Statement s{ db_,
                      "INSERT OR REPLACE INTO letters (letter_id, author_uuid, author_name, recipient_uuid, "
-                     "recipient_name, body, written_at, in_reply_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+                     "recipient_name, body, written_at, in_reply_to, blood, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                      "Insert" };
         return s.Bind(1, letter.id)
             .Bind(2, letter.authorUuid)
@@ -196,12 +200,14 @@ namespace PhysicalLetters {
             .Bind(6, letter.body)
             .Bind(7, letter.writtenAt)
             .Bind(8, letter.inReplyTo)
+            .Bind(9, letter.blood)
+            .Bind(10, letter.address)
             .Run();
     }
 
     namespace {
         constexpr auto kLetterColumns =
-            "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to";
+            "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to, blood, address";
 
         Letter ReadLetter(const Statement& s)
         {
@@ -212,7 +218,9 @@ namespace PhysicalLetters {
                            .recipientName = s.Text(4),
                            .body = s.Text(5),
                            .writtenAt = s.Double(6),
-                           .inReplyTo = s.Text(7) };
+                           .inReplyTo = s.Text(7),
+                           .blood = s.Text(8),
+                           .address = s.Text(9) };
         }
     }
 

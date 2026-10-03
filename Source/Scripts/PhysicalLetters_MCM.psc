@@ -22,6 +22,10 @@ string[] _toggleLabels
 string[] _toggleTips
 int[] _toggleOids
 
+; Writing.GenericRecipients (0-2), a menu: its choices are its values.
+string[] _recipientChoices
+int _recipientsOid = -1
+
 event OnConfigInit()
     ModName = "Physical Letters"
 endevent
@@ -88,6 +92,11 @@ function Setup()
     Toggle(4, "Courier.Enabled", "$PL_Courier", "$PL_TipCourier")
     Toggle(5, "Courier.RoadEncounters", "$PL_Road", "$PL_TipRoad")
     Toggle(6, "Delivery.HandInDialogue", "$PL_HandIn", "$PL_TipHandIn")
+
+    _recipientChoices = new string[3]
+    _recipientChoices[0] = "$PL_RecipientsUnique"
+    _recipientChoices[1] = "$PL_RecipientsKnown"
+    _recipientChoices[2] = "$PL_RecipientsAnyone"
 endfunction
 
 function AddSliders(int first, int last)
@@ -123,6 +132,9 @@ event OnPageReset(string page)
     AddToggle(3)
     AddSliders(12, 19)
     AddEmptyOption()
+    AddHeaderOption("$PL_HeaderWriting")
+    _recipientsOid = AddMenuOption("$PL_Recipients", _recipientChoices[GetSetting("Writing.GenericRecipients")])
+    AddEmptyOption()
     AddHeaderOption("$PL_HeaderLogging")
     AddToggle(1)
 endevent
@@ -154,7 +166,27 @@ event OnOptionSelect(int oid)
     endif
 endevent
 
+event OnOptionMenuOpen(int oid)
+    if oid == _recipientsOid
+        SetMenuDialogOptions(_recipientChoices)
+        SetMenuDialogStartIndex(GetSetting("Writing.GenericRecipients"))
+        SetMenuDialogDefaultIndex(GetSettingDefault("Writing.GenericRecipients"))
+    endif
+endevent
+
+event OnOptionMenuAccept(int oid, int index)
+    if oid == _recipientsOid && index >= 0
+        SetSetting("Writing.GenericRecipients", index)
+        SetMenuOptionValue(oid, _recipientChoices[GetSetting("Writing.GenericRecipients")])
+    endif
+endevent
+
 event OnOptionDefault(int oid)
+    if oid == _recipientsOid
+        SetSetting("Writing.GenericRecipients", GetSettingDefault("Writing.GenericRecipients"))
+        SetMenuOptionValue(oid, _recipientChoices[GetSetting("Writing.GenericRecipients")])
+        return
+    endif
     int i = _oids.Find(oid)
     if i >= 0
         SetSetting(_names[i], GetSettingDefault(_names[i]))
@@ -169,6 +201,10 @@ event OnOptionDefault(int oid)
 endevent
 
 event OnOptionHighlight(int oid)
+    if oid == _recipientsOid
+        SetInfoText("$PL_TipRecipients")
+        return
+    endif
     int i = _oids.Find(oid)
     if i >= 0
         SetInfoText(_tips[i])

@@ -11,7 +11,7 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [COURIER.md](COURIER.md) | The vanilla courier carrying a letter to an NPC in the player's town: the errand, other courier mods, when it falls back to unseen delivery |
 | [ROAD_COURIER.md](ROAD_COURIER.md) | The courier met on the road with the letters passing there: vanilla's road triggers, detecting a passing letter, the encounter, the dialogue (intimidate, brawl) |
 | [HAND_IN.md](HAND_IN.md) | Handing a letter to its recipient in person: the recipient aliases and their faction, the dialogue, the gift menu, delivery |
-| [WRITING.md](WRITING.md) | Writing letters (in progress): parchment, and the plan as an Ink & Quill client |
+| [WRITING.md](WRITING.md) | Writing letters as an Ink & Quill client: parchment, the "To:" line, matching the recipient, saving and editing |
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
 | [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
 | [SETTINGS.md](SETTINGS.md) | The INI, the MCM, adding a setting |

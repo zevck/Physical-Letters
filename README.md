@@ -2,12 +2,13 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). On the roads you may meet him carrying a letter that passes there: post a letter with him, threaten or brawl him for his letters, or pick his pocket (built, not yet tested). You can also hand a letter you carry to someone in person ("I have a letter for you."): they read it there and react aloud, the text known to them alone, and may write back (tested on AE; needs SkyrimNet's `PublicRegisterEvent`); hand it to anyone else and they read a letter that isn't theirs (built, not yet tested). Writing your own letters isn't built yet; until it is, the plugin has dev keys (below).
+**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). On the roads you may meet him carrying a letter that passes there: post a letter with him, threaten or brawl him for his letters, or pick his pocket (built, not yet tested). You can also hand a letter you carry to someone in person ("I have a letter for you."): they read it there and react aloud, the text known to them alone, and may write back (tested on AE; needs SkyrimNet's `PublicRegisterEvent`); hand it to anyone else and they read a letter that isn't theirs (built, not yet tested). You write letters on parchment (crafted from a roll of paper at a tanning rack, or bought from general-goods merchants) with **Ink & Quill - Writing Framework** installed: read a parchment, write the recipient's name and address after "To:" (suggestions fill them in) and your letter below it, and save (tested on AE, and so is mailing it); you can edit a letter you haven't sent (built, not yet tested). The dev keys (below) still make example letters.
 
 ## Requirements
 
 - SKSE and the Address Library for your runtime.
 - SkyUI for the MCM (optional: the INI works without it).
+- **Ink & Quill - Writing Framework** to write letters (optional: without it, parchment is an empty note).
 - **SkyrimNet with public API v11** (0.25.1, not released yet). With an older SkyrimNet the plugin loads, logs why, and letters are never read.
 
 ## What it installs
@@ -15,7 +16,7 @@ SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physi
 | Path | What |
 |---|---|
 | `SKSE/Plugins/PhysicalLetters.dll` | The plugin |
-| `Physical Letters.esp` | ESL-flagged plugin: the postage dialogue for innkeepers and the courier, and the courier's errand to an NPC in town (quest, scene, lines), the courier on the road, and handing a letter over in person |
+| `Physical Letters.esp` | ESL-flagged plugin: the postage dialogue for innkeepers and the courier, and the courier's errand to an NPC in town (quest, scene, lines), the courier on the road, handing a letter over in person, and parchment (its recipe, and the merchants' list it's added to) |
 | `Scripts/PhysicalLetters_TIF_Postage.pex` | The dialogue's script (opens the gift menu) |
 | `Scripts/PhysicalLetters_CourierQuest.pex`, `Scripts/PhysicalLetters_TIF_CourierHandOver.pex` | The courier's errand |
 | `Scripts/PhysicalLetters_RoadCourierQuest.pex`, `Scripts/PhysicalLetters_TIF_Road*.pex` | The courier on the road |
@@ -30,7 +31,7 @@ At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.
 
 ## Settings
 
-In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, whether he can be met on the road, and whether NPCs get the "I have a letter for you." topic. See [docs/SETTINGS.md](docs/SETTINGS.md).
+In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, whether he can be met on the road, whether NPCs get the "I have a letter for you." topic, and whom your letters can be addressed to. See [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Dev keys
 

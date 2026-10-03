@@ -34,6 +34,12 @@ namespace PhysicalLetters {
         std::string body;           // plain text, \n line breaks
         double      writtenAt = 0;  // game days
         std::string inReplyTo;      // a reply: the id of the letter it answers
+        // The player's letter written partly in blood: the body with that text between U+E000
+        // and U+E001; "" if none was.  The book shows it red; everything else reads `body`.
+        std::string blood;
+        // The player's letter: the recipient's address as the "To:" line shows it after their name
+        // ("6391 Dawnstar"); "" for other letters and those written before addresses.
+        std::string address;
     };
 
     // SQLite store for letters, one per SkyrimNet save folder:

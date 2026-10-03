@@ -179,6 +179,15 @@ namespace PhysicalLetters::SkyrimNet {
         return QueryMemoriesForActor(formId, memoryQuery);
     }
 
+    bool HasMemories(RE::FormID formId)
+    {
+        if (!g_available) return false;
+        MemoryQuery memoryQuery;
+        memoryQuery.maxCount = 1;
+        const auto found = QueryMemoriesForActor(formId, memoryQuery);
+        return !found.empty() && found != "[]";
+    }
+
     std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types)
     {
         if (!g_available || !PublicGetRecentEvents) return "[]";
