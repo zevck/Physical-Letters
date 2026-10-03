@@ -1,0 +1,22 @@
+FormKey: 0008B6:Physical Letters.esp
+EditorID: PhysicalLettersParchment
+Name:
+  TargetLanguage: English
+  Value: Parchment
+Model:
+  File: Clutter\Books\Note01.nif
+  Data: 0x0200000002000000000000007F86450D64647300B5139F09AD43553B64647300B5139F09
+BookText:
+  TargetLanguage: English
+  Value: <font face='$HandwrittenFont'></font>
+PickUpSound: 0C7A54:Skyrim.esm
+Keywords:
+- 0937A2:Skyrim.esm
+Teaches:
+  MutagenObjectType: BookTeachesNothing
+Value: 2
+Weight: 0.1
+InventoryArt: 097788:Skyrim.esm
+Description:
+  TargetLanguage: English
+  Value: ''

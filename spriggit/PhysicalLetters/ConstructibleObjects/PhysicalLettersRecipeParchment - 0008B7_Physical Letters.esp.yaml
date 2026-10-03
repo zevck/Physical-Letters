@@ -1,0 +1,9 @@
+FormKey: 0008B7:Physical Letters.esp
+EditorID: PhysicalLettersRecipeParchment
+Items:
+- Item:
+    Item: 033761:Skyrim.esm
+    Count: 1
+CreatedObject: 0008B6:Physical Letters.esp
+WorkbenchKeyword: 07866A:Skyrim.esm
+CreatedObjectCount: 3

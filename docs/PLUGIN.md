@@ -62,8 +62,11 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x8B3` | Keyword | `PhysicalLettersHandInLetter` | On every letter (the DLL, when a letter is made or loaded); the hand-in topic's condition and its gift menu's filter |
 | `0x8B4` | Global (short) | `PhysicalLettersHandInDialogue` | 1 with `[Delivery] HandInDialogue` on; set by the DLL on new game, load and MCM change; in the topic's condition |
 | `0x8B5` | DialogResponses | | The topic's one answer: the player carries a letter (`GetKeywordItemCount` `0x8B3` > 0) and the global `0x8B4` is 1; a single space (silent, no visible subtitle), TIF `PhysicalLetters_TIF_HandIn` on begin (the gift menu covers the response). `0x888` (an alias faction), `0x88C`–`0x8B2` (thanks lines) were removed 2026-10-02 |
+| `0x8B6` | Book | `PhysicalLettersParchment` | Parchment, the blank letter ([WRITING.md](WRITING.md#parchment)): the vanilla note's look, empty, value 2, weight 0.1 |
+| `0x8B7` | ConstructibleObject | `PhysicalLettersRecipeParchment` | Tanning rack: 1 Roll of Paper → 3 parchment |
+| `0x8B8` | LeveledItem | `PhysicalLettersLItemParchment` | 3 or 5 parchment; added in memory to Skyrim.esm `LItemMiscVendorMiscItems75` |
 
-The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`).
+The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`, `HandIn.cpp`, `Parchment.cpp`).
 
 The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 

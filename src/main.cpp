@@ -19,6 +19,7 @@
 
 #include "DebugKeys.h"
 #include "HandIn.h"
+#include "Parchment.h"
 #include "Postage.h"
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
@@ -72,6 +73,7 @@ namespace {
             PhysicalLetters::Letters::CheckTemplate();
             PhysicalLetters::DebugKeys::Register();
             PhysicalLetters::HandIn::Register();
+            PhysicalLetters::Parchment::OnDataLoaded();
             StartHeartbeat();
             break;
         case SKSE::MessagingInterface::kPreLoadGame:

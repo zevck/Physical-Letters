@@ -1,0 +1,13 @@
+FormKey: 0008B8:Physical Letters.esp
+EditorID: PhysicalLettersLItemParchment
+Flags:
+- CalculateFromAllLevelsLessThanOrEqualPlayer
+Entries:
+- Data:
+    Level: 1
+    Reference: 0008B6:Physical Letters.esp
+    Count: 3
+- Data:
+    Level: 1
+    Reference: 0008B6:Physical Letters.esp
+    Count: 5

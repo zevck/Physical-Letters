@@ -31,6 +31,7 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | CourierErrand | `src/CourierErrand.cpp` | The courier carrying a letter to an NPC in the player's town: the quest's natives, who holds him, the Story Manager global ([COURIER.md](COURIER.md)) |
 | Postage | `src/Postage.cpp` | Posting: a letter the player wrote, given to an innkeeper or the courier in a gift menu (HandIn's watcher calls it) |
 | HandIn | `src/HandIn.cpp` | Letters leaving the player's inventory: posted, or handed over in the hand-in topic's gift menu; the private narration of a letter read there; the topic's native and setting global ([HAND_IN.md](HAND_IN.md)) |
+| Parchment | `src/Parchment.cpp` | Parchment, the blank letter: added to general-goods merchants' stock in memory ([WRITING.md](WRITING.md#parchment)) |
 | TextHook | `src/TextHook.cpp` | `GetDescription` hook serving each letter's text and item card |
 | DynamicForms | `src/DynamicForms.cpp` | Runtime forms the engine saves itself (shared with SNPD) |
 | Serialization | `src/Serialization.cpp`, `include/CoSave.h` | The co-save records |
