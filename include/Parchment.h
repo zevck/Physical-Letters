@@ -33,8 +33,8 @@ namespace PhysicalLetters::Parchment {
         return data ? data->LookupForm<RE::TESObjectBOOK>(kFormId, kPlugin) : nullptr;
     }
 
-    // kDataLoaded: names it in the chosen language and adds PhysicalLettersLItemParchment to the
-    // merchants' general-goods list.
+    // kDataLoaded, after Writing::Connect: names it in the chosen language and adds it to the merchants'
+    // general-goods list; without Ink & Quill's writing, takes its recipe off the tanning rack instead.
     void OnDataLoaded();
 
 } // namespace PhysicalLetters::Parchment

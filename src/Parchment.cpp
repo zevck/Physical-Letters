@@ -20,11 +20,13 @@
 #include "Parchment.h"
 
 #include "Strings.h"
+#include "Writing.h"
 
 namespace PhysicalLetters::Parchment {
 
     namespace {
-        constexpr RE::FormID kList = 0x8B8;              // PhysicalLettersLItemParchment: 3 or 5 parchment
+        constexpr RE::FormID kRecipe = 0x8B7;            // PhysicalLettersRecipeParchment, at a tanning rack
+        constexpr RE::FormID kList = 0x8B8;             // PhysicalLettersLItemParchment: 3 or 5 parchment
         constexpr RE::FormID kVendorMiscItems = 0x09AF0A;  // Skyrim.esm LItemMiscVendorMiscItems75
 
         // As SkyrimNet Physical Diaries' blank journals: the general-goods list that already sells
@@ -67,6 +69,14 @@ namespace PhysicalLetters::Parchment {
         auto* data = RE::TESDataHandler::GetSingleton();
         if (auto* parchment = Form()) {
             parchment->SetFullName(Strings::ParchmentName().c_str());  // the ESP's name is English
+        }
+        // Without Ink & Quill parchment can't be written on: nobody sells it and no bench makes it.
+        if (!Writing::Available()) {
+            if (auto* recipe = data ? data->LookupForm<RE::BGSConstructibleObject>(kRecipe, kPlugin) : nullptr) {
+                recipe->benchKeyword = nullptr;
+            }
+            SKSE::log::info("[Parchment] Letters can't be written: parchment isn't sold or crafted");
+            return;
         }
         if (auto* list = data ? data->LookupForm<RE::TESLevItem>(kList, kPlugin) : nullptr) {
             AddToMerchants(list);

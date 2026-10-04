@@ -304,6 +304,11 @@ namespace PhysicalLetters::Writing {
         }
     }
 
+    bool Available()
+    {
+        return g_api && g_api->IsWritingOn();
+    }
+
     void Register()
     {
         if (!g_api) return;

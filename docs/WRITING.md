@@ -14,7 +14,7 @@ The blank letter. A book item, `PhysicalLettersParchment` (`0x8B6`), with the va
 
 ## Starting
 
-`Writing::Connect` finds Ink & Quill's API at `kPostLoad`; `Writing::Register` (at `kDataLoaded`, only if its writing is on) registers parchment as a blank (`RegisterBlank`) and adds an owner (`AddOwner`). Without Ink & Quill, or with its writing off, parchment is an empty note and letters can't be edited; the log says which.
+`Writing::Connect` finds Ink & Quill's API at `kPostLoad`; `Writing::Register` (at `kDataLoaded`, only if its writing is on) registers parchment as a blank (`RegisterBlank`) and adds an owner (`AddOwner`). Without Ink & Quill, or with its writing off (`Writing::Available`), letters can't be written or edited; the log says which. Parchment is then kept out of the game (user, 2026-10-04: an empty note nobody can use is junk): `Parchment::OnDataLoaded` doesn't add it to the merchants' list and clears its recipe's bench keyword (`0x8B7`), so no tanning rack lists it. Both are in memory only, every startup, so installing Ink & Quill later brings it back. Parchment the player already carries stays an empty note. Everything else (NPCs writing to the player and to each other, delivery, reading, handing letters over) works without it.
 
 - **A new letter:** reading parchment from the player's own inventory (Ink & Quill checks where) begins a session at once, the caret after "To: ". Nothing is made until the first save, which turns one parchment into the letter (`ReplySaveAsBook`).
 - **Editing:** the edit key on a letter the player wrote and carries (so not sent) begins a session on its text. Anyone else's letter, or one read from a container or the world, isn't ours: the key does nothing.

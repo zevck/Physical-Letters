@@ -25,6 +25,9 @@ namespace PhysicalLetters::Writing {
     // kPostLoad: finds Ink & Quill's API.
     void Connect();
 
+    // Whether letters can be written: Ink & Quill was found and its writing is on.  From kDataLoaded.
+    bool Available();
+
     // kDataLoaded: registers parchment and the player's letters with Ink & Quill, if its writing is on.
     void Register();
 

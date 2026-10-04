@@ -8,7 +8,7 @@ SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physi
 
 - SKSE and the Address Library for your runtime.
 - SkyUI for the MCM (optional: the INI works without it).
-- **Ink & Quill - Writing Framework** to write letters (optional: without it, parchment is an empty note).
+- **Ink & Quill - Writing Framework** to write letters (optional: without it you can't write letters, and parchment isn't sold or crafted; NPCs still write to you and to each other).
 - **SkyrimNet with public API v11** (0.25.1, not released yet). With an older SkyrimNet the plugin loads, logs why, and letters are never read.
 
 ## What it installs
