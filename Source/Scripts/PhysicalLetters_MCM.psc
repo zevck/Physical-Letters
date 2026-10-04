@@ -28,7 +28,20 @@ int _recipientsOid = -1
 
 event OnConfigInit()
     ModName = "Physical Letters"
+    SetPages()
 endevent
+
+; Also on every open: a save made before the pages existed ran OnConfigInit without them.
+event OnConfigOpen()
+    SetPages()
+endevent
+
+function SetPages()
+    Pages = new string[3]
+    Pages[0] = "$PL_PageGeneral"
+    Pages[1] = "$PL_PageNpcLetters"
+    Pages[2] = "$PL_PageDelivery"
+endfunction
 
 function Slider(int i, string name, string label, string tip, int step)
     _names[i] = name
@@ -63,10 +76,8 @@ function Setup()
     Slider(6, "NpcLetters.CooldownDays", "$PL_NpcCooldown", "$PL_TipNpcCooldown", 1)
     Slider(7, "NpcLetters.MinEvents", "$PL_NpcMinEvents", "$PL_TipNpcMinEvents", 1)
     Slider(8, "NpcLetters.MinDaysApart", "$PL_NpcMinDaysApart", "$PL_TipNpcMinDaysApart", 1)
-    Slider(9, "NpcLetters.MissedAfterDays", "$PL_NpcMissedAfter", "$PL_TipNpcMissedAfter", 1)
-    Slider(10, "NpcLetters.RecentWeight", "$PL_NpcRecentWeight", "$PL_TipNpcRecentWeight", 5)
-    _formats[10] = "{0}%"
-    Slider(11, "NpcLetters.NearDistance", "$PL_NpcNearDistance", "$PL_TipNpcNearDistance", 512)
+    Slider(9, "NpcLetters.DaysUntilMissed", "$PL_NpcMissDays", "$PL_TipNpcMissDays", 1)
+    ; 10, 11 and 19 are free (settings removed 2026-10-03).
     Slider(12, "NpcToNpc.IntervalDays", "$PL_N2nInterval", "$PL_TipN2nInterval", 1)
     Slider(13, "NpcToNpc.MaxOpenThreads", "$PL_N2nMaxThreads", "$PL_TipN2nMaxThreads", 1)
     Slider(14, "NpcToNpc.MaxLettersPerThread", "$PL_N2nMaxLetters", "$PL_TipN2nMaxLetters", 1)
@@ -74,17 +85,16 @@ function Setup()
     Slider(16, "NpcToNpc.WritersPerAttempt", "$PL_N2nWriters", "$PL_TipN2nWriters", 1)
     Slider(17, "NpcToNpc.NamesPerWriter", "$PL_N2nNames", "$PL_TipN2nNames", 1)
     Slider(18, "NpcToNpc.MemoriesPerWriter", "$PL_N2nMemories", "$PL_TipN2nMemories", 1)
-    Slider(19, "NpcToNpc.MinDistance", "$PL_N2nMinDistance", "$PL_TipN2nMinDistance", 1024)
     Slider(20, "NpcLetters.CandidatesPerAttempt", "$PL_NpcCandidates", "$PL_TipNpcCandidates", 1)
     Slider(21, "Courier.WaitHours", "$PL_CourierWait", "$PL_TipCourierWait", 1)
     Slider(22, "Courier.RoadCooldownDays", "$PL_RoadCooldown", "$PL_TipRoadCooldown", 1)
     Slider(23, "Courier.IntimidateSpeech", "$PL_RoadSpeech", "$PL_TipRoadSpeech", 5)
     Slider(24, "Courier.RobberyBounty", "$PL_RoadBounty", "$PL_TipRoadBounty", 5)
 
-    _toggleNames = new string[7]
-    _toggleLabels = new string[7]
-    _toggleTips = new string[7]
-    _toggleOids = new int[7]
+    _toggleNames = new string[8]
+    _toggleLabels = new string[8]
+    _toggleTips = new string[8]
+    _toggleOids = new int[8]
     Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
     Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
     Toggle(2, "NpcToNpc.Enabled", "$PL_N2n", "$PL_TipN2n")
@@ -92,6 +102,8 @@ function Setup()
     Toggle(4, "Courier.Enabled", "$PL_Courier", "$PL_TipCourier")
     Toggle(5, "Courier.RoadEncounters", "$PL_Road", "$PL_TipRoad")
     Toggle(6, "Delivery.HandInDialogue", "$PL_HandIn", "$PL_TipHandIn")
+    Toggle(7, "NpcLetters.Replies", "$PL_NpcReplies", "$PL_TipNpcReplies")
+    _recipientsOid = -1
 
     _recipientChoices = new string[3]
     _recipientChoices[0] = "$PL_RecipientsUnique"
@@ -99,44 +111,74 @@ function Setup()
     _recipientChoices[2] = "$PL_RecipientsAnyone"
 endfunction
 
-function AddSliders(int first, int last)
-    int i = first
-    while i <= last
-        _oids[i] = AddSliderOption(_labels[i], GetSetting(_names[i]), _formats[i])
-        i += 1
-    endwhile
+function AddSlider(int i)
+    _oids[i] = AddSliderOption(_labels[i], GetSetting(_names[i]), _formats[i])
 endfunction
 
 function AddToggle(int i)
     _toggleOids[i] = AddToggleOption(_toggleLabels[i], GetSetting(_toggleNames[i]) != 0)
 endfunction
 
+; A section: its header across both columns.
+function AddHeader(string text)
+    AddHeaderOption(text)
+    AddEmptyOption()
+endfunction
+
+function AddGap()
+    AddEmptyOption()
+    AddEmptyOption()
+endfunction
+
+; Three pages, two columns filled left to right (docs/SETTINGS.md#the-mcm).
 event OnPageReset(string page)
     Setup()
-    SetCursorFillMode(TOP_TO_BOTTOM)
-    AddHeaderOption("$PL_HeaderDelivery")
-    AddSliders(0, 4)
-    AddToggle(6)
-    AddToggle(4)
-    AddSliders(21, 21)
-    AddToggle(5)
-    AddSliders(22, 24)
-    AddEmptyOption()
-    AddHeaderOption("$PL_HeaderNpcLetters")
-    AddToggle(0)
-    AddSliders(5, 11)
-    AddSliders(20, 20)
-    AddEmptyOption()
-    AddHeaderOption("$PL_HeaderN2n")
-    AddToggle(2)
-    AddToggle(3)
-    AddSliders(12, 19)
-    AddEmptyOption()
-    AddHeaderOption("$PL_HeaderWriting")
-    _recipientsOid = AddMenuOption("$PL_Recipients", _recipientChoices[GetSetting("Writing.GenericRecipients")])
-    AddEmptyOption()
-    AddHeaderOption("$PL_HeaderLogging")
-    AddToggle(1)
+    SetCursorFillMode(LEFT_TO_RIGHT)
+    if page == "$PL_PageNpcLetters"
+        AddHeader("$PL_HeaderNpcLetters")
+        AddSlider(5)
+        AddSlider(6)
+        AddSlider(7)
+        AddSlider(8)
+        AddSlider(9)
+        AddSlider(20)
+        AddGap()
+        AddHeader("$PL_HeaderN2n")
+        AddToggle(3)
+        AddSlider(12)
+        AddSlider(13)
+        AddSlider(14)
+        AddSlider(15)
+        AddSlider(16)
+        AddSlider(17)
+        AddSlider(18)
+    elseif page == "$PL_PageDelivery"
+        AddHeader("$PL_HeaderDelivery")
+        AddSlider(0)
+        AddSlider(1)
+        AddToggle(6)
+        AddSlider(2)
+        AddSlider(4)
+        AddSlider(3)
+        AddGap()
+        AddHeader("$PL_HeaderCourier")
+        AddToggle(4)
+        AddSlider(21)
+        AddToggle(5)
+        AddSlider(22)
+        AddSlider(23)
+        AddSlider(24)
+    else
+        ; General, and the first open (no page chosen yet).
+        AddHeader("$PL_HeaderGeneral")
+        AddToggle(0)
+        AddToggle(7)
+        AddToggle(2)
+        _recipientsOid = AddMenuOption("$PL_Recipients", _recipientChoices[GetSetting("Writing.GenericRecipients")])
+        AddGap()
+        AddHeader("$PL_HeaderLogging")
+        AddToggle(1)
+    endif
 endevent
 
 event OnOptionSliderOpen(int oid)

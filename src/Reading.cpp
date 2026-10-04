@@ -33,8 +33,8 @@ namespace PhysicalLetters::Reading {
         using json = nlohmann::json;
         using namespace LlmJson;
 
-        constexpr auto kPrompt = "physical_letters_read_letter";
-        constexpr auto kPromptOther = "physical_letters_read_other_letter";  // not addressed to the reader
+        constexpr auto kPrompt = "physical_letters\\read_letter";
+        constexpr auto kPromptOther = "physical_letters\\read_other_letter";  // not addressed to the reader
         constexpr int kMaxMemories = 8;
         // Earlier letters passed to the prompt; the template shows as many as it wants of
         // the newest (max_earlier_letters).
@@ -218,8 +218,7 @@ namespace PhysicalLetters::Reading {
                 // The same letter from an earlier delivery (sent again), or seen before.
                 const bool readBefore = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(letter.id));
 
-                std::uint64_t uuid = 0;
-                std::from_chars(readerUuid.data(), readerUuid.data() + readerUuid.size(), uuid);
+                const auto uuid = SkyrimNet::UuidNumber(readerUuid);
                 json context = {
                     { "npc", { { "UUID", uuid }, { "name", readerName } } },
                     { "letter",
@@ -236,6 +235,9 @@ namespace PhysicalLetters::Reading {
                                              : blood.amount == Letters::Blood::kPart ? "part"
                                                                                      : "";
                 context["letter"]["blood_text"] = blood.passages;
+                // Who wrote it, and to whom: their public profile for the prompt (docs/READING.md#the-prompt).
+                context["letter"]["author_UUID"] = SkyrimNet::UuidNumber(letter.authorUuid);
+                context["letter"]["recipient_UUID"] = SkyrimNet::UuidNumber(letter.recipientUuid);
                 if (other) {
                     context["letter"]["reader_is_author"] = readerUuid == letter.authorUuid;
                     context["player_name"] = playerName;

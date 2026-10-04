@@ -64,6 +64,10 @@ namespace PhysicalLetters::Transit {
     // to answer, so they don't write first (docs/NPC_LETTERS.md#who, docs/NPC_TO_NPC.md).
     bool IsLetterPendingFor(const std::string& uuid);
 
+    // Whether a letter this NPC wrote to the player (a reply, or a letter first) is on its way or
+    // waiting for the courier: they don't write first on top of it (docs/NPC_LETTERS.md#who).
+    bool IsLetterPendingFrom(const std::string& uuid);
+
     // The courier's errand (docs/COURIER.md): puts a waiting letter whose recipient he can reach
     // now in his inventory and returns that recipient; nullptr if none.
     RE::Actor* TakeForCourier(RE::Actor* courier);

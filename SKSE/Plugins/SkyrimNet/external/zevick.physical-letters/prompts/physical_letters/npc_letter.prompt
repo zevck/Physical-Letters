@@ -1,5 +1,5 @@
 {# Physical Letters: an NPC writes a letter to someone the cheap pass proposed
-   (physical_letters_npc_propose); this call judges whether and why.  Sent with
+   (physical_letters/npc_propose); this call judges whether and why.  Sent with
    PublicSendCustomPromptToLLM; context:
      npc             UUID, name of the writer
      place           where the writer lives
@@ -15,8 +15,10 @@
 
     {{ render_character_profile("full", npc.UUID) }}
 
-    ## {{ recipient.name }}
-    {{ render_character_profile("short_inline", recipient.UUID) }}
+    ## About {{ recipient.name }}
+    - Gender: {{ decnpc(recipient.UUID).gender }}
+    - Race: {{ decnpc(recipient.UUID).race }}
+    {{ render_character_profile("bio_summary", recipient.UUID) }}
 [ end system ]
 
 [ user ]
@@ -48,5 +50,6 @@
     - 'letter': the letter, or ""
     - 'memory': one or two first-person sentences {{ actor.name }} keeps of writing it, or ""
     - 'emotion': one word
-    - 'importance': 0.0-1.0
+    - 'importance': how much writing it matters to {{ actor.name }} (0.0-1.0), scored as SkyrimNet scores memories:
+{{ render_template("physical_letters/components/memory_importance") }}
 [ end user ]

@@ -2,6 +2,10 @@
    PublicSendCustomPromptToLLM; context variables:
      npc              UUID, name of the NPC who might write
      recipient        the player's name
+     recipient_UUID   the player's UUID, for their public profile
+     place            where the NPC is
+     player_place     where the player is now
+     never_met        true when the NPC has never dealt with the player
      days_since_seen  game days since the NPC last dealt with the player (-1 unknown)
      correspondence   earlier letters between the two that the NPC knows of, oldest first
                       (up to 20): from, to, days_ago, body
@@ -17,9 +21,17 @@
     You are helping decide whether {{ actor.name }} writes a letter to {{ recipient }} today, unprompted, and if so, what {{ actor.subjectivePronoun }} writes. Stay true to {{ actor.possessiveAdjective }} personality, background, speech patterns and relationship with {{ recipient }}.
 
     {{ render_character_profile("full", npc.UUID) }}
+
+    ## About {{ recipient }}
+    - Gender: {{ decnpc(recipient_UUID).gender }}
+    - Race: {{ decnpc(recipient_UUID).race }}
+    {{ render_character_profile("bio_summary", recipient_UUID) }}
 [ end system ]
 
 [ user ]
+    ## Where They Are
+    {{ actor.name }} is in {{ place }}; {{ recipient }} is in {{ player_place }}.{% if never_met %} {{ actor.name }} has never met {{ recipient }}.{% endif %}
+
     {% if days_since_seen >= 0 %}
     ## Time Apart
     {% if days_since_seen == 0 %}{{ actor.name }} dealt with {{ recipient }} earlier today.{% else if days_since_seen == 1 %}{{ actor.name }} last dealt with {{ recipient }} a day ago.{% else %}{{ actor.name }} last dealt with {{ recipient }} {{ days_since_seen }} days ago.{% endif %}
@@ -53,7 +65,7 @@
 
     ## Instructions
 
-    1. **Decide whether {{ actor.name }} writes.** People write when they have a reason: news of their own, something unfinished between them, gratitude, worry, a favour to ask, a grudge, or simply missing someone. Someone who barely knows {{ recipient }}, or has nothing to say, doesn't write. It's fine to decide not to.
+    1. **Decide whether {{ actor.name }} writes.** People write when they have a reason: news of their own, something unfinished between them, gratitude, worry, a favour to ask, a grudge, or simply missing someone. Someone who barely knows {{ recipient }}, or has nothing to say, doesn't write; someone who has never met {{ recipient }} writes only with a real reason, such as having heard of {{ recipient }} and needing their help; someone close enough to walk over and talk doesn't write. It's fine to decide not to.
 
     2. **If {{ actor.subjectivePronoun }} writes, write the letter** in {{ actor.possessiveAdjective }} own voice: addressed to {{ recipient }}, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. Draw on what they last talked about, what {{ actor.subjectivePronoun }} remembers, and {{ actor.possessiveAdjective }} own life as the profile describes it. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent major events. If there are earlier letters, this continues a correspondence: stay consistent and don't repeat what was already written.
 
@@ -66,5 +78,6 @@
     - 'letter': the letter, or "" if {{ actor.subjectivePronoun }} doesn't write
     - 'memory': the first-person memory described above, or "" if {{ actor.subjectivePronoun }} doesn't write
     - 'emotion': {{ actor.name }}'s main feeling while writing, one word (e.g. "fond", "worried", "restless")
-    - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0 float)
+    - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0), scored as SkyrimNet scores memories:
+{{ render_template("physical_letters/components/memory_importance") }}
 [ end user ]

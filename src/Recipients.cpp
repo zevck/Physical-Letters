@@ -18,6 +18,7 @@
  */
 
 #include "Recipients.h"
+#include "Actors.h"
 #include "Config.h"
 #include "MarkedText.h"
 #include "SkyrimNet.h"
@@ -34,7 +35,6 @@ namespace PhysicalLetters::Recipients {
         using MarkedText::WithoutBlood;
         using Names = std::map<std::string, std::vector<RE::Actor*>>;  // actors by lowercase name
 
-        constexpr RE::FormID kActorTypeNPC = 0x013794;
         constexpr RE::FormID kLocTypeHold = 0x016771;
         // Letters typed before any suggestion: one letter starts too many names to check.
         constexpr std::size_t kMinTyped = 2;
@@ -99,7 +99,7 @@ namespace PhysicalLetters::Recipients {
                 return found;
             }
             Names found;
-            auto* npcType = RE::TESForm::LookupByID<RE::BGSKeyword>(kActorTypeNPC);
+            auto* npcType = Actors::NpcType();  // before the lock: a lookup takes it too
             const auto& [forms, lock] = RE::TESForm::GetAllForms();
             const RE::BSReadLockGuard guard{ lock };
             if (!forms || !npcType) return found;
@@ -109,8 +109,7 @@ namespace PhysicalLetters::Recipients {
                 if (actor->IsPlayerRef() || actor->IsDeleted() || actor->IsDisabled() || actor->IsDead()) continue;
                 const char* name = actor->GetDisplayFullName();
                 if (!name || !*name || !StartsWith(name, prefix)) continue;
-                auto* race = actor->GetRace();
-                if (race && race->HasKeyword(npcType)) found[Lower(name)].push_back(actor);
+                if (Actors::IsNpcRace(actor, npcType)) found[Lower(name)].push_back(actor);
             }
             g_scan.emplace(key, found);
             return found;

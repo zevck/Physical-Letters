@@ -45,7 +45,7 @@ Code: `src/Recipients.cpp`. The "To:" line's first line is a name, optionally fo
 
 **Who a name stands for.** Every actor reference in memory (`RE::TESForm::GetAllForms`: persistent references anywhere, the rest only while their cell is loaded) of an NPC race, not the player, not deleted, disabled or dead, whose display name is the name (ASCII case-insensitive). Then:
 
-- **`[Writing] GenericRecipients`** ([SETTINGS.md](SETTINGS.md)): unique NPCs always; generic ones only at 1 (the default) if SkyrimNet has memories of them (`SkyrimNet::HasMemories`, one short query each, kept for the session), or all at 2.
+- **`[Writing] GenericRecipients`** ([SETTINGS.md](SETTINGS.md)): unique NPCs always, and only them at 0 (the default); generic ones too at 1 if SkyrimNet has memories of them (`SkyrimNet::HasMemories`, one short query each, kept for the session), or all at 2.
 - **One reference per unique NPC:** several references of one base are the same person; the one kept is loaded, then persistent, then the lowest FormID.
 - **Disabled actors never count** (user, 2026-10-03): they're mostly disabled for a reason (cut content, quest doubles, a replacer's original, someone not in the world yet), and allowing them caused more trouble than it solved. Lydia, disabled in Breezehome until the player is Thane, becomes addressable when the game enables her.
 

@@ -4,16 +4,18 @@ When a letter is delivered, its recipient reads it: one LLM call decides how the
 
 ## The prompt
 
-`SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/prompts/physical_letters_read_letter.prompt`, shipped as a SkyrimNet plugin (Beta 25 content layout: SkyrimNet no longer reads `SkyrimNet/prompts/`). SkyrimNet names a template by its path under `prompts/`, so `PublicSendCustomPromptToLLM("physical_letters_read_letter", …)` finds it in the external layer.
+`SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/prompts/physical_letters/read_letter.prompt`, in the plugin's own `prompts/physical_letters/` folder (sent as `physical_letters\read_letter`: SkyrimNet resolves a prompt name as a path under `prompts`, as its own `render_template("components\\event_history")` does; all six of our prompts are there, out of the root that every plugin's prompts share), shipped as a SkyrimNet plugin (Beta 25 content layout: SkyrimNet no longer reads `SkyrimNet/prompts/`). SkyrimNet names a template by its path under `prompts/`, so `PublicSendCustomPromptToLLM("physical_letters\read_letter", …) (SkyrimNet splits a prompt name on either slash, so "physical_letters/read_letter" works too)` finds it in the external layer.
 
 Context variables the plugin sets:
 
 | Variable | Value |
 |---|---|
 | `npc` | `{ UUID, name }` of the recipient; the template uses `decnpc(npc.UUID)` and `render_character_profile("full", npc.UUID)` |
-| `letter` | `{ author, recipient, body, read_before, can_reply, blood, blood_text }`; `blood` is `"all"` or `"part"` when the player wrote it in blood (`Letters::BloodOf`, from LetterDB's `blood`), with the passages in `blood_text`, one per line, and the template says so after the letter; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)): the prompt then says not to reply, and a reply is ignored |
+| `letter` | `{ author, recipient, body, read_before, can_reply, blood, blood_text, author_UUID, recipient_UUID }`; the UUIDs are for the writer's public profile (below); `blood` is `"all"` or `"part"` when the player wrote it in blood (`Letters::BloodOf`, from LetterDB's `blood`), with the passages in `blood_text`, one per line, and the template says so after the letter; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)) or, for any letter from the player (mailed or handed over), when `[NpcLetters] Replies` is off ([SETTINGS.md](SETTINGS.md)): the prompt then says not to reply, and a reply is ignored |
 | `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. |
 | `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
+
+**What the reader knows of the writer**: an "About" section, the public part of the writer's SkyrimNet profile: gender, race (`decnpc`) and the character summary (`render_character_profile("bio_summary", …)`). It's what SkyrimNet shows an NPC of someone they speak to (its `dialogue_target` profile, also what telepathy uses), less what only sight gives (physical activity, appearance, worn equipment, health): a letter's reader can't see its writer. Background, personality, relationships, occupation and memories are private in SkyrimNet's profile too, and stay out. The summary is whatever the writer's bio says; some mention secrets, but SkyrimNet shows it to anyone the writer talks to as well. The same section describes the addressee in someone else's letter (`physical_letters/read_other_letter`, the writer's left out when the reader wrote it), the player in `physical_letters/write_letter` and the recipient in `physical_letters/npc_letter` (2026-10-03; the latter had the summary alone before).
 
 **How many earlier letters the prompt shows** is set at the top of the template: `{% set max_earlier_letters = 5 %}`. Edit it there (or in a SkyrimNet overlay of the prompt); up to 20 are passed.
 
@@ -21,7 +23,7 @@ Context variables the plugin sets:
 
 The template follows SkyrimNet's prompt guide (`docs/modding/WORKFLOW_PROMPTS.md` in SkyrimNet): the actor is never addressed as "you", names and pronouns come from `decnpc()`.
 
-It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importance` (0–1), `reply` (bool), `reply_text`.
+It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importance` (0–1), `reply` (bool), `reply_text`. The importance guidelines are copied word for word from SkyrimNet's own memory prompt (`memory/generate_memory.prompt`, its Importance Score Guidelines) into one component, `physical_letters/components/memory_importance.prompt`, which all four of our prompts that make memories render (`render_template`), so letter memories are scored on SkyrimNet's scale; asked for a bare 0–1, models answered 0.5 even for an alarming letter (2026-10-03). Keep the copy in step if SkyrimNet changes it.
 
 ## Reading the answer
 
@@ -58,7 +60,7 @@ Retries wait 30 s, then double. After 5 failures the letter waits for the next l
 
 ## Someone else's letter
 
-A letter handed over in person is read by this call too, after the reader's reaction on the spot ([HAND_IN.md](HAND_IN.md#reading-it-there)). One read by someone it isn't addressed to has its own prompt, `physical_letters_read_other_letter`, and is never answered: [HAND_IN.md](HAND_IN.md#someone-elses-letter).
+A letter handed over in person is read by this call too, after the reader's reaction on the spot ([HAND_IN.md](HAND_IN.md#reading-it-there)). One read by someone it isn't addressed to has its own prompt, `physical_letters/read_other_letter`, and is never answered: [HAND_IN.md](HAND_IN.md#someone-elses-letter).
 
 ## Not done yet
 

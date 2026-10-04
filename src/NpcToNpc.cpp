@@ -18,6 +18,7 @@
  */
 
 #include "NpcToNpc.h"
+#include "Actors.h"
 #include "CoSave.h"
 #include "Config.h"
 #include "GameTime.h"
@@ -44,8 +45,8 @@ namespace PhysicalLetters::NpcToNpc {
         using GameTime::Now;
 
         // The cheap pass that proposes recipients, and the letter itself (docs/NPC_TO_NPC.md#an-attempt).
-        constexpr auto kProposePrompt = "physical_letters_npc_propose";
-        constexpr auto kWritePrompt = "physical_letters_npc_letter";
+        constexpr auto kProposePrompt = "physical_letters\\npc_propose";
+        constexpr auto kWritePrompt = "physical_letters\\npc_letter";
         // SkyrimNet's OpenRouter variant for the proposals: a fast, cheap model in its default
         // config.  A config without it uses its default model.
         constexpr auto kProposeVariant = "meta";
@@ -151,40 +152,18 @@ namespace PhysicalLetters::NpcToNpc {
             return text;
         }
 
-        std::uint64_t ToUuid(const std::string& text)
-        {
-            std::uint64_t uuid = 0;
-            std::from_chars(text.data(), text.data() + text.size(), uuid);
-            return uuid;
-        }
-
-        // A person who can write and be written to: a unique NPC (not a generic guard or
-        // bandit) of an NPC race (not a creature or an animal: SkyrimNet registers rabbits too),
-        // with a voice, not a child.
+        // A person who can write and be written to (Actors::IsPerson), unique (not a generic guard or
+        // bandit) and not a child.
         bool IsPerson(RE::Actor* actor)
         {
-            static auto* npcType = RE::TESForm::LookupByID<RE::BGSKeyword>(0x013794);  // ActorTypeNPC
-            auto* race = actor ? actor->GetRace() : nullptr;
             auto* base = actor ? actor->GetActorBase() : nullptr;
-            return race && base && base->IsUnique() && base->voiceType && npcType && race->HasKeyword(npcType) &&
-                   !actor->IsChild();
-        }
-
-        // Where the actor lives: their area's name, else their location's.
-        std::string PlaceName(RE::Actor* actor)
-        {
-            if (const auto* area = Travel::Area(actor); area && area->GetName() && *area->GetName()) return area->GetName();
-            if (const auto* location = actor ? actor->GetCurrentLocation() : nullptr;
-                location && location->GetName() && *location->GetName()) {
-                return location->GetName();
-            }
-            return "somewhere in Skyrim";
+            return Actors::IsPerson(actor) && base->IsUnique() && !actor->IsChild();
         }
 
         void Schedule()
         {
             const double days = Config::GetSingleton()->Get(Config::kN2nInterval) *
-                                std::uniform_real_distribution<double>(0.5, 1.5)(Rng());
+                                std::uniform_real_distribution<double>(0.75, 1.25)(Rng());  // 25% either side: not like clockwork
             g_nextAt = Now() + days;
             SKSE::log::info("[NpcToNpc] The next letter between NPCs is due in {:.1f} game days", days);
         }
@@ -370,9 +349,7 @@ namespace PhysicalLetters::NpcToNpc {
         }
 
         // Game thread.  Whether the looked-up recipient can receive this writer's letter: the same
-        // actor as their UUID, alive, a unique person, living elsewhere (another area, and at
-        // least MinDistance away: the farm outside town is a neighbour), and free to correspond.
-        // Sets `r.actor`.
+        // actor as their UUID, alive, a unique person, in another area, free to correspond.  Sets `r.actor`.
         std::optional<Refusal> Check(Resolved& r, const Writer& writer, RE::Actor* writerActor, const Open& open)
         {
             r.actor = RE::TESForm::LookupByID<RE::Actor>(r.formId);
@@ -381,10 +358,6 @@ namespace PhysicalLetters::NpcToNpc {
             if (!IsPerson(r.actor)) return Refusal{ "not a unique person" };
             if (const auto* area = Travel::Area(writerActor); area && area == Travel::Area(r.actor)) {
                 return Refusal{ "same place" };
-            }
-            if (const auto distance = Travel::Distance(writerActor, r.actor);
-                distance && *distance < Config::GetSingleton()->Get(Config::kN2nMinDistance)) {
-                return Refusal{ "too close" };
             }
             if (PairOnCooldown(writer.uuid, r.uuid)) return Refusal{ "pair on cooldown" };
             if (open.npcs.contains(r.uuid)) return Refusal{ "busy" };
@@ -510,10 +483,10 @@ namespace PhysicalLetters::NpcToNpc {
         {
             try {
                 const json context = {
-                    { "npc", { { "UUID", ToUuid(pair.writer.uuid) }, { "name", pair.writer.name } } },
+                    { "npc", { { "UUID", SkyrimNet::UuidNumber(pair.writer.uuid) }, { "name", pair.writer.name } } },
                     { "place", pair.writer.place },
                     { "recipient",
-                      { { "UUID", ToUuid(pair.recipient.uuid) }, { "name", pair.recipient.name }, { "place", pair.recipientPlace } } },
+                      { { "UUID", SkyrimNet::UuidNumber(pair.recipient.uuid) }, { "name", pair.recipient.name }, { "place", pair.recipientPlace } } },
                     { "player", playerName },
                     { "memories", Memories(pair.writer.formId, memoryCount) },
                     { "correspondence", Reading::Correspondence(pair.writer.uuid, pair.recipient.uuid, pair.writer.formId, now) },
@@ -602,7 +575,7 @@ namespace PhysicalLetters::NpcToNpc {
                     }
                     auto& recipient = std::get<Resolved>(found);
                     SKSE::log::info("[NpcToNpc] {} -> {}: usable", writer.name, recipient.name);
-                    pairs.push_back({ writer, recipient, PlaceName(recipient.actor) });
+                    pairs.push_back({ writer, recipient, Travel::PlaceName(recipient.actor) });
                     break;
                 }
             }
@@ -630,7 +603,7 @@ namespace PhysicalLetters::NpcToNpc {
                 for (std::size_t i = 0; i < writers.size(); ++i) {
                     const auto& w = writers[i];
                     list.push_back({ { "number", i + 1 },
-                                     { "UUID", ToUuid(w.uuid) },
+                                     { "UUID", SkyrimNet::UuidNumber(w.uuid) },
                                      { "name", w.name },
                                      { "place", w.place },
                                      { "memories", Memories(w.formId, memoryCount) },
@@ -677,7 +650,7 @@ namespace PhysicalLetters::NpcToNpc {
                 std::string why;
                 auto* actor = CanWrite(writer, open, why);
                 if (!actor) continue;
-                writer.place = PlaceName(actor);
+                writer.place = Travel::PlaceName(actor);
                 writers.push_back(std::move(writer));
             }
             std::string names;

@@ -45,14 +45,14 @@ Letters to an NPC arrive after the travel time from whoever took them (the innke
 
 When a letter is due, its recipient must be found (`FindActor`: SkyrimNet's UUID to a FormID in memory, and back to the same UUID). An NPC who isn't persistent is only in memory while their cell is loaded, so a letter to them waits until the player comes near.
 
-- **The recipient is dead:** the letter turns around at once and comes back **through the courier**, after the travel time from their body to the player. The courier handing it back is the signal, and its item card says why; there's no message.
+- **The recipient is dead:** the courier has to find that out first, so the letter waits as for someone who can't be found, `ReturnAfterDays` game days after it was due (user, 2026-10-03; it used to turn around at once, back within hours on a short trip). Then it comes back **through the courier**, after the travel time from their body to the player. A dead recipient who isn't persistent can be unloaded during the wait (the player left their cell): then they can't be found when it ends, and the letter comes back marked "not found", not "deceased". The courier handing it back is the signal, and its item card says why; there's no message.
 - **The recipient can't be found** for `ReturnAfterDays` game days after the letter was due (3 by default, [SETTINGS.md](SETTINGS.md)): it goes to the courier at once: the wait was the delay, and there's no place to measure a trip back from. A mod may have removed them, or they only exist while their cell is loaded.
 
 A returning letter is a state-2 parcel like a reply: the same letter form, now addressed to the player. Its item card adds a line, "Return to sender (deceased)" or "(not found)" (a `\n` in the card text breaks the line; tested on AE); the co-save keeps that ([PERSISTENCE.md](PERSISTENCE.md#the-co-save)), and sending the letter again clears it. It keeps its keyword, so it can be sent again.
 
 ## Replies and the courier
 
-When a reading returns a reply ([READING.md](READING.md)), the same game-thread step that ends the reading creates the reply letter (author the NPC, recipient the player, "Letter from X", the same template) and queues it as a parcel *to the player* (`LTRN` state 2). A save can't hold a finished reading without its reply. If a save was made between the memory and that step, the reading after a load finds the memory and takes the reply from LetterDB's stored reading.
+When a reading returns a reply ([READING.md](READING.md); never with `[NpcLetters] Replies` off, [SETTINGS.md](SETTINGS.md)), the same game-thread step that ends the reading creates the reply letter (author the NPC, recipient the player, "Letter from X", the same template) and queues it as a parcel *to the player* (`LTRN` state 2). A save can't hold a finished reading without its reply. If a save was made between the memory and that step, the reading after a load finds the memory and takes the reply from LetterDB's stored reading.
 
 A letter an NPC writes first takes the same path, queued after the travel time alone, with no writing time (`Transit::QueueToPlayer`, [NPC_LETTERS.md](NPC_LETTERS.md#the-letter)).
 

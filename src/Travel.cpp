@@ -224,4 +224,14 @@ namespace PhysicalLetters::Travel {
         return hours;
     }
 
+    std::string PlaceName(RE::TESObjectREFR* a_ref)
+    {
+        if (const auto* area = Area(a_ref); area && area->GetName() && *area->GetName()) return area->GetName();
+        if (const auto* location = a_ref ? a_ref->GetCurrentLocation() : nullptr;
+            location && location->GetName() && *location->GetName()) {
+            return location->GetName();
+        }
+        return "somewhere in Skyrim";
+    }
+
 } // namespace PhysicalLetters::Travel

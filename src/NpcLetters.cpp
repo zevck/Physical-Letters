@@ -18,6 +18,7 @@
  */
 
 #include "NpcLetters.h"
+#include "Actors.h"
 #include "CoSave.h"
 #include "Config.h"
 #include "GameTime.h"
@@ -30,6 +31,7 @@
 #include "Travel.h"
 
 #include <random>
+#include <unordered_set>
 #include <regex>
 #include <thread>
 
@@ -39,11 +41,18 @@ namespace PhysicalLetters::NpcLetters {
         using json = nlohmann::json;
         using GameTime::Now;
 
-        constexpr auto kPrompt = "physical_letters_write_letter";
-        constexpr auto kPickPrompt = "physical_letters_who_writes";
+        constexpr auto kPrompt = "physical_letters\\write_letter";
+        constexpr auto kPickPrompt = "physical_letters\\who_writes";
         constexpr auto kPickVariant = "meta";
         constexpr std::uint32_t kRecordVersion = 1;
         constexpr int kMaxMemories = 8;
+        // MinEvents 0: strangers let into the pool per attempt, drawn from SkyrimNet's list (at most
+        // kStrangerList long), and the weight each counts as (docs/NPC_LETTERS.md#who).
+        constexpr int kStrangerList = 500;
+        constexpr std::size_t kStrangersPerAttempt = 10;
+        constexpr double kStrangerWeight = 0.25;
+        // Newest memories of each known candidate's searched for ones involving the player (Weight).
+        constexpr int kWeighedMemories = 100;
         // Lines of the latest conversation shown to the pick, per candidate.
         constexpr std::size_t kPickLines = 8;
         // Lines of the latest conversation passed to the prompt, and the events fetched to find
@@ -99,9 +108,13 @@ namespace PhysicalLetters::NpcLetters {
             RE::FormID  formId = 0;
             std::string name;
             int         events = 0;          // with the player
+            double      importance = 0;      // summed over their newest memories involving the player
             double      daysSinceSeen = -1;  // since their last exchange with the player; -1 unknown
             json        dialogue = json::array();  // their latest exchanges with the player
             json        memories = json::array();  // most relevant to the player; fetched once shortlisted
+            std::string place;                     // where they are, for the prompts (game thread)
+            bool        close = false;             // an ex-follower, the spouse or an adopted child
+            bool        hasMemories = false;       // a stranger SkyrimNet has memories of (a generic one needs some)
         };
 
         std::mt19937_64& Rng()
@@ -114,7 +127,7 @@ namespace PhysicalLetters::NpcLetters {
         void Schedule()
         {
             const double days = Config::GetSingleton()->Get(Config::kNpcInterval) *
-                                std::uniform_real_distribution<double>(0.5, 1.5)(Rng());
+                                std::uniform_real_distribution<double>(0.75, 1.25)(Rng());  // 25% either side: not like clockwork
             g_nextAt = Now() + days;
             SKSE::log::info("[NpcLetters] The next letter from an NPC is due in {:.1f} game days", days);
         }
@@ -137,13 +150,6 @@ namespace PhysicalLetters::NpcLetters {
                     SKSE::log::error("[NpcLetters] Ending the attempt failed: {}", e.what());
                 }
             });
-        }
-
-        std::uint64_t ToUuid(const std::string& text)
-        {
-            std::uint64_t uuid = 0;
-            std::from_chars(text.data(), text.data() + text.size(), uuid);
-            return uuid;
         }
 
         // Worker thread.  The NPC's latest spoken exchanges with the player, oldest first, as
@@ -178,8 +184,41 @@ namespace PhysicalLetters::NpcLetters {
             return { json(lines), lastSeen < 0 ? -1.0 : std::max(0.0, now - lastSeen) };
         }
 
+        // Worker thread, SkyrimNet data only.  MinEvents 0: up to kStrangersPerAttempt others SkyrimNet has
+        // registered, at random; the game thread checks they're people (Writer).
+        void AddStrangers(std::vector<Candidate>& pool, const std::unordered_set<RE::FormID>& engaged, double now,
+                          const std::unordered_map<std::string, double>& cooldowns)
+        {
+            const auto actors = json::parse(SkyrimNet::SearchActors("", kStrangerList), nullptr, false);
+            if (!actors.is_array()) return;
+            if (actors.size() >= static_cast<std::size_t>(kStrangerList)) {
+                SKSE::log::info("[NpcLetters] SkyrimNet listed {} actors, its most: those past it alphabetically can't be "
+                                "drawn as strangers", actors.size());
+            }
+            std::vector<const json*> others;
+            for (const auto& entry : actors) {
+                const auto formId = entry.value("formId", 0u);
+                if (formId == 0 || formId == kPlayer || entry.value("isPlayer", false) || engaged.contains(formId)) continue;
+                const auto uuid = std::to_string(entry.value("uuid", std::uint64_t{ 0 }));
+                if (const auto it = cooldowns.find(uuid); it != cooldowns.end() && it->second > now) continue;
+                others.push_back(&entry);
+            }
+            std::ranges::shuffle(others, Rng());
+            if (others.size() > kStrangersPerAttempt) others.resize(kStrangersPerAttempt);
+            for (const auto* entry : others) {
+                const auto formId = entry->value("formId", 0u);
+                Candidate stranger{ std::to_string(entry->value("uuid", std::uint64_t{ 0 })), formId,
+                                    entry->value("name", std::string{}), 0, 0, -1 };
+                stranger.hasMemories = SkyrimNet::HasMemories(formId);
+                pool.push_back(std::move(stranger));
+            }
+            SKSE::log::debug("[NpcLetters] {} of {} people the player has never dealt with let into the pool", others.size(),
+                             actors.size());
+        }
+
         // Worker thread.  NPCs with enough events involving the player, off cooldown.  The
         // engagement list's own times are unusable (docs/NPC_LETTERS.md#who).
+
         std::vector<Candidate> Pool(double now, const std::unordered_map<std::string, double>& cooldowns, int minEvents,
                                     const std::string& playerName, std::uint64_t playerUuid)
         {
@@ -187,36 +226,55 @@ namespace PhysicalLetters::NpcLetters {
             if (!engagement.is_array()) return {};
 
             std::vector<Candidate> pool;
+            std::unordered_set<RE::FormID> engaged;
             for (const auto& entry : engagement) {
+                engaged.insert(entry.value("formId", 0u));
                 SKSE::log::debug("[NpcLetters] Engagement: {}", entry.dump());
                 const auto formId = entry.value("formId", 0u);
                 const int events = entry.value("eventCount", 0);
-                if (formId == 0 || formId == kPlayer || events < minEvents) continue;
+                // Never fewer than 1: someone with none is a stranger (AddStrangers), not known.
+                if (formId == 0 || formId == kPlayer || events < std::max(minEvents, 1)) continue;
                 const auto uuid = SkyrimNet::UuidForFormId(formId);
                 if (uuid.empty()) continue;
                 if (const auto it = cooldowns.find(uuid); it != cooldowns.end() && it->second > now) continue;
                 auto name = SkyrimNet::ActorName(uuid);
                 if (name.empty()) name = entry.value("name", std::string{});
-                auto [dialogue, daysSinceSeen] = LatestExchanges(formId, ToUuid(uuid), playerUuid, name, playerName, now);
+                auto [dialogue, daysSinceSeen] = LatestExchanges(formId, SkyrimNet::UuidNumber(uuid), playerUuid, name, playerName, now);
                 SKSE::log::debug("[NpcLetters] {}'s latest exchanges ({} lines, last {:.1f} days ago): {}", name,
                                  dialogue.size(), daysSinceSeen, dialogue.dump().substr(0, 1500));
-                pool.push_back({ uuid, formId, name, events, daysSinceSeen, std::move(dialogue) });
+                const double importance = SkyrimNet::ImportanceOfMemoriesWith(formId, playerUuid, kWeighedMemories);
+                SKSE::log::debug("[NpcLetters] {}: {} events, memories involving the player weigh {:.2f}", name, events,
+                                 importance);
+                pool.push_back({ uuid, formId, name, events, importance, daysSinceSeen, std::move(dialogue) });
             }
+            if (minEvents == 0) AddStrangers(pool, engaged, now, cooldowns);
             return pool;
         }
 
-        // How likely the candidate is to be drawn: the square root of their events with the
-        // player (someone seen a lot writes more often, not every time), less if they dealt
-        // with the player lately.
+        // Game thread.  An ex-follower not with the player now, the spouse, or an adopted child: they
+        // miss the player (docs/NPC_LETTERS.md#who).  The factions are vanilla's.
+        bool IsClose(RE::Actor* actor)
+        {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            const auto faction = [data](RE::FormID id, std::string_view plugin) {
+                return data ? data->LookupForm<RE::TESFaction>(id, plugin) : nullptr;
+            };
+            static auto* dismissed = faction(0x05C84C, "Skyrim.esm");     // DismissedFollowerFaction
+            static auto* married = faction(0x0C6472, "Skyrim.esm");       // PlayerMarriedFaction
+            static auto* family = faction(0x0042B0, "HearthFires.esm");  // BYOHRelationshipAdoptionFaction
+            const auto in = [actor](RE::TESFaction* f) { return f && actor->IsInFaction(f); };
+            return (in(dismissed) && !actor->IsPlayerTeammate()) || in(married) || in(family);
+        }
+
+        // How likely the candidate is to be drawn: the square root of their events with the player plus the
+        // importance of their memories involving the player; a stranger counts a quarter (docs/NPC_LETTERS.md#who).
         double Weight(const Candidate& candidate)
         {
-            const auto* config = Config::GetSingleton();
-            const double missedAfter = config->Get(Config::kNpcMissedAfter);
-            const double floor = config->Get(Config::kNpcRecentWeight) / 100.0;
-            const double recency = candidate.daysSinceSeen < 0 || missedAfter <= 0
-                                        ? 1.0
-                                        : std::clamp(candidate.daysSinceSeen / missedAfter, floor, 1.0);
-            return std::sqrt(static_cast<double>(candidate.events)) * recency;
+            const double base = candidate.events > 0 ? std::sqrt(static_cast<double>(candidate.events)) + candidate.importance
+                                                     : kStrangerWeight;
+            if (!candidate.close || candidate.daysSinceSeen < 0) return base;
+            const double missDays = Config::GetSingleton()->Get(Config::kNpcMissDays);
+            return base * (1.0 + std::clamp(candidate.daysSinceSeen / missDays, 0.0, 1.0));
         }
 
         // The candidate's actor if they can write now (docs/NPC_LETTERS.md#who); else `why`
@@ -228,12 +286,26 @@ namespace PhysicalLetters::NpcLetters {
                 why = "not found";
                 return nullptr;
             }
-            if (actor->IsDead()) {
-                why = "dead";
+            if (actor->IsDead() || actor->IsDisabled()) {
+                why = actor->IsDead() ? "dead" : "disabled";
+                return nullptr;
+            }
+            if (!Actors::IsPerson(actor)) {
+                why = "not a person";
+                return nullptr;
+            }
+            // A stranger: unique, or a generic NPC SkyrimNet has memories of.
+            if (candidate.events == 0 && !actor->GetActorBase()->IsUnique() && !candidate.hasMemories) {
+                why = "a generic stranger SkyrimNet has no memories of";
                 return nullptr;
             }
             if (Transit::IsLetterPendingFor(candidate.uuid)) {
                 why = "has a letter to answer";
+                return nullptr;
+            }
+            // Their reply or letter to the player is still on its way: no second letter on top of it.
+            if (Transit::IsLetterPendingFrom(candidate.uuid)) {
+                why = "a letter from them is on its way to the player";
                 return nullptr;
             }
             const auto* config = Config::GetSingleton();
@@ -245,11 +317,6 @@ namespace PhysicalLetters::NpcLetters {
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (const auto* area = Travel::Area(actor); area && area == Travel::Area(player)) {
                 why = std::format("in the player's area, {}", area->GetName());
-                return nullptr;
-            }
-            if (const auto distance = Travel::Distance(actor, player);
-                distance && *distance < config->Get(Config::kNpcNearDistance)) {
-                why = std::format("{:.0f} units from the player", *distance);
                 return nullptr;
             }
             return actor;
@@ -335,11 +402,13 @@ namespace PhysicalLetters::NpcLetters {
             std::string uuid;
             std::string name;
             double now = 0;
+            std::string place;  // where the player is now
         };
 
         PlayerInfo ReadPlayer()
         {
-            return { SkyrimNet::UuidForFormId(kPlayer), RE::PlayerCharacter::GetSingleton()->GetName(), Now() };
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            return { SkyrimNet::UuidForFormId(kPlayer), player->GetName(), Now(), Travel::PlaceName(player) };
         }
 
         // Worker thread.  The full call: `candidate` writes their letter, or declines.
@@ -347,8 +416,12 @@ namespace PhysicalLetters::NpcLetters {
         {
             try {
                 const json context = {
-                    { "npc", { { "UUID", ToUuid(candidate.uuid) }, { "name", candidate.name } } },
+                    { "npc", { { "UUID", SkyrimNet::UuidNumber(candidate.uuid) }, { "name", candidate.name } } },
                     { "recipient", player.name },
+                    { "recipient_UUID", SkyrimNet::UuidNumber(player.uuid) },
+                    { "place", candidate.place },
+                    { "player_place", player.place },
+                    { "never_met", candidate.events == 0 },
                     { "days_since_seen", static_cast<int>(candidate.daysSinceSeen) },
                     { "correspondence", Reading::Correspondence(candidate.uuid, player.uuid, candidate.formId, player.now) },
                     { "dialogue", candidate.dialogue },
@@ -439,13 +512,15 @@ namespace PhysicalLetters::NpcLetters {
                     auto lines = c.dialogue;
                     if (lines.size() > kPickLines) lines.erase(lines.begin(), lines.end() - kPickLines);
                     list.push_back({ { "number", i + 1 },
-                                     { "UUID", ToUuid(c.uuid) },
+                                     { "UUID", SkyrimNet::UuidNumber(c.uuid) },
                                      { "name", c.name },
+                                     { "place", c.place },
+                                     { "never_met", c.events == 0 },
                                      { "days_since_seen", static_cast<int>(c.daysSinceSeen) },
                                      { "dialogue", lines },
                                      { "memories", c.memories } });
                 }
-                const json context = { { "candidates", list }, { "player", player.name } };
+                const json context = { { "candidates", list }, { "player", player.name }, { "player_place", player.place } };
                 const bool queued = SkyrimNet::SendPrompt(
                     kPickPrompt, context.dump(),
                     [shortlist = std::move(shortlist), token](std::string response, bool success) {
@@ -487,6 +562,9 @@ namespace PhysicalLetters::NpcLetters {
                     SKSE::log::debug("[NpcLetters] {} can't write now ({})", candidate.name, why);
                     continue;
                 }
+                auto* actor = RE::TESForm::LookupByID<RE::Actor>(candidate.formId);
+                candidate.place = Travel::PlaceName(actor);
+                candidate.close = IsClose(actor);
                 const double weight = Weight(candidate);
                 if (weight <= 0) {
                     SKSE::log::debug("[NpcLetters] {} has weight 0", candidate.name);
@@ -499,10 +577,10 @@ namespace PhysicalLetters::NpcLetters {
             while (shortlist.size() < count && !eligible.empty()) {
                 std::discrete_distribution<std::size_t> draw(weights.begin(), weights.end());
                 const auto i = draw(Rng());
-                SKSE::log::info("[NpcLetters] Drew {} ({} events with the player, last seen {} days ago, weight {:.2f})",
+                SKSE::log::info("[NpcLetters] Drew {} ({} events with the player, last seen {} days ago, {}weight {:.2f})",
                                 eligible[i].name, eligible[i].events,
                                 eligible[i].daysSinceSeen < 0 ? std::string{ "?" } : std::format("{:.1f}", eligible[i].daysSinceSeen),
-                                weights[i]);
+                                eligible[i].close ? "close, " : "", weights[i]);
                 shortlist.push_back(std::move(eligible[i]));
                 eligible.erase(eligible.begin() + static_cast<std::ptrdiff_t>(i));
                 weights.erase(weights.begin() + static_cast<std::ptrdiff_t>(i));
@@ -567,7 +645,7 @@ namespace PhysicalLetters::NpcLetters {
         const int minEvents = Config::GetSingleton()->Get(Config::kNpcMinEvents);
         std::thread([now, cooldowns = g_cooldownUntil, minEvents, token,
                      playerName = std::string{ RE::PlayerCharacter::GetSingleton()->GetName() },
-                     playerUuid = ToUuid(SkyrimNet::UuidForFormId(kPlayer))]() {
+                     playerUuid = SkyrimNet::UuidNumber(SkyrimNet::UuidForFormId(kPlayer))]() {
             std::vector<Candidate> pool;
             try {
                 pool = Pool(now, cooldowns, minEvents, playerName, playerUuid);

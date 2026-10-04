@@ -1,19 +1,22 @@
 {# Physical Letters: a cheap pass that picks which of a few NPCs, if any, has a reason to write
-   to the player now; physical_letters_write_letter then writes it.  Sent with
+   to the player now; physical_letters/write_letter then writes it.  Sent with
    PublicSendCustomPromptToLLM on the "meta" variant, whose output may be capped short
    (SkyrimNet's default: 100 tokens), so the answer is a number.  Context:
-     candidates  [{ number, UUID, name, days_since_seen, dialogue, memories }]: dialogue is
-                 their last lines with the player (speaker, text), memories their most
-                 relevant to the player; days_since_seen -1 is unknown
-     player      the player's name #}
+     candidates    [{ number, UUID, name, place, never_met, days_since_seen, dialogue, memories }]:
+                   place is where they are, never_met true when they've never dealt with the
+                   player, dialogue their last lines with the player (speaker, text), memories
+                   their most relevant to the player; days_since_seen -1 is unknown
+     player        the player's name
+     player_place  where the player is now #}
 [ system ]
     You decide which of these people in Skyrim, if any, would write a letter to {{ player }} now, unprompted. Use what their profiles, memories and talks with {{ player }} say. Answer with compact JSON only, no explanation.
 [ end system ]
 
 [ user ]
     {% for c in candidates %}
-    ## {{ c.number }}. {{ c.name }}
+    ## {{ c.number }}. {{ c.name }}, {{ c.place }}
     {{ render_character_profile("short_inline", c.UUID) }}
+    {% if c.never_met %}Has never met {{ player }}.{% endif %}
     {% if c.days_since_seen == 0 %}Dealt with {{ player }} earlier today.{% else if c.days_since_seen == 1 %}Last dealt with {{ player }} a day ago.{% else if c.days_since_seen > 1 %}Last dealt with {{ player }} {{ c.days_since_seen }} days ago.{% endif %}
     {% if c.dialogue and length(c.dialogue) > 0 %}
     The last time they spoke:
@@ -29,7 +32,9 @@
     {% endif %}
 
     {% endfor %}
-    People write when they have a reason: news of their own, something unfinished with {{ player }}, gratitude, worry, a favour to ask, a grudge, or missing them. Someone who barely knows {{ player }}, or has nothing to say, doesn't write.
+    {{ player }} is in {{ player_place }} now.
+
+    People write when they have a reason: news of their own, something unfinished with {{ player }}, gratitude, worry, a favour to ask, a grudge, or missing them. Someone who barely knows {{ player }}, or has nothing to say, doesn't write. Someone who has never met {{ player }} writes only with a real reason, such as having heard of {{ player }} and needing their help. Someone close enough to walk over and talk to {{ player }} doesn't write.
 
     Pick the person with the strongest reason, or 0 if nobody has one, with the reason in a few words: {"pick":2,"why":"..."}
 [ end user ]

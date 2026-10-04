@@ -117,6 +117,11 @@ namespace PhysicalLetters::SkyrimNet {
         return g_available && value != 0 ? PublicUUIDToFormID(value) : 0;
     }
 
+    std::uint64_t UuidNumber(const std::string& uuid)
+    {
+        return ParseUuid(uuid);
+    }
+
     std::string ActorName(const std::string& uuid)
     {
         const auto value = ParseUuid(uuid);
@@ -186,6 +191,28 @@ namespace PhysicalLetters::SkyrimNet {
         memoryQuery.maxCount = 1;
         const auto found = QueryMemoriesForActor(formId, memoryQuery);
         return !found.empty() && found != "[]";
+    }
+
+    double ImportanceOfMemoriesWith(RE::FormID formId, std::uint64_t relatedUuid, int maxCount)
+    {
+        if (!g_available || relatedUuid == 0) return 0;
+        MemoryQuery memoryQuery;
+        memoryQuery.maxCount = maxCount;
+        memoryQuery.orderBy = MemoryOrder::GameTimeDesc;
+        const auto found = nlohmann::json::parse(QueryMemoriesForActor(formId, memoryQuery), nullptr, false);
+        if (!found.is_array()) return 0;
+        double total = 0;
+        for (const auto& memory : found) {
+            const auto related = memory.find("related_actors");
+            if (related == memory.end() || !related->is_array()) continue;
+            // SkyrimNet writes related actors as numbers (Models/Memory.h ToJson).
+            const bool withThem = std::ranges::any_of(*related, [relatedUuid](const auto& uuid) {
+                return uuid.is_number_unsigned() && uuid.template get<std::uint64_t>() == relatedUuid;
+            });
+            const auto score = memory.find("importance_score");
+            if (withThem && score != memory.end() && score->is_number()) total += score->template get<double>();
+        }
+        return total;
     }
 
     std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types)

@@ -37,6 +37,10 @@ namespace PhysicalLetters::Travel {
     // open wilderness (the hold itself) or when it has no location.
     const RE::BGSLocation* Area(RE::TESObjectREFR* a_ref);
 
+    // Where the actor is, for a prompt: their area's name, else their location's, else
+    // "somewhere in Skyrim".
+    std::string PlaceName(RE::TESObjectREFR* a_ref);
+
     // A settlement: the location has LocTypeHabitation.
     bool IsTown(const RE::BGSLocation* a_location);
 

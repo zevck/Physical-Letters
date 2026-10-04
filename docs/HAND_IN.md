@@ -39,13 +39,13 @@ Giving a letter to someone who already read it is read again: the prompt says `r
 - **Anyone else:** the addressee's records are untouched (not delivered; a reading they owe goes on, though they no longer have it).
 - **Read there** if the reader is with the player (`HandIn::NearPlayer`: alive, loaded, within 2048 units in the player's interior cell or worldspace, and SkyrimNet has `PublicRegisterEvent`): [Reading it there](#reading-it-there).
 - **Then the reading:** a state-1 parcel (awaiting reading) for the reader with a new delivery id, read on the next heartbeat, unless they still owe a reading of it (the player took it from them unread and gave it back), which goes on instead.
-- **Replies** (recipient only) travel as always: to the player through the courier, or to the NPC who wrote an NPC's letter. An NPC's letter the player intercepted ended its thread's pair schedule then (`NpcToNpc::ThreadEnded`), but a reply needs only room in the thread (`CanReply`), so handing it in lets the thread go on; if they don't reply, the thread ends as after any reading.
+- **Replies** (recipient only, and only with `[NpcLetters] Replies` on, [SETTINGS.md](SETTINGS.md)) travel as always: to the player through the courier, or to the NPC who wrote an NPC's letter. An NPC's letter the player intercepted ended its thread's pair schedule then (`NpcToNpc::ThreadEnded`), but a reply needs only room in the thread (`CanReply`), so handing it in lets the thread go on; if they don't reply, the thread ends as after any reading.
 
 ## Someone else's letter
 
 `Reading::Read` with `Reader::kHandedOther` (the parcel's reader isn't the letter's recipient):
 
-- **The prompt** `physical_letters_read_other_letter` (in the SkyrimNet plugin folder, beside the recipient's): the reader's profile, that the player handed it to them, whether it's their own letter come back (`reader_is_author`), whether they've seen it before, and their memories of the author and of the recipient (half the usual count each). No correspondence history: the letters between author and recipient aren't theirs. Same JSON as the recipient's reading; `reply` is always false.
+- **The prompt** `physical_letters/read_other_letter` (in the SkyrimNet plugin folder, beside the recipient's): the reader's profile, that the player handed it to them, whether it's their own letter come back (`reader_is_author`), whether they've seen it before, and their memories of the author and of the recipient (half the usual count each). No correspondence history: the letters between author and recipient aren't theirs. Same JSON as the recipient's reading; `reply` is always false.
 - **The memory**: tagged `letter_seen` (not `letter_received`) besides the letter and delivery tags, its text "The letter from A to B: …". LetterDB's stored reading is the recipient's, so none is kept for someone else.
 - **No reply and no thread change**: `OnReadingDone` makes no reply and doesn't end an NPC thread when the reader isn't the recipient.
 

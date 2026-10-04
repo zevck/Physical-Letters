@@ -39,15 +39,15 @@ namespace PhysicalLetters {
         static constexpr Setting kReturnAfterDays { "Delivery", "ReturnAfterDays", 3, 1, 30 };
         // NPCs writing to the player first (docs/NPC_LETTERS.md).
         static constexpr Setting kNpcLetters     { "NpcLetters", "Enabled",      1,  0, 1   };
+        // NPCs may write back to the player's letters (off: they read them, remember them, and don't answer).
+        static constexpr Setting kNpcReplies     { "NpcLetters", "Replies",      1,  0, 1   };
         static constexpr Setting kNpcInterval    { "NpcLetters", "IntervalDays", 7,  1, 60  };
         static constexpr Setting kNpcCooldown    { "NpcLetters", "CooldownDays", 14, 0, 120 };
-        static constexpr Setting kNpcMinEvents   { "NpcLetters", "MinEvents",    5,  1, 200 };
-        // Closer than this is around the player (game units), besides the same area.
-        static constexpr Setting kNpcNearDistance  { "NpcLetters", "NearDistance",    8192, 0, 65536 };
-        // Weight grows from RecentWeight (percent) to full over MissedAfterDays since the last
-        // exchange; MissedAfterDays 0 ignores recency.
-        static constexpr Setting kNpcMissedAfter   { "NpcLetters", "MissedAfterDays", 3,    0, 30 };
-        static constexpr Setting kNpcRecentWeight  { "NpcLetters", "RecentWeight",    10,   0, 100 };
+        // 0: also people the player has never dealt with, anyone SkyrimNet has registered (docs/NPC_LETTERS.md#who).
+        static constexpr Setting kNpcMinEvents   { "NpcLetters", "MinEvents",    5,  0, 200 };
+        // Ex-followers, the spouse and adopted children grow more likely to write the longer the player
+        // is away: twice as likely after this many days apart (docs/NPC_LETTERS.md#who).
+        static constexpr Setting kNpcMissDays      { "NpcLetters", "DaysUntilMissed", 7,    1, 60 };
         // Spoke to the player within this many days: not drawn at all (0 = off).
         static constexpr Setting kNpcMinDaysApart  { "NpcLetters", "MinDaysApart",    1,    0, 30 };
         // NPCs drawn each attempt; with more than one, a cheap call picks who writes.
@@ -60,12 +60,10 @@ namespace PhysicalLetters {
         static constexpr Setting kN2nMaxThreads  { "NpcToNpc", "MaxOpenThreads",   3,  1, 10  };
         static constexpr Setting kN2nMaxLetters  { "NpcToNpc", "MaxLettersPerThread", 3, 1, 10 };
         static constexpr Setting kN2nPairCooldown { "NpcToNpc", "PairCooldownDays", 21, 0, 120 };
-        // An attempt: writers drawn, names each may propose, memories each is shown, and how far
-        // apart writer and recipient must be (game units) besides living in different places.
+        // An attempt: writers drawn, names each may propose, and memories each is shown.
         static constexpr Setting kN2nWriters     { "NpcToNpc", "WritersPerAttempt", 4,  1, 10 };
         static constexpr Setting kN2nNames       { "NpcToNpc", "NamesPerWriter",    3,  1, 5  };
         static constexpr Setting kN2nMemories    { "NpcToNpc", "MemoriesPerWriter", 3,  0, 10 };
-        static constexpr Setting kN2nMinDistance { "NpcToNpc", "MinDistance",       16384, 0, 131072 };
         // "I have a letter for you.": the dialogue topic for handing a letter over (docs/HAND_IN.md).
         static constexpr Setting kHandInDialogue { "Delivery", "HandInDialogue", 1, 0, 1 };
         // The courier carrying letters to NPCs in the player's town (docs/COURIER.md); a letter
@@ -81,14 +79,14 @@ namespace PhysicalLetters {
         static constexpr Setting kRobberyBounty    { "Courier", "RobberyBounty",    40, 0, 1000 };
         // Who the player can write to besides unique NPCs (docs/WRITING.md#the-recipient): 0 nobody
         // else, 1 generic NPCs SkyrimNet has memories of, 2 any named NPC.
-        static constexpr Setting kGenericRecipients { "Writing", "GenericRecipients", 1, 0, 2 };
+        static constexpr Setting kGenericRecipients { "Writing", "GenericRecipients", 0, 0, 2 };
         static constexpr int kGenericUniqueOnly = 0, kGenericKnown = 1, kGenericAnyone = 2;
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
-            kNpcLetters, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcNearDistance, kNpcMissedAfter, kNpcRecentWeight,
+            kNpcLetters, kNpcReplies, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcMissDays,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
-            kN2nWriters, kN2nNames, kN2nMemories, kN2nMinDistance, kCourierEnabled, kCourierWaitHours,
+            kN2nWriters, kN2nNames, kN2nMemories, kCourierEnabled, kCourierWaitHours,
             kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue, kGenericRecipients,
         };
 

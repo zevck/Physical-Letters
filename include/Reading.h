@@ -22,7 +22,7 @@
 #include <nlohmann/json.hpp>
 
 // The recipient reads a delivered letter: one LLM call (the prompt
-// physical_letters_read_letter, shipped in the SkyrimNet plugin folder
+// physical_letters/read_letter, shipped in the SkyrimNet plugin folder
 // SKSE/Plugins/SkyrimNet/external/zevick.physical-letters) returns their memory of it,
 // their emotion, and whether and what they reply.  The memory goes into SkyrimNet, tagged
 // with the letter and the delivery, so the NPC knows about the letter from then on.
@@ -59,8 +59,8 @@ namespace PhysicalLetters::Reading {
 
     // Game thread.  The work runs on other threads; `done` is then called on the game
     // thread, once, unless SkyrimNet drops the LLM task (the caller times out).
-    // `canReply` false (a thread between NPCs at its limit): the recipient is told not to
-    // reply, and no reply is returned.
+    // `canReply` false (a thread between NPCs at its limit, or [NpcLetters] Replies off): the recipient
+    // is told not to reply, and no reply is returned.
     void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID readerFormId, bool canReply, Reader reader,
               std::function<void(Outcome)> done);
 

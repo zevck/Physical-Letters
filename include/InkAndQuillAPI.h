@@ -155,6 +155,10 @@ typedef struct IQ_API
 /* Exported by InkAndQuill.dll as "IQ_GetAPI". */
 typedef const IQ_API* (*IQ_GetAPI_t)(uint32_t version);
 
+/* Exported as "IQ_IsWriting": the player is writing (any client's session), for mods that only ask.  No API to get,
+   not listed as a client; any thread.  docs/API.md#is-the-player-writing */
+typedef bool (*IQ_IsWriting_t)(void);
+
 #ifdef __cplusplus
 }
 #endif

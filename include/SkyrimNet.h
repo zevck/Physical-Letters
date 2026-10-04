@@ -48,6 +48,8 @@ namespace PhysicalLetters::SkyrimNet {
     std::string UuidForFormId(RE::FormID formId);
     RE::FormID FormIdForUuid(const std::string& uuid);
     std::string ActorName(const std::string& uuid);
+    // A UUID as SkyrimNet's prompts and events take it (0 if `uuid` isn't one).
+    std::uint64_t UuidNumber(const std::string& uuid);
 
     // JSON array of the actor's memories most relevant to `query`, without those tagged
     // `excludeTag` ("[]" on error).  Blocks: not on the game thread.
@@ -56,6 +58,10 @@ namespace PhysicalLetters::SkyrimNet {
     // Whether SkyrimNet holds any memory of the actor's.  One short query, but it blocks: Recipients asks it
     // on the game thread only for a complete name's people, once per actor and session.
     bool HasMemories(RE::FormID formId);
+
+    // The summed importance of the actor's `maxCount` newest memories that name `relatedUuid` among their
+    // related actors.  Blocks: not on the game thread.
+    double ImportanceOfMemoriesWith(RE::FormID formId, std::uint64_t relatedUuid, int maxCount);
 
     // Whether the actor has an active memory carrying `tag`.  Blocks: not on the game thread.
     bool HasMemoryWithTag(RE::FormID formId, const std::string& tag);

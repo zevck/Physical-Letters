@@ -3,7 +3,8 @@
      npc          UUID, name of the reader
      letter       author, recipient, body (the player handed it to them); read_before: they
                   have seen this letter before; reader_is_author: they wrote it themselves;
-                  blood: "all" or "part" when written in blood (blood_text: those passages)
+                  blood: "all" or "part" when written in blood (blood_text: those passages);
+                  author_UUID, recipient_UUID: for their public profiles
      player_name  the player's name
      memories     the reader's memories most relevant to the author and the recipient #}
 
@@ -12,6 +13,18 @@
     You are helping {{ actor.name }} react to a letter that isn't addressed to {{ actor.objectivePronoun }}. You capture how {{ actor.name }} truly reacts, and what {{ actor.subjectivePronoun }} will remember of it, staying true to {{ actor.possessiveAdjective }} personality, background and speech patterns.
 
     {{ render_character_profile("full", npc.UUID) }}
+
+    {% if not letter.reader_is_author %}
+    ## About {{ letter.author }}, Who Wrote It
+    - Gender: {{ decnpc(letter.author_UUID).gender }}
+    - Race: {{ decnpc(letter.author_UUID).race }}
+    {{ render_character_profile("bio_summary", letter.author_UUID) }}
+    {% endif %}
+
+    ## About {{ letter.recipient }}, Whom It's For
+    - Gender: {{ decnpc(letter.recipient_UUID).gender }}
+    - Race: {{ decnpc(letter.recipient_UUID).race }}
+    {{ render_character_profile("bio_summary", letter.recipient_UUID) }}
 [ end system ]
 
 [ user ]
@@ -66,7 +79,8 @@
     Return JSON with exactly these fields:
     - 'memory': the first-person memory described above (string)
     - 'emotion': {{ actor.name }}'s main feeling about the letter, one word (e.g. "curious", "embarrassed", "suspicious", "amused")
-    - 'importance': how much it matters to {{ actor.name }} (0.0-1.0 float)
+    - 'importance': how much it matters to {{ actor.name }} (0.0-1.0), scored as SkyrimNet scores memories:
+{{ render_template("physical_letters/components/memory_importance") }}
     - 'reply': false
     - 'reply_text': ""
 [ end user ]

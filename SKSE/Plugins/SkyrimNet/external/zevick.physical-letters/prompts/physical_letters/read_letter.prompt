@@ -3,8 +3,10 @@
      npc             UUID, name of the recipient
      letter          author, recipient, body of the letter being read; read_before is
                      true when the recipient already received this same letter once;
-                     can_reply is false when the correspondence has run its course (no reply);
-                     blood is "all" or "part" when the player wrote it in blood (blood_text: those passages)
+                     can_reply is false when no reply is wanted (a thread between NPCs at its limit,
+                     or [NpcLetters] Replies off);
+                     blood is "all" or "part" when the player wrote it in blood (blood_text: those passages);
+                     author_UUID, recipient_UUID: for the writer's public profile
      correspondence  earlier letters between the two that the recipient knows of, oldest
                      first (up to 20): from, to, days_ago, body
      memories        the recipient's other memories most relevant to the writer #}
@@ -18,6 +20,11 @@
     You are helping {{ actor.name }} read a letter that has just been delivered to {{ actor.objectivePronoun }}. You capture how {{ actor.name }} truly reacts to it, what {{ actor.subjectivePronoun }} will remember of it, and whether {{ actor.subjectivePronoun }} writes back, staying true to {{ actor.possessiveAdjective }} personality, background and speech patterns.
 
     {{ render_character_profile("full", npc.UUID) }}
+
+    ## About {{ letter.author }}, Who Wrote It
+    - Gender: {{ decnpc(letter.author_UUID).gender }}
+    - Race: {{ decnpc(letter.author_UUID).race }}
+    {{ render_character_profile("bio_summary", letter.author_UUID) }}
 [ end system ]
 
 [ user ]
@@ -70,7 +77,7 @@
     {% if letter.can_reply %}
     2. **Decide whether {{ actor.name }} replies.** Someone close to {{ letter.author }}, or with something to say, usually does; a stranger, a busy or proud person, or someone who resents {{ letter.author }} may not.
     {% else %}
-    2. **{{ actor.name }} doesn't reply this time**: the exchange has run its course for now. Set 'reply' to false and 'reply_text' to "".
+    2. **{{ actor.name }} doesn't reply this time.** Set 'reply' to false and 'reply_text' to "", and don't mention replying in the memory.
     {% endif %}
 
     3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessiveAdjective }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent events in {{ actor.possessiveAdjective }} life. If there are earlier letters, this is a correspondence: answer what is new, stay consistent with what was already written, and don't repeat it.{% if letter.read_before %} Receiving the same letter twice is odd: {{ actor.name }} notices, may be puzzled, amused or irritated, and need not answer it all over again.{% endif %}
@@ -82,7 +89,8 @@
     Return JSON with exactly these fields:
     - 'memory': the first-person memory described above (string)
     - 'emotion': {{ actor.name }}'s main feeling on reading the letter, one word (e.g. "touched", "annoyed", "wary", "glad")
-    - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0 float)
+    - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0), scored as SkyrimNet scores memories:
+{{ render_template("physical_letters/components/memory_importance") }}
     - 'reply': true if {{ actor.subjectivePronoun }} writes back, false if not
     - 'reply_text': the reply letter, or "" if {{ actor.subjectivePronoun }} doesn't write back
 [ end user ]

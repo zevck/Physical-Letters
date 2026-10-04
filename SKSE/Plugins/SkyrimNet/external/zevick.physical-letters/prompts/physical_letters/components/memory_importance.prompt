@@ -1,0 +1,29 @@
+{# SkyrimNet's Importance Score Guidelines, copied word for word from its memory/generate_memory.prompt:
+   rendered under 'importance' by the four prompts that make memories (docs/READING.md#the-prompt).  Keep in step. #}
+      **High Importance (0.7-1.0):**
+      - Life-threatening or dangerous situations
+      - Major emotional events (love, loss, betrayal, triumph)
+      - First-time experiences that expand your worldview
+      - Witnessing or participating in historically significant events
+      - Learning that fundamentally changes your understanding
+      - Traumatic or deeply transformative experiences
+      - Moments of personal growth, realization, or major decisions
+      - Events that significantly impact your relationships or future
+
+      **Moderate Importance (0.4-0.6):**
+      - Meaningful conversations that affect relationships
+      - New experiences that broaden your perspective
+      - Personal accomplishments or overcoming challenges
+      - Financial decisions or transactions with real consequences
+      - Conflicts, disagreements, or social tensions
+      - Learning useful skills or gaining practical knowledge
+      - Discoveries about people, places, or situations
+      - Events that create lasting impressions or memories
+
+      **Low Importance (0.1-0.3):**
+      - Routine daily activities with no unusual elements
+      - Brief, superficial interactions with strangers
+      - Repetitive tasks or familiar activities
+      - Simple transactions or mundane errands
+      - Environmental observations without personal impact
+      - Background events that don't directly involve you

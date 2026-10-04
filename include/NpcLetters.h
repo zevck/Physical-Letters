@@ -27,8 +27,7 @@ namespace PhysicalLetters::NpcLetters {
     // Heartbeat, once the session is ready.
     void Tick();
 
-    // An NPC wrote to the player (first, or a reply): they don't write first again for
-    // CooldownDays.
+    // An NPC wrote to the player first (not a reply): they don't write first again for CooldownDays.
     void StartCooldown(const std::string& uuid);
 
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type);
