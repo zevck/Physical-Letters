@@ -40,7 +40,8 @@ If the recipient is dead when the letter is due, or can't be found for `ReturnAf
 | Serialization | `src/Serialization.cpp`, `include/CoSave.h` | The co-save records |
 | Config | `include/Config.h` | The INI settings ([SETTINGS.md](SETTINGS.md)) |
 | Papyrus | `src/Papyrus.cpp` | The MCM's natives |
-| Strings | `include/Strings.h` | Every piece of text the player sees (English only for now) |
+| Strings | `include/Strings.h` | Every piece of text the player sees; letter text from Locale, messages English only |
+| Locale | `src/Locale.cpp`, `SKSE/Plugins/PhysicalLetters/Locales/` | Letter text (names, cards, the "To:" label) in the chosen language, a locale file per language ([LOCALIZATION.md](LOCALIZATION.md)) |
 
 ## The session
 

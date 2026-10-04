@@ -19,39 +19,79 @@
 
 #pragma once
 
+#include "Locale.h"
+
 // Every piece of text the player sees, in one place so localization can replace it.
-// English only for now.
+// Letter text (names, cards, the "To:" label) comes from Locale; the messages are English only for now.
 namespace PhysicalLetters::Strings {
+
+    // `text` with each {placeholder} replaced (a locale's text puts them where its language needs).
+    inline std::string Fill(std::string text, std::initializer_list<std::pair<std::string_view, std::string_view>> values)
+    {
+        for (const auto& [key, value] : values) {
+            const auto placeholder = std::format("{{{}}}", key);
+            for (std::size_t at = 0; (at = text.find(placeholder, at)) != std::string::npos; at += value.size()) {
+                text.replace(at, placeholder.size(), value);
+            }
+        }
+        return text;
+    }
 
     // A letter's item name: the player's letters by their recipient, letters to the player
     // by their author.
     inline std::string LetterName(const std::string& recipientName)
     {
-        return recipientName.empty() ? "Letter" : "Letter to " + recipientName;
+        return recipientName.empty() ? Locale::Text("Letter", "Letter")
+                                     : Fill(Locale::Text("LetterTo", "Letter to {Name}"), { { "Name", recipientName } });
     }
 
     inline std::string LetterFromName(const std::string& authorName)
     {
-        return authorName.empty() ? "Letter" : "Letter from " + authorName;
+        return authorName.empty() ? Locale::Text("Letter", "Letter")
+                                  : Fill(Locale::Text("LetterFrom", "Letter from {Name}"), { { "Name", authorName } });
     }
 
     // A letter's item card, under its model in the inventory.
     inline std::string LetterCard(const std::string& recipientName, const std::string& authorName)
     {
-        return std::format("A letter to {} from {}.", recipientName, authorName);
+        return Fill(Locale::Text("Card", "A letter to {Recipient} from {Author}."),
+                    { { "Recipient", recipientName }, { "Author", authorName } });
     }
 
     // A letter's page before LetterDB is open (moments after a load).
     inline constexpr std::string_view kLetterPending = "...";
     // A letter LetterDB has no text for.
-    inline constexpr std::string_view kLetterUnreadable = "The ink has run; the letter can't be read.";
+    inline std::string LetterUnreadable()
+    {
+        return Locale::Text("Unreadable", "The ink has run; the letter can't be read.");
+    }
 
-    // The player's letter's first line, before the recipient's name (docs/WRITING.md#the-text).
-    inline constexpr std::string_view kToLabel = "To: ";
+    // The blank letter's item name (Physical Letters.esp's is English).
+    inline std::string ParchmentName()
+    {
+        return Locale::Text("Parchment", "Parchment");
+    }
+
+    // The player's letter's first line, before the recipient's name (docs/WRITING.md#the-text), as the locale
+    // writes it: "To:", "宛先：".
+    inline std::string ToLabelText()
+    {
+        return Locale::Text("To", "To:");
+    }
+
+    // The label with its space after it, unless it ends in a full-width colon (Chinese, Japanese).
+    inline std::string ToLabel()
+    {
+        auto label = ToLabelText();
+        return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
+    }
 
     // A save of a letter the player writes, refused (docs/WRITING.md#saving).
     inline constexpr std::string_view kWriteNotReady = "Letters aren't ready yet. Try again in a moment.";
-    inline constexpr std::string_view kWriteNoName = "The letter isn't addressed yet. Write who it's for after \"To:\".";
+    inline std::string WriteNoName()
+    {
+        return std::format("The letter isn't addressed yet. Write who it's for after \"{}\".", ToLabelText());
+    }
     inline constexpr std::string_view kWriteEmpty = "Nothing is written in the letter yet.";
     inline constexpr std::string_view kWriteFailed = "The letter couldn't be saved. See PhysicalLetters.log.";
     inline std::string WriteNobody(const std::string& name)
@@ -80,9 +120,10 @@ namespace PhysicalLetters::Strings {
     inline constexpr std::string_view kNoPlace = "Tamriel";
 
     // Added to a returned letter's item card.
-    inline std::string_view ReturnToSender(bool dead)
+    inline std::string ReturnToSender(bool dead)
     {
-        return dead ? "Return to sender (deceased)" : "Return to sender (not found)";
+        return dead ? Locale::Text("ReturnDeceased", "Return to sender (deceased)")
+                    : Locale::Text("ReturnNotFound", "Return to sender (not found)");
     }
 
 } // namespace PhysicalLetters::Strings

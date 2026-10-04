@@ -18,10 +18,12 @@
  */
 
 #include "Writing.h"
+#include "Config.h"
 #include "InkAndQuillAPI.h"
 #include "LetterDB.h"
 #include "Letters.h"
 #include "MarkedText.h"
+#include "Parchment.h"
 #include "Recipients.h"
 #include "Session.h"
 #include "SkyrimNet.h"
@@ -42,8 +44,6 @@ namespace PhysicalLetters::Writing {
         using MarkedText::Trim;
         using MarkedText::WithoutBlood;
 
-        constexpr std::string_view kPlugin = "Physical Letters.esp";
-        constexpr RE::FormID kParchment = 0x8B6;  // PhysicalLettersParchment
         constexpr RE::FormID kPlayer = 0x14;
         constexpr std::string_view kParchmentText = "<font face='$HandwrittenFont'></font>";  // its record's text
 
@@ -242,6 +242,9 @@ namespace PhysicalLetters::Writing {
             IQ_Session session{};
             session.size = sizeof(IQ_Session);
             session.markedText = marked.c_str();
+            // Typed text's format, so a new paragraph gets the size the rendered page gives it.
+            session.runFont = Letters::kFontFace;
+            session.runSize = Config::GetSingleton()->Get(Config::kFontSize);
             session.caretRun = caretRun;
             session.user = UserOf(g_session);
             session.onSave = OnSave;
@@ -310,8 +313,7 @@ namespace PhysicalLetters::Writing {
         }
         g_api->SetClientName("Physical Letters");  // in Ink & Quill's MCM
         g_api->AddOwner(Owner, nullptr);
-        auto* data = RE::TESDataHandler::GetSingleton();
-        auto* parchment = data ? data->LookupForm<RE::TESObjectBOOK>(kParchment, kPlugin) : nullptr;
+        auto* parchment = Parchment::Form();
         if (!parchment || !g_api->RegisterBlank(parchment->GetFormID(), OnParchmentOpen, nullptr)) {
             SKSE::log::error("[Writing] Parchment couldn't be registered with Ink & Quill: no new letters can be written");
             return;

@@ -18,8 +18,10 @@
  */
 
 #include "Letters.h"
+#include "Config.h"
 #include "DynamicForms.h"
 #include "MarkedText.h"
+#include "Parchment.h"
 #include "SkyrimNet.h"
 #include "Strings.h"
 
@@ -28,16 +30,17 @@
 namespace PhysicalLetters::Letters {
 
     namespace {
-        // WIDBAssassinLetter: a plain letter (Note01 model), no script.
-        constexpr RE::FormID kTemplateId = 0x10596A;
-        constexpr std::string_view kTemplatePlugin = "Skyrim.esm";
         constexpr RE::FormID kOutgoingKeyword = 0x000800;  // PhysicalLettersOutgoingLetter
         constexpr RE::FormID kHandInKeyword = 0x0008B3;    // PhysicalLettersHandInLetter
         constexpr std::string_view kPlugin = "Physical Letters.esp";
         constexpr RE::FormID kPlayer = 0x14;
 
         constexpr std::string_view kPageBreak = "[pagebreak]";
-        constexpr std::string_view kFont = "<font face='$HandwrittenFont'>";
+
+        std::string Font()
+        {
+            return std::format("<font face='{}' size='{}'>", kFontFace, Config::GetSingleton()->Get(Config::kFontSize));
+        }
         using MarkedText::kBloodClose;
         using MarkedText::kBloodOpen;
         using MarkedText::kLockClose;
@@ -56,10 +59,11 @@ namespace PhysicalLetters::Letters {
         std::unordered_map<RE::FormID, Entry> g_letters;
         std::unordered_map<std::string, Returned> g_returned;  // by letter id
 
+        // Our parchment (Note01 model): a letter looks like what it was written on.  Not a vanilla note:
+        // mods restyle those (Legacy of the Dragonborn gives WIDBAssassinLetter its own model).
         RE::TESObjectBOOK* Template()
         {
-            auto* data = RE::TESDataHandler::GetSingleton();
-            return data ? data->LookupForm<RE::TESObjectBOOK>(kTemplateId, kTemplatePlugin) : nullptr;
+            return Parchment::Form();
         }
 
         void ReplaceAll(std::string& text, std::string_view from, std::string_view to)
@@ -133,6 +137,7 @@ namespace PhysicalLetters::Letters {
         {
             const std::string plain = Plain(body);
             const std::string_view text = plain;
+            const std::string font = Font();
             std::string out;
             bool inBlood = false;
             for (std::size_t start = 0; start <= text.size();) {
@@ -140,7 +145,7 @@ namespace PhysicalLetters::Letters {
                 if (end == std::string_view::npos) end = text.size();
                 if (!out.empty()) out += "\n\n";
                 const std::string paragraph = Escape(text.substr(start, end - start));
-                out += std::string{ kFont } + (marked ? paragraph : Redden(paragraph, inBlood)) + "</font>";
+                out += font +(marked ? paragraph : Redden(paragraph, inBlood)) + "</font>";
                 start = end + 2;
             }
             return out;
@@ -167,7 +172,7 @@ namespace PhysicalLetters::Letters {
             // Begun in blood: the whole line is red, typed text too (it takes the format before it).
             const std::string red = letter.bloodHeading ? std::string{ kBloodFont } : std::string{};
             const std::string end = (letter.bloodHeading ? "</font>" : "") + std::string{ "\n\n</font>" };
-            std::string out = std::string{ kFont } + red + lock(Strings::kToLabel) + Escape(Plain(to));
+            std::string out = Font() + red + lock(Strings::ToLabel()) + Escape(Plain(to));
             if (marked && bodyLocked) return out + lock(end + body);
             // An empty last lock: an empty body is still a run (text after the last lock is a run
             // only if there is any).
@@ -217,6 +222,13 @@ namespace PhysicalLetters::Letters {
             }
         }
 
+        // Letters to the player are named by their author, all others by their recipient.
+        std::string NameFor(const Letter& letter)
+        {
+            return letter.recipientUuid == SkyrimNet::UuidForFormId(kPlayer) ? Strings::LetterFromName(letter.authorName)
+                                                                            : Strings::LetterName(letter.recipientName);
+        }
+
         void SetEntry(RE::TESObjectBOOK* book, std::string id, std::string text, std::string card = {})
         {
             std::lock_guard lock{ g_mutex };
@@ -231,8 +243,8 @@ namespace PhysicalLetters::Letters {
     bool CheckTemplate()
     {
         if (Template()) return true;
-        SKSE::log::error("[Letters] The template letter {}:0x{:X} wasn't found: letters will have no model",
-                         kTemplatePlugin, kTemplateId);
+        SKSE::log::error("[Letters] The parchment {}:0x{:X} wasn't found: letters will have no model",
+                         Parchment::kPlugin, Parchment::kFormId);
         return false;
     }
 
@@ -249,8 +261,7 @@ namespace PhysicalLetters::Letters {
             SKSE::log::error("[Letters] Couldn't create a form for letter {}", letter.id);
             return nullptr;
         }
-        const bool toPlayer = letter.recipientUuid == SkyrimNet::UuidForFormId(0x14);
-        const auto name = toPlayer ? Strings::LetterFromName(letter.authorName) : Strings::LetterName(letter.recipientName);
+        const auto name = NameFor(letter);
         Configure(book, Template(), name);
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
         SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, letter.authorName));
@@ -339,12 +350,19 @@ namespace PhysicalLetters::Letters {
             auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(record.formId);
             if (!book) continue;
             if (const auto letter = db->Get(record.key)) {
+                // Named again in the current language: the save keeps the name it was made with.
+                if (const auto name = NameFor(*letter); name != record.displayName) {
+                    book->SetFullName(name.c_str());
+                    auto renamed = record;
+                    renamed.displayName = name;
+                    DynamicForms::Track(std::move(renamed));
+                }
                 SetEntry(book, record.key, Render(*letter, false), Strings::LetterCard(letter->recipientName, letter->authorName));
                 MarkOutgoing(book, *letter);
                 ++attached;
             } else {
                 SKSE::log::warn("[Letters] No stored text for letter {} (0x{:X})", record.key, record.formId);
-                SetEntry(book, record.key, Paragraphs(Strings::kLetterUnreadable, false));
+                SetEntry(book, record.key, Paragraphs(Strings::LetterUnreadable(), false));
                 ++missing;
             }
         }

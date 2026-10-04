@@ -19,22 +19,13 @@
 
 #pragma once
 
-// Parchment, the blank letter (docs/WRITING.md#parchment): crafted from a roll of paper at a
-// tanning rack (the ESP's recipe), and sold by general-goods merchants (added here, in memory).
-namespace PhysicalLetters::Parchment {
+// Letter text in the chosen language: Data/SKSE/Plugins/PhysicalLetters/Locales/<LANGUAGE>.ini
+// (docs/LOCALIZATION.md).  Loaded once at kDataLoaded, read-only after.
+namespace PhysicalLetters::Locale {
 
-    // PhysicalLettersParchment.  Letters copy their look from it (Letters::Configure).
-    inline constexpr RE::FormID kFormId = 0x8B6;
-    inline constexpr std::string_view kPlugin = "Physical Letters.esp";
+    void Load();
 
-    inline RE::TESObjectBOOK* Form()
-    {
-        auto* data = RE::TESDataHandler::GetSingleton();
-        return data ? data->LookupForm<RE::TESObjectBOOK>(kFormId, kPlugin) : nullptr;
-    }
+    // `key` of the locale file's [Letters], or `english` when it has none.
+    std::string Text(std::string_view key, std::string_view english);
 
-    // kDataLoaded: names it in the chosen language and adds PhysicalLettersLItemParchment to the
-    // merchants' general-goods list.
-    void OnDataLoaded();
-
-} // namespace PhysicalLetters::Parchment
+} // namespace PhysicalLetters::Locale

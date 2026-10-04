@@ -27,6 +27,7 @@
 #include "Papyrus.h"
 #include "DynamicForms.h"
 #include "Letters.h"
+#include "Locale.h"
 #include "Serialization.h"
 #include "Session.h"
 #include "SkyrimNet.h"
@@ -72,6 +73,7 @@ namespace {
             PhysicalLetters::Writing::Connect();
             break;
         case SKSE::MessagingInterface::kDataLoaded:
+            PhysicalLetters::Locale::Load();
             PhysicalLetters::SkyrimNet::Init();
             PhysicalLetters::Letters::CheckTemplate();
             PhysicalLetters::HandIn::Register();

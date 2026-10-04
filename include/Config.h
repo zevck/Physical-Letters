@@ -24,13 +24,15 @@
 #include <unordered_map>
 
 // Settings: Data/SKSE/Plugins/PhysicalLetters.ini (docs/SETTINGS.md).  Adapted from
-// SNPD's Config.h: every setting is an integer row in kSettings, clamped on read.
+// SNPD's Config.h: every setting is an integer row in kSettings, clamped on read, but Language (a string).
 namespace PhysicalLetters {
 
     class Config {
     public:
         struct Setting { const char* section; const char* key; int defaultValue; int min; int max; };
         static constexpr Setting kDebugLog      { "General",  "DebugLog",      0,   0, 1    };
+        // Letter text's size, every letter's (SNPD's [Fonts] ContentSize: the same default and range).
+        static constexpr Setting kFontSize      { "General",  "FontSize",      14,  8, 24   };
         static constexpr Setting kPostage       { "Delivery", "Postage",       20,  0, 1000 };
         static constexpr Setting kWritingHours  { "Delivery", "WritingHours",  12,  0, 168  };
         static constexpr Setting kMinHours      { "Delivery", "MinHours",      2,   0, 48   };
@@ -83,7 +85,7 @@ namespace PhysicalLetters {
         static constexpr int kGenericUniqueOnly = 0, kGenericKnown = 1, kGenericAnyone = 2;
         // INI order.
         static constexpr Setting kSettings[] = {
-            kDebugLog, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
+            kDebugLog, kFontSize, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcReplies, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcMissDays,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kCourierEnabled, kCourierWaitHours,
@@ -121,6 +123,14 @@ namespace PhysicalLetters {
             return std::clamp(value, s.min, s.max);
         }
 
+        // [General] Language: a locale file chosen over the game's language ("" = the game's; docs/LOCALIZATION.md).
+        std::string GetLanguage() const
+        {
+            std::lock_guard lock(mutex_);
+            const auto it = settings_.find("General.Language");
+            return it != settings_.end() ? it->second : std::string{};
+        }
+
         void Set(const Setting& s, int value)
         {
             std::lock_guard lock(mutex_);
@@ -155,6 +165,7 @@ namespace PhysicalLetters {
             // Out-of-range or invalid values are replaced now, so the warning is logged once.
             for (const auto& s : kSettings) Set(s, Get(s));
             for (const auto& s : kSettings) SKSE::log::info("[Config] {}.{} = {}", s.section, s.key, Get(s));
+            if (const auto language = GetLanguage(); !language.empty()) SKSE::log::info("[Config] General.Language = {}", language);
             return true;
         }
 
@@ -171,6 +182,10 @@ namespace PhysicalLetters {
                         if (!section.empty()) out << "\n";
                         out << "[" << s.section << "]\n";
                         section = s.section;
+                        // The one string setting, first in [General]; written only when set.
+                        if (const auto language = GetLanguage(); section == "General" && !language.empty()) {
+                            out << "Language = " << language << "\n";
+                        }
                     }
                     out << s.key << " = " << Get(s) << "\n";
                 }

@@ -36,6 +36,7 @@ set(sources
     src/DynamicForms.cpp
     src/LetterDB.cpp
     src/Letters.cpp
+    src/Locale.cpp
     src/Reading.cpp
     src/RoadCourier.cpp
     src/HandIn.cpp

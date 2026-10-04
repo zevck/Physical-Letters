@@ -25,13 +25,14 @@ SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physi
 | `Scripts/PhysicalLetters_MCM.pex`, `Interface/Translations/` | The MCM |
 | `Source/Scripts/*.psc` | The scripts' sources |
 | `Seq/Physical Letters.seq` | Lets the postage and hand-in dialogue start with the game |
+| `SKSE/Plugins/PhysicalLetters/Locales/` | Letter text in each language: item names, item cards, the "To:" line, the parchment's name ([docs/LOCALIZATION.md](docs/LOCALIZATION.md)) |
 | `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/` | A SkyrimNet plugin: the prompts (reading a letter, yours or someone else's; NPCs writing). It shows under SkyrimNet's Installed Plugins with an External badge. |
 
 At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.db` (under MO2's `overwrite/`) and logs to `Documents/My Games/Skyrim Special Edition/SKSE/PhysicalLetters.log` (VR: `Skyrim VR` instead of `Skyrim Special Edition`).
 
 ## Settings
 
-In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, whether NPCs write back to your letters and how long they take, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, whether he can be met on the road, whether NPCs get the "I have a letter for you." topic, and whom your letters can be addressed to. See [docs/SETTINGS.md](docs/SETTINGS.md).
+In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, whether NPCs write back to your letters and how long they take, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, whether he can be met on the road, whether NPCs get the "I have a letter for you." topic, whom your letters can be addressed to, and the size of letter text. Letters are written in the game's language; `Language` in the INI's `[General]` picks another (INI only). See [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Building
 

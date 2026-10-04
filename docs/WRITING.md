@@ -6,7 +6,7 @@ The player writes letters in the book menu through **Ink & Quill - Writing Frame
 
 ## Parchment
 
-The blank letter. A book item, `PhysicalLettersParchment` (`0x8B6`), with the look of the vanilla note every letter uses (`Clutter\Books\Note01.nif`, as `WIDBAssassinLetter`), empty, value 2, weight 0.1. Code: `src/Parchment.cpp`.
+The blank letter. A book item, `PhysicalLettersParchment` (`0x8B6`), with the vanilla note model (`Clutter\Books\Note01.nif`), empty, value 2, weight 0.1. Every letter copies its look from it ([PERSISTENCE.md](PERSISTENCE.md)), so a written letter looks like the parchment. Code: `src/Parchment.cpp`.
 
 - **Crafted** at a tanning rack: 1 Roll of Paper (Skyrim.esm `0x033761`) makes 3 parchment (`PhysicalLettersRecipeParchment`, `0x8B7`).
 - **Sold** by general-goods merchants: the leveled list `PhysicalLettersLItemParchment` (`0x8B8`: 3 or 5 parchment) is added at `kDataLoaded` to Skyrim.esm's `LItemMiscVendorMiscItems75` (`0x09AF0A`) **in memory**, as Physical Diaries does with its blank journals: the list that already sells the Roll of Paper, rolled by 18 merchant chests. No vanilla record is overridden, so no patch is needed. A chest restocks every 48 game hours.
@@ -24,14 +24,18 @@ Ink & Quill checks the quill, offers blood when there's no ink, and charges ink 
 
 ## The text
 
-A player's letter opens with a "To:" line (`Strings::kToLabel`), in its reading text too, so the editor and the page match. Letters to the player and between NPCs have none.
+A player's letter opens with a "To:" line (`Strings::ToLabel`), in its reading text too, so the editor and the page match. Letters to the player and between NPCs have none.
+
+The label is in the chosen language ("An:" in German, "宛先：" in Japanese), from the locale files ([LOCALIZATION.md](LOCALIZATION.md)). It isn't stored: a letter shows the current language's.
 
 Marked text (Ink & Quill's: what the player can't change is between U+E002 and U+E003), in the same handwriting font tags as the reading text:
 
 ```
-<font face='$HandwrittenFont'>[To: ]<name, address>[\n\n</font>]<body paragraphs>[]
-<font face='$HandwrittenFont'>[To: ]<name, address>[\n\n</font><body paragraphs>]      (the body locked)
+<font face='$HandwrittenFont' size='14'>[To: ]<name, address>[\n\n</font>]<body paragraphs>[]
+<font face='$HandwrittenFont' size='14'>[To: ]<name, address>[\n\n</font><body paragraphs>]      (the body locked)
 ```
+
+The size is `[General] FontSize` (14 by default, [SETTINGS.md](SETTINGS.md)), on every font tag, and Ink & Quill gets the same face and size for typed text (`runFont`, `runSize`), so a new paragraph has the size the rendered page gives it.
 
 `[…]` is locked. Run 0 is the recipient's name, run 1 the body. Enter keeps the caret in its run, so a player who types the name, presses Enter and writes on has written everything in run 0: on save, run 0's first line is the name and any further lines begin the body (tested on AE: the body run stayed empty and the save was refused, before this). The empty lock at the end keeps an empty body a run (Ink & Quill makes text after the last lock a run only if there is any). The reading text is the same without the markers, converted for the book menu (`TextHook::ForBookMenu`: Win-1251 for Cyrillic); marked text never is.
 

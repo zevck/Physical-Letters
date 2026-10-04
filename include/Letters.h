@@ -27,6 +27,9 @@
 // served by the GetDescription hook (TextHook).
 namespace PhysicalLetters::Letters {
 
+    // Letters are written in the vanilla letters' handwriting, at [General] FontSize.
+    inline constexpr const char* kFontFace = "$HandwrittenFont";
+
     // Why a letter came back to the player (its item card says so).  Saved in the co-save.
     enum class Returned : std::uint8_t {
         kDead = 1,
@@ -68,7 +71,8 @@ namespace PhysicalLetters::Letters {
     // Load callback: gives this save's letter forms their look and name from their
     // records.  Their text shows a placeholder until AttachTexts.
     void ConfigureLoaded();
-    // Once LetterDB is open: the text of every letter form in this save.
+    // Once LetterDB is open: the text and name of every letter form in this save.  Again when the
+    // font size changes.  Game thread.
     void AttachTexts();
     // A new game or a load.
     void Revert();

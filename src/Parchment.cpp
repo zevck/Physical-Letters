@@ -19,11 +19,12 @@
 
 #include "Parchment.h"
 
+#include "Strings.h"
+
 namespace PhysicalLetters::Parchment {
 
     namespace {
-        constexpr std::string_view kPlugin = "Physical Letters.esp";
-        constexpr RE::FormID kList = 0x8B8;               // PhysicalLettersLItemParchment: 3 or 5 parchment
+        constexpr RE::FormID kList = 0x8B8;              // PhysicalLettersLItemParchment: 3 or 5 parchment
         constexpr RE::FormID kVendorMiscItems = 0x09AF0A;  // Skyrim.esm LItemMiscVendorMiscItems75
 
         // As SkyrimNet Physical Diaries' blank journals: the general-goods list that already sells
@@ -64,6 +65,9 @@ namespace PhysicalLetters::Parchment {
     void OnDataLoaded()
     {
         auto* data = RE::TESDataHandler::GetSingleton();
+        if (auto* parchment = Form()) {
+            parchment->SetFullName(Strings::ParchmentName().c_str());  // the ESP's name is English
+        }
         if (auto* list = data ? data->LookupForm<RE::TESLevItem>(kList, kPlugin) : nullptr) {
             AddToMerchants(list);
         } else {

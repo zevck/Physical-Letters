@@ -8,7 +8,9 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 
 | Key | Default | Range | Effect |
 |---|---|---|---|
+| `[General] Language` | *(unset)* | a locale name | Letter text in this language instead of the game's (`GERMAN`); INI only, the one string setting ([LOCALIZATION.md](LOCALIZATION.md#which-language)). Read at startup |
 | `[General] DebugLog` | 0 | 0/1 | Log level `debug` instead of `info`; live from the MCM |
+| `[General] FontSize` | 14 | 8–24 | Size of letter text, every letter's (written, received, between NPCs), as SNPD's `[Fonts] ContentSize` (same default and range). Also Ink & Quill's size for typed text (`runSize`). A change in the MCM renders every letter in the save again at once |
 | `[Delivery] Postage` | 20 | 0–1000 | Gold an innkeeper or the courier charges. Written into the ESP's global `PhysicalLettersPostage`, which the topic text and the gold conditions read ([DELIVERY.md](DELIVERY.md#the-hand-over)) |
 | `[Delivery] WritingHours` | 12 | 0–168 | Game hours an NPC takes to write back, before the reply travels |
 | `[Delivery] MinHours` | 2 | 0–48 | Shortest travel time ([DELIVERY.md](DELIVERY.md#travel-time)) |
@@ -50,7 +52,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 
 Three pages, two columns each (`SetCursorFillMode(LEFT_TO_RIGHT)`; a section's header takes a row, the right half empty):
 
-- **General:** General (NPCs write to you, NPCs reply to you; NPCs write to each other, whom you can write to), Logging (debug logging).
+- **General:** General (NPCs write to you, NPCs reply to you; NPCs write to each other, whom you can write to, letter text size), Logging (debug logging).
 - **NPC Letters:** NPC-Player Letters (the schedule, cooldown, interactions needed, not after talking within, days until they miss you, people considered), NPC-NPC Letters (known only, then the schedule, limits and proposals).
 - **Delivery:** Delivery (postage, writing time, the hand-over dialogue, travel times, returning undeliverable letters), Courier (in town, on the roads, the road meeting's cooldown, speech and bounty).
 

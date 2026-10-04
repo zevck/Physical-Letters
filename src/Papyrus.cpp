@@ -21,7 +21,9 @@
 #include "Config.h"
 #include "CourierErrand.h"
 #include "HandIn.h"
+#include "Letters.h"
 #include "RoadCourier.h"
+#include "Session.h"
 #include "Postage.h"
 
 namespace PhysicalLetters::Papyrus {
@@ -79,6 +81,8 @@ namespace PhysicalLetters::Papyrus {
                 Postage::ApplyPrice();
             } else if (key == Config::kHandInDialogue.key) {
                 HandIn::ApplyDialogue();
+            } else if (key == Config::kFontSize.key && Session::IsReady()) {
+                Letters::AttachTexts();  // every letter's text again, at the new size
             }
         }
 

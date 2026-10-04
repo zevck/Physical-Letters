@@ -59,7 +59,8 @@ $mirroredFolders = @(
     "Interface\Translations",
     "Seq",
     "Sound\Voice\Physical Letters.esp",
-    "SKSE\Plugins\SkyrimNet\external\zevick.physical-letters"
+    "SKSE\Plugins\SkyrimNet\external\zevick.physical-letters",
+    "SKSE\Plugins\PhysicalLetters\Locales"
 )
 
 # --- Build-result reporting -------------------------------------------------

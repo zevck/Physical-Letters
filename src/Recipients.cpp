@@ -292,7 +292,7 @@ namespace PhysicalLetters::Recipients {
         const std::string start = TrimLeft(WithoutBlood(line));
         const auto comma = start.find(',');
         const std::string name = Trim(start.substr(0, comma));
-        if (name.empty()) return std::string{ Strings::kWriteNoName };
+        if (name.empty()) return Strings::WriteNoName();
         const auto found = Lookup(name);
         const auto& people = found.people;
         const std::string rest = comma == std::string::npos ? std::string{} : Trim(start.substr(comma + 1));
