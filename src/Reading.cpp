@@ -19,6 +19,7 @@
 
 #include "Reading.h"
 #include "LetterDB.h"
+#include "Letters.h"
 #include "Session.h"
 #include "LlmJson.h"
 #include "SkyrimNet.h"
@@ -87,6 +88,7 @@ namespace PhysicalLetters::Reading {
             // The summary first: SkyrimNet embeds only the start of a long memory, so the
             // summary is what semantic search matches; the exact letters follow for recall.
             std::string content = std::format("{}\n\nThe letter from {}:\n{}", memory, letter.authorName, letter.body);
+            if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) content += "\n\n" + blood;
             if (replies && !replyText.empty()) content += std::format("\n\nMy reply:\n{}", replyText);
 
             const auto tags = json::array({ "physical_letters", other ? "letter_seen" : "letter_received", LetterTag(letter.id), tag }).dump();
@@ -228,6 +230,12 @@ namespace PhysicalLetters::Reading {
                         { "can_reply", canReply } } },
                     { "memories", memories },
                 };
+                // Written in blood: "all" or "part" (with the passages), else "".
+                const auto blood = Letters::BloodOf(letter);
+                context["letter"]["blood"] = blood.amount == Letters::Blood::kAll    ? "all"
+                                             : blood.amount == Letters::Blood::kPart ? "part"
+                                                                                     : "";
+                context["letter"]["blood_text"] = blood.passages;
                 if (other) {
                     context["letter"]["reader_is_author"] = readerUuid == letter.authorUuid;
                     context["player_name"] = playerName;

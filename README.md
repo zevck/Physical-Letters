@@ -2,7 +2,7 @@
 
 SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
 
-**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). On the roads you may meet him carrying a letter that passes there: post a letter with him, threaten or brawl him for his letters, or pick his pocket (built, not yet tested). You can also hand a letter you carry to someone in person ("I have a letter for you."): they read it there and react aloud, the text known to them alone, and may write back (tested on AE; needs SkyrimNet's `PublicRegisterEvent`); hand it to anyone else and they read a letter that isn't theirs (built, not yet tested). You write letters on parchment (crafted from a roll of paper at a tanning rack, or bought from general-goods merchants) with **Ink & Quill - Writing Framework** installed: read a parchment, write the recipient's name and address after "To:" (suggestions fill them in) and your letter below it, and save (tested on AE, and so is mailing it); you can edit a letter you haven't sent (built, not yet tested). The dev keys (below) still make example letters.
+**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). On the roads you may meet him carrying a letter that passes there: post a letter with him, threaten or brawl him for his letters, or pick his pocket (tested on AE). You can also hand a letter you carry to someone in person ("I have a letter for you."): they read it there and react aloud, the text known to them alone, and may write back (tested on AE; needs SkyrimNet's `PublicRegisterEvent`); hand it to anyone else and they read a letter that isn't theirs (tested on AE). You write letters on parchment (crafted from a roll of paper at a tanning rack, or bought from general-goods merchants) with **Ink & Quill - Writing Framework** installed: read a parchment, write the recipient's name and address after "To:" (suggestions fill them in) and your letter below it, and save (tested on AE, and so is mailing it); you can edit a letter you haven't sent (built, not yet tested).
 
 ## Requirements
 
@@ -32,18 +32,6 @@ At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.
 ## Settings
 
 In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, how long NPCs take to write back, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, whether he can be met on the road, whether NPCs get the "I have a letter for you." topic, and whom your letters can be addressed to. See [docs/SETTINGS.md](docs/SETTINGS.md).
-
-## Dev keys
-
-Outside menus, once the log says `[Session] Ready`:
-
-| Key | Does |
-|---|---|
-| F6 | Gives you an example letter to the NPC under the crosshair (SkyrimNet must know them) |
-| F7 | Sends the newest letter you wrote and carry; it arrives after the travel time (as fast travel would take) |
-| F8 | Makes every letter in transit due now, including replies, which then go to the courier, and the next letter an NPC writes first |
-
-On every load you also get a letter to "Nobody (test)" (unless you carry one): its recipient is never found, so it comes back through the courier ([docs/DELIVERY.md](docs/DELIVERY.md#undeliverable-letters)).
 
 ## Building
 

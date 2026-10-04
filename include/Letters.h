@@ -50,6 +50,17 @@ namespace PhysicalLetters::Letters {
     // `bodyLocked`: only the "To:" line can be written in (a new letter until it has a recipient).
     std::string Marked(const Letter& letter, bool bodyLocked = false);
 
+    // How much of a letter the player wrote in blood (Letter::blood), and those passages, one per
+    // line: what its reader is told (docs/READING.md).
+    enum class Blood { kNone, kPart, kAll };
+    struct BloodText {
+        Blood amount = Blood::kNone;
+        std::string passages;
+    };
+    BloodText BloodOf(const Letter& letter);
+    // For a narration or a memory: "It is written in blood.", the passages that are, or "".
+    std::string BloodSentence(const Letter& letter);
+
     // Game thread.  An edit: the letter's form now holds `letter`, a new LetterDB record (the old one
     // stays, for other saves).  False if it couldn't be stored, and nothing changed.
     bool Rewrite(RE::TESObjectBOOK* book, const Letter& letter);

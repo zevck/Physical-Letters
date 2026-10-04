@@ -40,6 +40,8 @@ namespace PhysicalLetters {
         // The player's letter: the recipient's address as the "To:" line shows it after their name
         // ("6391 Dawnstar"); "" for other letters and those written before addresses.
         std::string address;
+        // The player's letter begun in blood: its "To:" line is red (decided when writing begins).
+        bool bloodHeading = false;
     };
 
     // SQLite store for letters, one per SkyrimNet save folder:

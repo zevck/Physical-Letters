@@ -103,9 +103,6 @@ namespace PhysicalLetters::Transit {
     // courier.  Runs every heartbeat once the session is ready.
     void Tick();
 
-    // Debug: makes every letter in transit due now.
-    void MakeAllDue();
-
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type);
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version);
     void Revert();

@@ -18,7 +18,6 @@
  */
 
 #include "Session.h"
-#include "DebugKeys.h"
 #include "LetterDB.h"
 #include "Letters.h"
 #include "SkyrimNet.h"
@@ -80,7 +79,6 @@ namespace PhysicalLetters::Session {
         g_ready = true;
         SKSE::log::info("[Session] Ready (save id {}, timeline state {})", saveId,
                         static_cast<int>(SkyrimNet::GetTimelineState()));
-        DebugKeys::GiveUndeliverableLetter();
     }
 
     bool IsReady()

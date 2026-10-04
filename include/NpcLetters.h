@@ -31,9 +31,6 @@ namespace PhysicalLetters::NpcLetters {
     // CooldownDays.
     void StartCooldown(const std::string& uuid);
 
-    // Debug (F8): the next letter is due now.
-    void MakeDue();
-
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type);
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version);
     void Revert();

@@ -17,7 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "DebugKeys.h"
 #include "HandIn.h"
 #include "Parchment.h"
 #include "Postage.h"
@@ -75,7 +74,6 @@ namespace {
         case SKSE::MessagingInterface::kDataLoaded:
             PhysicalLetters::SkyrimNet::Init();
             PhysicalLetters::Letters::CheckTemplate();
-            PhysicalLetters::DebugKeys::Register();
             PhysicalLetters::HandIn::Register();
             PhysicalLetters::Parchment::OnDataLoaded();
             PhysicalLetters::Writing::Register();

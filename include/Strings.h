@@ -20,7 +20,7 @@
 #pragma once
 
 // Every piece of text the player sees, in one place so localization can replace it.
-// English only for now.  (Dev-key notifications stay in DebugKeys.)
+// English only for now.
 namespace PhysicalLetters::Strings {
 
     // A letter's item name: the player's letters by their recipient, letters to the player

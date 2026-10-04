@@ -37,7 +37,7 @@ VR's Address Library doesn't list the four functions (checked in the 2026-09-27 
 
 Tested on AE (2026-09-30): Solitude (Winking Skeever) to Katarina in Whiterun's streets, road 142,905 units against a straight line of 141,323 (the engine's path is coarse), 9 ms of pathing, 2.8 game hours at `fFastTravelSpeedMult` 3.60 and timescale 20.
 
-Letters to an NPC arrive after the travel time from whoever took them (the innkeeper or courier; the player with the F7 dev key). A reply goes to the courier after 12 game hours of writing (`WritingHours`) plus the travel time from the NPC to the player.
+Letters to an NPC arrive after the travel time from whoever took them (the innkeeper or courier). A reply goes to the courier after 12 game hours of writing (`WritingHours`) plus the travel time from the NPC to the player.
 
 **In the player's town**, the courier may bring the letter in person instead ([COURIER.md](COURIER.md)).
 

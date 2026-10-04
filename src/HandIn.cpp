@@ -157,9 +157,9 @@ namespace PhysicalLetters::HandIn {
     {
         // A direct narration perceived by the reader alone: they read it and react aloud; nobody
         // else learns the text (docs/HAND_IN.md#reading-it-there).
-        const auto text = std::format("{} hands {} a letter from {} to {}. It reads:\n{}",
-                                      RE::PlayerCharacter::GetSingleton()->GetName(), reader->GetName(), letter.authorName,
-                                      letter.recipientName, letter.body);
+        auto text = std::format("{} hands {} a letter from {} to {}. It reads:\n{}", RE::PlayerCharacter::GetSingleton()->GetName(),
+                                reader->GetName(), letter.authorName, letter.recipientName, letter.body);
+        if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) text += "\n\n" + blood;
         const auto readerId = reader->GetFormID();
         // SkyrimNet stores the event: off the game thread, as its API allows.
         std::thread([readerId, text, letterId = letter.id, name = std::string{ reader->GetName() }]() {

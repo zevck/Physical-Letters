@@ -11,7 +11,7 @@ Context variables the plugin sets:
 | Variable | Value |
 |---|---|
 | `npc` | `{ UUID, name }` of the recipient; the template uses `decnpc(npc.UUID)` and `render_character_profile("full", npc.UUID)` |
-| `letter` | `{ author, recipient, body, read_before, can_reply }`; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)): the prompt then says not to reply, and a reply is ignored |
+| `letter` | `{ author, recipient, body, read_before, can_reply, blood, blood_text }`; `blood` is `"all"` or `"part"` when the player wrote it in blood (`Letters::BloodOf`, from LetterDB's `blood`), with the passages in `blood_text`, one per line, and the template says so after the letter; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)): the prompt then says not to reply, and a reply is ignored |
 | `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. |
 | `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
 
@@ -37,6 +37,8 @@ It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importan
 
 The letter from <author>:
 <the exact letter>
+
+It is written in blood.    (or: Part of it is written in blood: <the passages>; only if it was)
 
 My reply:
 <the exact reply>          (only if they reply)

@@ -592,12 +592,6 @@ namespace PhysicalLetters::NpcLetters {
         g_cooldownUntil[uuid] = Now() + Config::GetSingleton()->Get(Config::kNpcCooldown);
     }
 
-    void MakeDue()
-    {
-        g_nextAt = Now();
-        SKSE::log::info("[NpcLetters] The next letter from an NPC is due now");
-    }
-
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type)
     {
         if (!a_intfc->OpenRecord(a_type, kRecordVersion)) {

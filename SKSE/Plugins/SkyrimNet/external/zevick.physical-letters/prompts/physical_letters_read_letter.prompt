@@ -3,7 +3,8 @@
      npc             UUID, name of the recipient
      letter          author, recipient, body of the letter being read; read_before is
                      true when the recipient already received this same letter once;
-                     can_reply is false when the correspondence has run its course (no reply)
+                     can_reply is false when the correspondence has run its course (no reply);
+                     blood is "all" or "part" when the player wrote it in blood (blood_text: those passages)
      correspondence  earlier letters between the two that the recipient knows of, oldest
                      first (up to 20): from, to, days_ago, body
      memories        the recipient's other memories most relevant to the writer #}
@@ -39,6 +40,17 @@
     ```
     {{ letter.body }}
     ```
+    {% if letter.blood == "all" %}
+
+    The letter is written in blood.
+    {% endif %}
+    {% if letter.blood == "part" %}
+
+    Part of the letter is written in blood:
+    ```
+    {{ letter.blood_text }}
+    ```
+    {% endif %}
     {% if letter.read_before %}
 
     {{ actor.name }} has received this very letter before, word for word{% if correspondence and length(correspondence) > 0 %}; any reply {{ actor.subjectivePronoun }} sent to it is among the earlier letters above{% endif %}. {{ letter.author }} has sent it again.

@@ -58,6 +58,7 @@ namespace PhysicalLetters::Writing {
         bool g_bodyLocked = false;       // the "To:" line names nobody: only it can be written in
         std::string g_lockedBody;        // the body as written when it was locked, given back when it opens
         bool g_bodyLockedAtStart = false;  // a new letter: its body had no run when the session began
+        bool g_bloodHeading = false;       // the letter's "To:" line is red (begun in blood)
 
         void* UserOf(std::uint32_t session) { return reinterpret_cast<void*>(static_cast<std::uintptr_t>(session)); }
         bool IsCurrent(void* user) { return g_session != 0 && user == UserOf(g_session); }
@@ -134,7 +135,8 @@ namespace PhysicalLetters::Writing {
                                  .body = body,
                                  .writtenAt = RE::Calendar::GetSingleton()->GetDaysPassed(),
                                  .blood = blood,
-                                 .address = recipient.address };
+                                 .address = recipient.address,
+                                 .bloodHeading = g_bloodHeading };
             const std::string reading = TextHook::ForBookMenu(Letters::Reading(letter));
             if (g_book) {
                 if (!Letters::Rewrite(RE::TESForm::LookupByID<RE::TESObjectBOOK>(g_book), letter)) {
@@ -194,7 +196,10 @@ namespace PhysicalLetters::Writing {
             const bool toBody = broke && named;
             if (broke || named == g_bodyLocked) {
                 if (runs.size() == 2) g_lockedBody = runs[1];
-                const Letter shown{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer), .recipientName = line, .blood = g_lockedBody };
+                const Letter shown{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer),
+                                    .recipientName = line,
+                                    .blood = g_lockedBody,
+                                    .bloodHeading = g_bloodHeading };
                 const std::string marked = Letters::Marked(shown, !named);
                 const std::string reading = g_letter ? TextHook::ForBookMenu(Letters::Reading(*g_letter)) : std::string{ kParchmentText };
                 // A reopened body counts as saved with its text at the session's start, if it had one: unchanged,
@@ -229,6 +234,7 @@ namespace PhysicalLetters::Writing {
             const std::string marked = Letters::Marked(shown, bodyLocked);
             g_bodyLocked = bodyLocked;
             g_bodyLockedAtStart = bodyLocked;
+            g_bloodHeading = shown.bloodHeading;
             g_lockedBody.clear();
             const auto previous = std::exchange(g_session, ++g_sessions);
             const auto previousBook = std::exchange(g_book, book);
@@ -258,7 +264,8 @@ namespace PhysicalLetters::Writing {
                 Notify(Strings::kWriteNotReady);
                 return false;
             }
-            const Letter blank{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer) };
+            // Blood is chosen once the session starts: the "To:" line is red if it will be (as Physical Diaries' headings).
+            const Letter blank{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer), .bloodHeading = g_api->WouldBeInBlood() };
             return Begin(blank, 0, 0, std::nullopt, true);
         }
 

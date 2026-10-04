@@ -670,14 +670,6 @@ namespace PhysicalLetters::Transit {
         }
     }
 
-    void MakeAllDue()
-    {
-        // Now, not 0: how overdue a letter is decides when an unfound recipient's comes back.
-        const double now = Now();
-        for (auto& parcel : g_parcels) parcel.dueAt = std::min(parcel.dueAt, now);
-        SKSE::log::info("[Transit] {} letter(s) made due now", g_parcels.size());
-    }
-
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type)
     {
         if (!a_intfc->OpenRecord(a_type, kRecordVersion)) {

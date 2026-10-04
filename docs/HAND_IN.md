@@ -53,7 +53,7 @@ Giving a letter to someone who already read it is read again: the prompt says `r
 
 The reader reads the letter there and then, and reacts aloud: one SkyrimNet direct narration carrying its text, perceived by the reader alone.
 
-- **The narration**, built in the DLL (`HandIn::ReadThere`): "<player> hands <reader> a letter from A to B. It reads: …".
+- **The narration**, built in the DLL (`HandIn::ReadThere`): "<player> hands <reader> a letter from A to B. It reads: …", then "It is written in blood." or the passages that are, if the player wrote any of it in blood (`Letters::BloodSentence`)".
 - **Private:** `PublicRegisterEvent("direct_narration", text, reader, 0, [reader])` (SkyrimNet public API v11), from a worker thread as the API allows. With an audience, the event goes to exactly the listed actors plus originator and target: no one else nearby, no virtual NPCs, not the player (the narration names them; they handed it over without reading it). It's a persistent event: in the reader's history and prompts, and in their later memory generation, and nobody else's. Its originator, the reader, responds to it; what they say aloud is ordinary dialogue that bystanders hear, so how much they let on is theirs.
 - **Without `PublicRegisterEvent`** (a SkyrimNet build from before it), `NearPlayer` is false: only the reading runs, without a reaction.
 - **Why the text is in the narration, not only the memory:** with the reading's memory alone, the reaction didn't see it (tested on AE: the test letter treated as a grave matter): SkyrimNet caches decorator results (`get_relevant_memories` among them) for 60 s (`PromptEngineCallbacks.cpp`, `CALLBACK_CACHE_TTL`), and recall is a relevance search with a 0.52 threshold. The narration is a recent event, always in context. The reading's tagged memory still matters later: correspondence history and `read_before` find letters by it.
@@ -62,4 +62,4 @@ The reader reads the letter there and then, and reacts aloud: one SkyrimNet dire
 
 ## Testing
 
-Tested on AE: handing a letter to its recipient in the topic's gift menu delivers it, and they read it on the spot through the private narration (`PublicRegisterEvent`) and react to what it says; the silent answer. Not yet run: the topic shown by the keyword (and hidden by the setting), the reading after a hand-over (memory, reply), someone else's letter, a letter given to its recipient in the postage menu.
+Tested on AE: handing a letter to its recipient in the topic's gift menu delivers it, and they read it on the spot through the private narration (`PublicRegisterEvent`) and react to what it says; the silent answer. Also tested on AE (2026-10-03): the reading after a hand-over (memory, reply), someone else's letter, a letter given to its recipient in the postage menu. Not yet run: the topic hidden by the setting, a letter written in blood read on the spot.

@@ -41,9 +41,6 @@ namespace PhysicalLetters::NpcToNpc {
     // pair doesn't write again for PairCooldownDays.
     void ThreadEnded(const Letter& letter);
 
-    // Debug (F8): the next letter is due now.
-    void MakeDue();
-
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type);
     void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version);
     void Revert();

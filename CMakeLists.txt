@@ -33,7 +33,6 @@ find_package(minhook CONFIG REQUIRED)
 # ---- Sources ----
 set(sources
     src/main.cpp
-    src/DebugKeys.cpp
     src/DynamicForms.cpp
     src/LetterDB.cpp
     src/Letters.cpp

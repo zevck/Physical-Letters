@@ -41,6 +41,7 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `in_reply_to` | For a reply, the id of the letter it answers ('' otherwise; replies from before this column have '' too, and so don't appear in the correspondence) |
 | `blood` | A letter the player wrote partly in blood: the body with that text between U+E000 and U+E001, for the book to show red; '' otherwise ([WRITING.md](WRITING.md#the-text)) |
 | `address` | A letter the player wrote: the recipient's address after their name on the "To:" line ("6391 Dawnstar", [WRITING.md](WRITING.md#the-recipient)); '' otherwise, and for letters from before addresses |
+| `blood_heading` | 1 when the player began the letter in blood: its "To:" line is red ([WRITING.md](WRITING.md#the-text)); 0 otherwise |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 

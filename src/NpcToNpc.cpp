@@ -765,12 +765,6 @@ namespace PhysicalLetters::NpcToNpc {
         }).detach();
     }
 
-    void MakeDue()
-    {
-        g_nextAt = Now();
-        SKSE::log::info("[NpcToNpc] The next letter between NPCs is due now");
-    }
-
     void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type)
     {
         if (!a_intfc->OpenRecord(a_type, kRecordVersion)) {

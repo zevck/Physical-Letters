@@ -2,7 +2,8 @@
    PublicSendCustomPromptToLLM; context variables:
      npc          UUID, name of the reader
      letter       author, recipient, body (the player handed it to them); read_before: they
-                  have seen this letter before; reader_is_author: they wrote it themselves
+                  have seen this letter before; reader_is_author: they wrote it themselves;
+                  blood: "all" or "part" when written in blood (blood_text: those passages)
      player_name  the player's name
      memories     the reader's memories most relevant to the author and the recipient #}
 
@@ -29,6 +30,17 @@
     ```
     {{ letter.body }}
     ```
+    {% if letter.blood == "all" %}
+
+    The letter is written in blood.
+    {% endif %}
+    {% if letter.blood == "part" %}
+
+    Part of the letter is written in blood:
+    ```
+    {{ letter.blood_text }}
+    ```
+    {% endif %}
     {% if letter.read_before %}
 
     {{ actor.name }} has seen this very letter before.

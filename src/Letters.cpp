@@ -164,11 +164,14 @@ namespace PhysicalLetters::Letters {
             // the text before it (an empty run's too): the break before the body is in the handwriting.
             const std::string to = letter.address.empty() ? letter.recipientName
                                                           : std::format("{}, {}", letter.recipientName, letter.address);
-            std::string out = std::string{ kFont } + lock(Strings::kToLabel) + Escape(Plain(to));
-            if (marked && bodyLocked) return out + lock("\n\n</font>" + body);
+            // Begun in blood: the whole line is red, typed text too (it takes the format before it).
+            const std::string red = letter.bloodHeading ? std::string{ kBloodFont } : std::string{};
+            const std::string end = (letter.bloodHeading ? "</font>" : "") + std::string{ "\n\n</font>" };
+            std::string out = std::string{ kFont } + red + lock(Strings::kToLabel) + Escape(Plain(to));
+            if (marked && bodyLocked) return out + lock(end + body);
             // An empty last lock: an empty body is still a run (text after the last lock is a run
             // only if there is any).
-            return out + lock("\n\n</font>") + body + (marked ? lock("") : std::string{});
+            return out + lock(end) + body + (marked ? lock("") : std::string{});
         }
 
         // A factory-made form has no look: without the template's world model and bounds
@@ -267,6 +270,34 @@ namespace PhysicalLetters::Letters {
     std::string Marked(const Letter& letter, bool bodyLocked)
     {
         return Render(letter, true, bodyLocked);
+    }
+
+    BloodText BloodOf(const Letter& letter)
+    {
+        BloodText out;
+        std::string outside;  // what isn't in blood
+        for (std::size_t at = 0; at < letter.blood.size();) {
+            const auto open = letter.blood.find(kBloodOpen, at);
+            outside += letter.blood.substr(at, open == std::string::npos ? std::string::npos : open - at);
+            if (open == std::string::npos) break;
+            const auto start = open + kBloodOpen.size();
+            const auto close = letter.blood.find(kBloodClose, start);
+            if (const auto passage = MarkedText::Trim(letter.blood.substr(start, close == std::string::npos ? std::string::npos : close - start));
+                !passage.empty()) {
+                out.passages += (out.passages.empty() ? "" : "\n") + passage;
+            }
+            at = close == std::string::npos ? letter.blood.size() : close + kBloodClose.size();
+        }
+        if (!out.passages.empty()) out.amount = MarkedText::Trim(outside).empty() ? Blood::kAll : Blood::kPart;
+        return out;
+    }
+
+    std::string BloodSentence(const Letter& letter)
+    {
+        const auto blood = BloodOf(letter);
+        if (blood.amount == Blood::kAll) return "It is written in blood.";
+        if (blood.amount == Blood::kPart) return std::format("Part of it is written in blood:\n{}", blood.passages);
+        return {};
     }
 
     bool Rewrite(RE::TESObjectBOOK* book, const Letter& letter)

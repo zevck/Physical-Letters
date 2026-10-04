@@ -62,6 +62,6 @@ Co-save record `LNPC` (version 1): the next letter's time (`double`, game days; 
 
 ## Testing
 
-F8 makes the next NPC letter due now, with the letters in transit. The log says who was shortlisted, who couldn't write and why, whom the pick chose and why, whether they wrote, and when the next attempt is. After each attempt it logs the session's tally: attempts, pick calls and how many found nobody, letter calls, letters written and declined, failures and timeouts.
+For testing, a low `IntervalDays` brings the next attempt sooner. The log says who was shortlisted, who couldn't write and why, whom the pick chose and why, whether they wrote, and when the next attempt is. After each attempt it logs the session's tally: attempts, pick calls and how many found nobody, letter calls, letters written and declined, failures and timeouts.
 
 Tested on AE (2026-09-30): from Whiterun, the NPCs around the player were skipped and the two asked declined; from Solitude, Aela wrote (about 37 s for the LLM) and the letter came by courier.

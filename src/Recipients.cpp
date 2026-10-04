@@ -87,7 +87,7 @@ namespace PhysicalLetters::Recipients {
         }
 
         // Every actor in memory (persistent ones anywhere, the rest in loaded cells) of an NPC race,
-        // not the player, deleted or dead, whose name starts with `prefix`.
+        // not the player, deleted, disabled or dead, whose name starts with `prefix`.
         Names ActorsStarting(std::string_view prefix)
         {
             const std::string key = Lower(std::string{ prefix });
@@ -106,7 +106,7 @@ namespace PhysicalLetters::Recipients {
             for (const auto& [formId, form] : *forms) {
                 if (!form || form->GetFormType() != RE::FormType::ActorCharacter) continue;
                 auto* actor = static_cast<RE::Actor*>(form);
-                if (actor->IsPlayerRef() || actor->IsDeleted() || actor->IsDead()) continue;
+                if (actor->IsPlayerRef() || actor->IsDeleted() || actor->IsDisabled() || actor->IsDead()) continue;
                 const char* name = actor->GetDisplayFullName();
                 if (!name || !*name || !StartsWith(name, prefix)) continue;
                 auto* race = actor->GetRace();
@@ -116,27 +116,23 @@ namespace PhysicalLetters::Recipients {
             return found;
         }
 
-        // Of two references of one unique NPC, the one that is them: enabled, loaded, persistent.
+        // Of two references of one unique NPC, the one that is them: loaded, then persistent.
         bool Better(RE::Actor* a, RE::Actor* b)
         {
             const auto rank = [](RE::Actor* actor) {
-                return std::tuple{ !actor->IsDisabled(), actor->Is3DLoaded(),
-                                   (actor->GetFormFlags() & RE::TESForm::RecordFlags::kPersistent) != 0 };
+                return std::tuple{ actor->Is3DLoaded(), (actor->GetFormFlags() & RE::TESForm::RecordFlags::kPersistent) != 0 };
             };
             return rank(a) != rank(b) ? rank(a) > rank(b) : a->GetFormID() < b->GetFormID();
         }
 
-        // The people one name stands for (not under the form map's lock: it may ask SkyrimNet).  One
-        // reference per unique NPC; disabled ones only if nobody enabled has the name.
+        // The people one name stands for (not under the form map's lock: it may ask SkyrimNet), one
+        // reference per unique NPC.
         std::vector<RE::Actor*> People(const std::vector<RE::Actor*>& actors, bool ask)
         {
             const int generic = Config::GetSingleton()->Get(Config::kGenericRecipients);
-            const bool anyEnabled = std::ranges::any_of(actors, [](RE::Actor* actor) { return !actor->IsDisabled(); });
             std::vector<RE::Actor*> people;
             std::unordered_map<RE::TESNPC*, RE::Actor*> byBase;
             for (auto* actor : actors) {
-                // A disabled one beside enabled ones is a replacer's original, or a double.
-                if (actor->IsDisabled() && (anyEnabled || !IsUnique(actor))) continue;
                 if (!CanReceive(actor, generic, ask)) continue;
                 if (!IsUnique(actor)) {
                     people.push_back(actor);
