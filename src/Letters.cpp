@@ -39,7 +39,7 @@ namespace PhysicalLetters::Letters {
 
         std::string Font()
         {
-            return std::format("<font face='{}' size='{}'>", kFontFace, Config::GetSingleton()->Get(Config::kFontSize));
+            return std::format("<font face='{}' size='{}'>", FontFace(), Config::GetSingleton()->Get(Config::kFontSize));
         }
         using MarkedText::kBloodClose;
         using MarkedText::kBloodOpen;
@@ -135,31 +135,47 @@ namespace PhysicalLetters::Letters {
         // first character, so an empty one never starts a page (docs/WRITING.md#the-text).  The editor's stays empty.
         std::string_view BlankLine(bool marked) { return marked ? "\n\n" : "\n&nbsp;\n"; }
 
-        // Reading: a paragraph's empty first or last line (an odd run of line breaks, or an empty paragraph) gets one too.
-        void KeepBlankEnds(std::string& paragraph)
+        // Reading: the same for every blank line of a text (one with only tags, blood's, is blank too).
+        std::string HoldBlankLines(std::string_view text)
         {
-            if (paragraph.empty() || paragraph.front() == '\n') paragraph.insert(0, "&nbsp;");
-            if (paragraph.back() == '\n') paragraph += "&nbsp;";
+            std::string out;
+            for (std::size_t start = 0;;) {
+                const auto end = text.find('\n', start);
+                const auto line = text.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+                bool blank = true;
+                for (std::size_t i = 0; i < line.size() && blank; ++i) {
+                    const auto close = line[i] == '<' ? line.find('>', i) : std::string_view::npos;
+                    if (close == std::string_view::npos) blank = false;
+                    else i = close;
+                }
+                out += line;
+                if (blank) out += "&nbsp;";
+                if (end == std::string_view::npos) return out;
+                out += '\n';
+                start = end + 1;
+            }
         }
 
-        // Book markup in the vanilla letters' handwriting.  Skyrim resets the font after a blank
-        // line, so every paragraph gets its own tag.  `marked`: blood markers kept, for the editor.
+        // Book markup in the vanilla letters' handwriting, breaks in it too (a blank line as tall as a written one, as
+        // Ink & Quill sizes typed ones).  `marked`: blood markers kept, for the editor (docs/WRITING.md#the-text).
         std::string Paragraphs(std::string_view body, bool marked)
         {
             const std::string plain = Plain(body);
             const std::string_view text = plain;
             const std::string font = Font();
+            if (!marked) {
+                // One tag: every blank line holds a character, so nothing resets the font.
+                bool inBlood = false;
+                return font + HoldBlankLines(Redden(Escape(text), inBlood)) + "</font>";
+            }
+            // A tag per paragraph: Skyrim resets the font after an empty line.  An empty paragraph has none of its own.
             std::string out;
-            bool inBlood = false;
             for (std::size_t start = 0; start <= text.size();) {
                 auto end = text.find("\n\n", start);
                 if (end == std::string_view::npos) end = text.size();
-                // Breaks in the handwriting too: a blank line as tall as a written one, as Ink & Quill sizes
-                // typed ones.  An empty paragraph is a blank line: no tag of its own (docs/WRITING.md#the-text).
-                if (start > 0) out += font + std::string{ BlankLine(marked) } + "</font>";
-                std::string paragraph = Escape(text.substr(start, end - start));
-                if (!marked) KeepBlankEnds(paragraph);
-                if (!paragraph.empty()) out += font + (marked ? paragraph : Redden(paragraph, inBlood)) + "</font>";
+                if (start > 0) out += font + "\n\n</font>";
+                const std::string paragraph = Escape(text.substr(start, end - start));
+                if (!paragraph.empty()) out += font + paragraph + "</font>";
                 start = end + 2;
             }
             return out;

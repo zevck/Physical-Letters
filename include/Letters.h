@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "Config.h"
 #include "LetterDB.h"
 
 // Letter items: one runtime book form per letter (DynamicForms), keyed by the letter id.
@@ -27,8 +28,13 @@
 // served by the GetDescription hook (TextHook).
 namespace PhysicalLetters::Letters {
 
-    // Letters are written in the vanilla letters' handwriting, at [General] FontSize.
-    inline constexpr const char* kFontFace = "$HandwrittenFont";
+    // The face letters are written in ([General] Font; the vanilla letters' handwriting by default), at
+    // [General] FontSize.  SNPD's three choices (docs/SETTINGS.md).
+    inline const char* FontFace()
+    {
+        static constexpr const char* kFaces[] = { "$HandwrittenFont", "$EverywhereFont", "$SkyrimBooks" };
+        return kFaces[Config::GetSingleton()->Get(Config::kFont)];
+    }
 
     // Why a letter came back to the player (its item card says so).  Saved in the co-save.
     enum class Returned : std::uint8_t {

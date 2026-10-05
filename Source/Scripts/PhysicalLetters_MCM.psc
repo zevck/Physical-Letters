@@ -25,6 +25,9 @@ int[] _toggleOids
 ; Writing.GenericRecipients (0-2), a menu: its choices are its values.
 string[] _recipientChoices
 int _recipientsOid = -1
+; General.Font (0-2), a menu the same way: handwriting, the UI's font, the books' font.
+string[] _fontChoices
+int _fontOid = -1
 
 event OnConfigInit()
     ModName = "Physical Letters"
@@ -110,6 +113,12 @@ function Setup()
     _recipientChoices[0] = "$PL_RecipientsUnique"
     _recipientChoices[1] = "$PL_RecipientsKnown"
     _recipientChoices[2] = "$PL_RecipientsAnyone"
+
+    _fontOid = -1
+    _fontChoices = new string[3]
+    _fontChoices[0] = "$PL_FontHandwritten"
+    _fontChoices[1] = "$PL_FontEverywhere"
+    _fontChoices[2] = "$PL_FontBook"
 endfunction
 
 function AddSlider(int i)
@@ -177,7 +186,7 @@ event OnPageReset(string page)
         AddToggle(2)
         _recipientsOid = AddMenuOption("$PL_Recipients", _recipientChoices[GetSetting("Writing.GenericRecipients")])
         AddSlider(10)
-        AddEmptyOption()
+        _fontOid = AddMenuOption("$PL_Font", _fontChoices[GetSetting("General.Font")])
         AddGap()
         AddHeader("$PL_HeaderLogging")
         AddToggle(1)
@@ -216,6 +225,10 @@ event OnOptionMenuOpen(int oid)
         SetMenuDialogOptions(_recipientChoices)
         SetMenuDialogStartIndex(GetSetting("Writing.GenericRecipients"))
         SetMenuDialogDefaultIndex(GetSettingDefault("Writing.GenericRecipients"))
+    elseif oid == _fontOid
+        SetMenuDialogOptions(_fontChoices)
+        SetMenuDialogStartIndex(GetSetting("General.Font"))
+        SetMenuDialogDefaultIndex(GetSettingDefault("General.Font"))
     endif
 endevent
 
@@ -223,6 +236,9 @@ event OnOptionMenuAccept(int oid, int index)
     if oid == _recipientsOid && index >= 0
         SetSetting("Writing.GenericRecipients", index)
         SetMenuOptionValue(oid, _recipientChoices[GetSetting("Writing.GenericRecipients")])
+    elseif oid == _fontOid && index >= 0
+        SetSetting("General.Font", index)
+        SetMenuOptionValue(oid, _fontChoices[GetSetting("General.Font")])
     endif
 endevent
 
@@ -230,6 +246,10 @@ event OnOptionDefault(int oid)
     if oid == _recipientsOid
         SetSetting("Writing.GenericRecipients", GetSettingDefault("Writing.GenericRecipients"))
         SetMenuOptionValue(oid, _recipientChoices[GetSetting("Writing.GenericRecipients")])
+        return
+    elseif oid == _fontOid
+        SetSetting("General.Font", GetSettingDefault("General.Font"))
+        SetMenuOptionValue(oid, _fontChoices[GetSetting("General.Font")])
         return
     endif
     int i = _oids.Find(oid)
@@ -248,6 +268,9 @@ endevent
 event OnOptionHighlight(int oid)
     if oid == _recipientsOid
         SetInfoText("$PL_TipRecipients")
+        return
+    elseif oid == _fontOid
+        SetInfoText("$PL_TipFont")
         return
     endif
     int i = _oids.Find(oid)

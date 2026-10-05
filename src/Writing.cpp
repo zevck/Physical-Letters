@@ -245,7 +245,7 @@ namespace PhysicalLetters::Writing {
             session.size = sizeof(IQ_Session);
             session.markedText = marked.c_str();
             // Typed text's format, so a new paragraph gets the size the rendered page gives it.
-            session.runFont = Letters::kFontFace;
+            session.runFont = Letters::FontFace();
             session.runSize = Config::GetSingleton()->Get(Config::kFontSize);
             session.caretRun = caretRun;
             session.user = UserOf(g_session);

@@ -33,6 +33,8 @@ namespace PhysicalLetters {
         static constexpr Setting kDebugLog      { "General",  "DebugLog",      0,   0, 1    };
         // Letter text's size, every letter's (SNPD's [Fonts] ContentSize: the same default and range).
         static constexpr Setting kFontSize      { "General",  "FontSize",      14,  8, 24   };
+        // Letter text's face, as SNPD's [Fonts] FontFace offers: 0 handwriting, 1 the UI's, 2 the books' (Letters::FontFace).
+        static constexpr Setting kFont          { "General",  "Font",          0,   0, 2    };
         static constexpr Setting kPostage       { "Delivery", "Postage",       20,  0, 1000 };
         static constexpr Setting kWritingHours  { "Delivery", "WritingHours",  12,  0, 168  };
         static constexpr Setting kMinHours      { "Delivery", "MinHours",      2,   0, 48   };
@@ -85,7 +87,7 @@ namespace PhysicalLetters {
         static constexpr int kGenericUniqueOnly = 0, kGenericKnown = 1, kGenericAnyone = 2;
         // INI order.
         static constexpr Setting kSettings[] = {
-            kDebugLog, kFontSize, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
+            kDebugLog, kFontSize, kFont, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcReplies, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcMissDays,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kCourierEnabled, kCourierWaitHours,

@@ -81,8 +81,8 @@ namespace PhysicalLetters::Papyrus {
                 Postage::ApplyPrice();
             } else if (key == Config::kHandInDialogue.key) {
                 HandIn::ApplyDialogue();
-            } else if (key == Config::kFontSize.key && Session::IsReady()) {
-                Letters::AttachTexts();  // every letter's text again, at the new size
+            } else if ((key == Config::kFontSize.key || key == Config::kFont.key) && Session::IsReady()) {
+                Letters::AttachTexts();  // every letter's text again, in the new size or face
             }
         }
 
