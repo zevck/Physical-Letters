@@ -46,11 +46,15 @@ namespace PhysicalLetters::MarkedText {
         return first == std::string_view::npos ? std::string{} : std::string{ text.substr(first) };
     }
 
+    inline std::string TrimRight(std::string_view text)
+    {
+        const auto last = text.find_last_not_of(" \t\r\n");
+        return last == std::string_view::npos ? std::string{} : std::string{ text.substr(0, last + 1) };
+    }
+
     inline std::string Trim(std::string_view text)
     {
-        std::string out = TrimLeft(text);
-        out.erase(out.find_last_not_of(" \t\r\n") + 1);
-        return out;
+        return TrimRight(TrimLeft(text));
     }
 
 } // namespace PhysicalLetters::MarkedText

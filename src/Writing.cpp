@@ -42,6 +42,7 @@ namespace PhysicalLetters::Writing {
 
     namespace {
         using MarkedText::Trim;
+        using MarkedText::TrimRight;
         using MarkedText::WithoutBlood;
 
         constexpr RE::FormID kPlayer = 0x14;
@@ -107,11 +108,12 @@ namespace PhysicalLetters::Writing {
             if (const auto* message = std::get_if<std::string>(&found)) return Refuse(reply, *message);
             const auto& recipient = std::get<Recipients::Recipient>(found);
             const std::string rest = lineEnd == std::string_view::npos ? std::string{} : Trim(nameRun.substr(lineEnd + 1));
-            const std::string after = count == 2 ? Trim(runs[1]) : std::string{};
+            // Only the end is trimmed: blank lines the player puts before the first paragraph are kept.
+            const std::string after = count == 2 ? TrimRight(runs[1]) : std::string{};
             const std::string marked = rest.empty() ? after : after.empty() ? rest : rest + "\n\n" + after;
-            const std::string body = Trim(WithoutBlood(marked));
+            const std::string body = TrimRight(WithoutBlood(marked));
             SKSE::log::info("[Writing] Saving: \"{}\", body {} bytes ({} typed after the name)", line, body.size(), rest.size());
-            if (body.empty()) return Refuse(reply, Strings::kWriteEmpty);
+            if (Trim(body).empty()) return Refuse(reply, Strings::kWriteEmpty);
             const auto playerUuid = SkyrimNet::UuidForFormId(kPlayer);
             if (playerUuid.empty()) {
                 SKSE::log::error("[Writing] No SkyrimNet UUID for the player");

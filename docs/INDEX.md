@@ -18,4 +18,4 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [LOCALIZATION.md](LOCALIZATION.md) | Which language, the locale files for letter text (names, cards, the "To:" label), renaming saved letters |
 | [PLUGIN.md](PLUGIN.md) | The ESP: Spriggit source in git, building it, editing it in the CK; its Papyrus scripts and SEQ file |
 
-Much of the engine-facing code is shared with SkyrimNet Physical Diaries (SNPD), whose docs explain the engine behaviour it rests on: `docs/BOOK_FORMS.md` (runtime book forms the engine saves itself) and `docs/BOOK_TEXT.md` (the `GetDescription` hook, Win-1251 for Cyrillic).
+Much of the engine-facing code is shared with SkyrimNet Physical Diaries (SNPD), whose docs explain the engine behaviour it rests on: `docs/BOOK_FORMS.md` (runtime book forms the engine saves itself) and `docs/BOOK_TEXT.md` (the `GetDescription` and `OpenBookMenu` hooks, VR's ninth `OpenBookMenu` argument, Win-1251 for Cyrillic).

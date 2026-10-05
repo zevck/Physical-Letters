@@ -143,9 +143,11 @@ namespace PhysicalLetters::Letters {
             for (std::size_t start = 0; start <= text.size();) {
                 auto end = text.find("\n\n", start);
                 if (end == std::string_view::npos) end = text.size();
-                if (!out.empty()) out += "\n\n";
+                // Breaks in the handwriting too: a blank line as tall as a written one, as Ink & Quill sizes
+                // typed ones.  An empty paragraph is a blank line: no tag of its own (docs/WRITING.md#the-text).
+                if (start > 0) out += font + "\n\n</font>";
                 const std::string paragraph = Escape(text.substr(start, end - start));
-                out += font +(marked ? paragraph : Redden(paragraph, inBlood)) + "</font>";
+                if (!paragraph.empty()) out += font + (marked ? paragraph : Redden(paragraph, inBlood)) + "</font>";
                 start = end + 2;
             }
             return out;

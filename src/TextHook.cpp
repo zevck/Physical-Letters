@@ -27,13 +27,15 @@
 // SkyrimNet Physical Diaries' src/BookTextHook.cpp as of its commit dd20705; see its
 // docs/BOOK_TEXT.md).
 //
-// Everything that shows a book's text asks the form for its DESC field, so one hook
-// covers every reader of our letters:
+// Two hooks (docs/ARCHITECTURE.md).  Every reader asks the form for its DESC field:
 //
 //  - The book menu passes the book's description component with no parent: the
 //    styled text (Win-1251 for Cyrillic).  The component is matched by identity.
-//  - Everything else (SkyrimNet's book-read event, Immersive Reading on VR) passes the
-//    book as the parent: UTF-8, font tags stripped.
+//  - Other readers (SkyrimNet's book-read event, Immersive Reading) pass the book as
+//    the parent: the same text in UTF-8, font tags kept.
+//
+// BookMenu::OpenBookMenu: the menu gets the styled text whoever opens it (Grid Inventory
+// opens it itself, with the parent's text).
 //
 // The item card asks for CNAM, not DESC: a letter's item card gets "A letter to X from Y."
 // RELOCATION_ID(14399, 14552) is (SE id, AE id); VR reuses the SE id through the VR
@@ -167,22 +169,21 @@ namespace
         return out;
     }
 
-    // The rendered text without its <font> tags.  Other readers (SkyrimNet's prompt,
-    // Immersive Reading) get markup close to a vanilla book's; the book menu still
-    // gets the styled text.
-    std::string StripFontTags(const std::string& text) {
-        std::string out;
-        out.reserve(text.size());
-        for (std::size_t i = 0; i < text.size();) {
-            if (text.compare(i, 6, "<font ") == 0 || text.compare(i, 7, "</font>") == 0) {
-                const std::size_t close = text.find('>', i);
-                if (close == std::string::npos) break;
-                i = close + 1;
-            } else {
-                out += text[i++];
-            }
+    // MinHook copes with other plugins hooking the same function.
+    template <class F>
+    void Hook(REL::RelocationID id, F thunk, F* original, std::string_view name, std::string_view otherwise)
+    {
+        auto* address = reinterpret_cast<void*>(REL::Relocation<std::uintptr_t>{ id }.address());
+        auto status = MH_Initialize();
+        if (status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED) {
+            status = MH_CreateHook(address, reinterpret_cast<void*>(thunk), reinterpret_cast<void**>(original));
         }
-        return out;
+        if (status == MH_OK) status = MH_EnableHook(address);
+        if (status != MH_OK) {
+            SKSE::log::error("{} hook failed ({}): {}", name, MH_StatusToString(status), otherwise);
+            return;
+        }
+        SKSE::log::info("Installed {} hook", name);
     }
 
     struct GetDescriptionHook
@@ -217,7 +218,7 @@ namespace
                         }
                     } else if (a_parent->GetFormType() == RE::FormType::Book) {
                         if (const auto text = PhysicalLetters::Letters::TextFor(a_parent->GetFormID()); !text.empty()) {
-                            a_out = StripFontTags(text).c_str();
+                            a_out = text.c_str();  // UTF-8 with its font tags (docs/ARCHITECTURE.md)
                             return;
                         }
                     }
@@ -230,22 +231,50 @@ namespace
             original(a_self, a_out, a_parent, a_fieldType);
         }
 
-        // MinHook copes with other plugins hooking the same function.
         static void Install()
         {
-            REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(14399, 14552) };
-            auto* address = reinterpret_cast<void*>(target.address());
-            auto status = MH_Initialize();
-            if (status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED) {
-                status = MH_CreateHook(address, reinterpret_cast<void*>(&thunk), reinterpret_cast<void**>(&original));
+            Hook(RELOCATION_ID(14399, 14552), &thunk, &original, "GetDescription", "letters will show the template's text");
+        }
+    };
+
+    // BookMenu::OpenBookMenu: the menu shows the text it's given.  Grid Inventory opens books itself, with text it
+    // asked for with the book as parent (UTF-8): a letter's gets its book-menu text here (Win-1251 for Cyrillic).
+    struct OpenBookMenuHook
+    {
+        // Plus VR's ninth argument, the reference's 3D (VR reuses the SE id): forwarded on every runtime, else VR
+        // reads a junk pointer for every book (SNPD docs/BOOK_TEXT.md, "VR's ninth argument").
+        using func_t = void (*)(const RE::BSString&, const RE::ExtraDataList*, RE::TESObjectREFR*, RE::TESObjectBOOK*,
+                                const RE::NiPoint3&, const RE::NiMatrix3&, float, bool, RE::NiAVObject*);
+        static inline func_t original{ nullptr };
+
+        static void thunk(const RE::BSString& a_description, const RE::ExtraDataList* a_extraList, RE::TESObjectREFR* a_ref,
+                          RE::TESObjectBOOK* a_book, const RE::NiPoint3& a_pos, const RE::NiMatrix3& a_rot, float a_scale,
+                          bool a_useDefaultPos, RE::NiAVObject* a_vrNode)
+        {
+            std::string styled;
+            try {
+                if (const auto text = a_book ? PhysicalLetters::Letters::TextFor(a_book->GetFormID()) : std::string{};
+                    !text.empty()) {
+                    styled = PhysicalLetters::TextHook::ForBookMenu(text);
+                    SKSE::log::info("[TextHook] Opening letter 0x{:X} ({} bytes)", a_book->GetFormID(), styled.size());
+                }
+            } catch (const std::exception& e) {
+                SKSE::log::error("[TextHook] Opening a letter failed: {} — showing the text it was given", e.what());
+            } catch (...) {
+                SKSE::log::error("[TextHook] Opening a letter failed — showing the text it was given");
             }
-            if (status == MH_OK) status = MH_EnableHook(address);
-            if (status != MH_OK) {
-                SKSE::log::error("GetDescription hook failed ({}): letters will show the template's text",
-                                 MH_StatusToString(status));
+            if (!styled.empty()) {
+                const RE::BSString text{ styled.c_str() };
+                original(text, a_extraList, a_ref, a_book, a_pos, a_rot, a_scale, a_useDefaultPos, a_vrNode);
                 return;
             }
-            SKSE::log::info("Installed GetDescription hook (RELOCATION_ID 14399/14552)");
+            original(a_description, a_extraList, a_ref, a_book, a_pos, a_rot, a_scale, a_useDefaultPos, a_vrNode);
+        }
+
+        static void Install()
+        {
+            Hook(RELOCATION_ID(50122, 51053), &thunk, &original, "OpenBookMenu",
+                 "Cyrillic letters opened by other mods (Grid Inventory) may show garbled");
         }
     };
 
@@ -259,4 +288,5 @@ std::string PhysicalLetters::TextHook::ForBookMenu(const std::string& text)
 void PhysicalLetters::TextHook::Install()
 {
     GetDescriptionHook::Install();
+    OpenBookMenuHook::Install();
 }
