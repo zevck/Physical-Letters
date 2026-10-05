@@ -131,6 +131,17 @@ namespace PhysicalLetters::Letters {
             return out;
         }
 
+        // A blank line between paragraphs.  Reading's holds a non-breaking space: the book menu finds a line by its
+        // first character, so an empty one never starts a page (docs/WRITING.md#the-text).  The editor's stays empty.
+        std::string_view BlankLine(bool marked) { return marked ? "\n\n" : "\n&nbsp;\n"; }
+
+        // Reading: a paragraph's empty first or last line (an odd run of line breaks, or an empty paragraph) gets one too.
+        void KeepBlankEnds(std::string& paragraph)
+        {
+            if (paragraph.empty() || paragraph.front() == '\n') paragraph.insert(0, "&nbsp;");
+            if (paragraph.back() == '\n') paragraph += "&nbsp;";
+        }
+
         // Book markup in the vanilla letters' handwriting.  Skyrim resets the font after a blank
         // line, so every paragraph gets its own tag.  `marked`: blood markers kept, for the editor.
         std::string Paragraphs(std::string_view body, bool marked)
@@ -145,8 +156,9 @@ namespace PhysicalLetters::Letters {
                 if (end == std::string_view::npos) end = text.size();
                 // Breaks in the handwriting too: a blank line as tall as a written one, as Ink & Quill sizes
                 // typed ones.  An empty paragraph is a blank line: no tag of its own (docs/WRITING.md#the-text).
-                if (start > 0) out += font + "\n\n</font>";
-                const std::string paragraph = Escape(text.substr(start, end - start));
+                if (start > 0) out += font + std::string{ BlankLine(marked) } + "</font>";
+                std::string paragraph = Escape(text.substr(start, end - start));
+                if (!marked) KeepBlankEnds(paragraph);
                 if (!paragraph.empty()) out += font + (marked ? paragraph : Redden(paragraph, inBlood)) + "</font>";
                 start = end + 2;
             }
@@ -173,7 +185,7 @@ namespace PhysicalLetters::Letters {
                                                           : std::format("{}, {}", letter.recipientName, letter.address);
             // Begun in blood: the whole line is red, typed text too (it takes the format before it).
             const std::string red = letter.bloodHeading ? std::string{ kBloodFont } : std::string{};
-            const std::string end = (letter.bloodHeading ? "</font>" : "") + std::string{ "\n\n</font>" };
+            const std::string end = (letter.bloodHeading ? "</font>" : "") + std::string{ BlankLine(marked) } + "</font>";
             std::string out = Font() + red + lock(Strings::ToLabel()) + Escape(Plain(to));
             if (marked && bodyLocked) return out + lock(end + body);
             // An empty last lock: an empty body is still a run (text after the last lock is a run
