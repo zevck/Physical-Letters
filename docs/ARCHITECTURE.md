@@ -52,6 +52,10 @@ Nothing reads or writes letters, LetterDB or SkyrimNet until the session is **re
 - The save id is asked for only once SkyrimNet is ready: asked earlier, SkyrimNet makes up a new one.
 - Until then letters show `...`. If the session isn't ready 30 seconds after a load, the log says why, once.
 
+## LLM calls in the log
+
+Every LLM call goes through `SkyrimNet::SendPrompt`, which logs it at info: `[LLM] #<n> <prompt> sent (<variant> variant, <bytes> bytes of context)` and, when SkyrimNet answers, `[LLM] #<n> <prompt> answered` (or `failed`); `#n` counts from 1 each start. The prompts: `read_letter` and `read_other_letter` (a reading, [READING.md](READING.md)), `who_writes` (the cheap pick) and `write_letter` ([NPC_LETTERS.md](NPC_LETTERS.md)), `npc_propose` (cheap) and `npc_letter` ([NPC_TO_NPC.md](NPC_TO_NPC.md)). Counting the `sent` lines per prompt and multiplying by each prompt's average cost in SkyrimNet's request log (it records OpenRouter's cost per request) gives a session's cost. Not counted here: SkyrimNet's own calls a letter leads to, such as the reaction to a letter handed over in person.
+
 ## Threading
 
 - **Game thread:** everything that touches game state: the SKSE messages, the load callbacks, the heartbeat task (`Session::Poll`, `Transit::Tick`, `NpcLetters::Tick`, `NpcToNpc::Tick`), Ink & Quill's callbacks to `Writing` (the save, the end, the owner and blank-open handlers, `onChange` in the key's own UI task: game state, LetterDB and, through `Recipients`, SkyrimNet's UUIDs, names and `HasMemories`, each asked once per actor and session), and the result of every reading (`Reading` reports back with `AddTask`). Each task catches exceptions so none crosses into the engine.

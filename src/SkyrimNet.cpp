@@ -233,10 +233,20 @@ namespace PhysicalLetters::SkyrimNet {
                     std::function<void(std::string response, bool success)> callback, const std::string& variant)
     {
         if (!g_available) return false;
-        return PublicSendCustomPromptToLLM(promptName.c_str(), variant.c_str(), contextJson.c_str(),
-                                           [callback = std::move(callback)](const char* response, int success) {
-                                               callback(response ? response : "", success == 1);
-                                           });
+        // Every LLM call of ours, one line out and one back: to tally a session's calls by prompt (docs/ARCHITECTURE.md).
+        static std::atomic<std::uint32_t> calls{ 0 };
+        const auto call = ++calls;
+        const auto name = promptName.substr(promptName.find_last_of("\\/") + 1);
+        SKSE::log::info("[LLM] #{} {} sent ({} variant, {} bytes of context)", call, name,
+                        variant.empty() ? std::string{ "default" } : variant, contextJson.size());
+        const bool queued = PublicSendCustomPromptToLLM(
+            promptName.c_str(), variant.c_str(), contextJson.c_str(),
+            [callback = std::move(callback), call, name](const char* response, int success) {
+                SKSE::log::info("[LLM] #{} {} {}", call, name, success == 1 ? "answered" : "failed");
+                callback(response ? response : "", success == 1);
+            });
+        if (!queued) SKSE::log::warn("[LLM] #{} {} wasn't queued: SkyrimNet refused it", call, name);
+        return queued;
     }
 
 } // namespace PhysicalLetters::SkyrimNet
