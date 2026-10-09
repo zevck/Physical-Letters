@@ -22,45 +22,60 @@
 #include "Strings.h"
 #include "Writing.h"
 
+
 namespace PhysicalLetters::Parchment {
 
     namespace {
         constexpr RE::FormID kRecipe = 0x8B7;            // PhysicalLettersRecipeParchment, at a tanning rack
         constexpr RE::FormID kList = 0x8B8;             // PhysicalLettersLItemParchment: 3 or 5 parchment
-        constexpr RE::FormID kVendorMiscItems = 0x09AF0A;  // Skyrim.esm LItemMiscVendorMiscItems75
+        constexpr RE::FormID kVendorMiscItems = 0x09AF0A;  // Skyrim.esm LItemMiscVendorMiscItems75: tells a general store
 
-        // As SkyrimNet Physical Diaries' blank journals: the general-goods list that already sells
-        // the Roll of Paper, changed in memory, so no vanilla record is overridden.
+        // Vanilla's generic world containers (hundreds in houses) stock the misc list too: a merchant using one would
+        // put parchment in all of them.  Same walk as Ink & Quill's src/WritingTools.cpp: fix both.
+        bool IsGenericContainer(const RE::TESObjectCONT* chest)
+        {
+            static constexpr std::pair<RE::FormID, std::string_view> kGeneric[] = { { 0x024CA4, "Skyrim.esm" }, { 0x09AF19, "Skyrim.esm" },
+                                                                                   { 0x03C361, "Dragonborn.esm" } };
+            auto* data = RE::TESDataHandler::GetSingleton();
+            for (const auto& [id, plugin] : kGeneric) {
+                if (data && data->LookupForm(id, plugin) == chest) return true;  // Cupboard01, PersonalChestSmall(_NoRespawn)
+            }
+            return false;
+        }
+
+        // Every general-goods merchant's chest (a vendor faction's, stocking vanilla's misc list) gets `ours` as its own entry,
+        // in memory: every restock has it, and no record is overridden.
+        void Stock(RE::TESLevItem* ours, RE::TESLevItem* generalGoods)
+        {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            int stocked = 0;
+            for (auto* faction : data->GetFormArray<RE::TESFaction>()) {
+                if (!faction || !faction->IsVendor() || !faction->vendorData.merchantContainer) continue;
+                auto* base = faction->vendorData.merchantContainer->GetBaseObject();
+                auto* chest = base ? base->As<RE::TESObjectCONT>() : nullptr;
+                // Not a general store, or already stocked (several merchants can share a chest).
+                if (!chest || chest->GetObjectCount(generalGoods) == 0 || chest->GetObjectCount(ours) > 0) continue;
+                if (IsGenericContainer(chest)) {
+                    SKSE::log::warn("[Parchment] Vendor faction {:08X}'s chest is a generic world container ({:08X}): not stocked there",
+                                    faction->GetFormID(), chest->GetFormID());
+                    continue;
+                }
+                if (!chest->AddObjectToContainer(ours, 1, nullptr)) continue;
+                ++stocked;
+                SKSE::log::info("[Parchment] Stocked chest {:08X} '{}' (vendor faction {:08X})", chest->GetFormID(),
+                                chest->GetFormEditorID() ? chest->GetFormEditorID() : "", faction->GetFormID());
+            }
+            SKSE::log::info("[Parchment] Always stocked by {} general-goods merchant chest(s)", stocked);
+        }
+
         void AddToMerchants(RE::TESLevItem* ours)
         {
-            auto* vendor = RE::TESForm::LookupByID<RE::TESLevItem>(kVendorMiscItems);
-            if (!vendor) {
+            auto* generalGoods = RE::TESForm::LookupByID<RE::TESLevItem>(kVendorMiscItems);
+            if (!generalGoods) {
                 SKSE::log::warn("[Parchment] LItemMiscVendorMiscItems75 not found: merchants won't sell it");
                 return;
             }
-            auto& entries = vendor->entries;
-            const std::size_t count = vendor->numEntries;
-            if (entries.size() != count || count >= 255) {
-                SKSE::log::warn("[Parchment] LItemMiscVendorMiscItems75 has {} entries ({} counted): not added", entries.size(),
-                                count);
-                return;
-            }
-            for (const auto& entry : entries) {
-                if (entry.form == ours) return;
-            }
-            // Entries are kept in level order; ours goes after the other level-1 entries.
-            std::size_t at = count;
-            for (std::size_t i = 0; i < count; ++i) {
-                if (entries[i].level > 1) {
-                    at = i;
-                    break;
-                }
-            }
-            entries.resize(count + 1);
-            for (std::size_t i = count; i > at; --i) entries[i] = entries[i - 1];
-            entries[at] = RE::LEVELED_OBJECT{ .form = ours, .count = 1, .level = 1, .pad0C = 0, .itemExtra = nullptr };
-            vendor->numEntries = static_cast<std::uint8_t>(count + 1);
-            SKSE::log::info("[Parchment] Added to general-goods merchants' stock ({} entries)", count + 1);
+            Stock(ours, generalGoods);
         }
     }
 

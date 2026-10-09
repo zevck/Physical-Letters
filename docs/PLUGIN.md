@@ -64,7 +64,7 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x8B5` | DialogResponses | | The topic's one answer: the player carries a letter (`GetKeywordItemCount` `0x8B3` > 0), the speaker is a recipient (`GetInFaction` `0x8B9`) and the global `0x8B4` is 1; a single space (silent, no visible subtitle), TIF `PhysicalLetters_TIF_HandIn` on begin (the gift menu covers the response). `0x888` (an alias faction), `0x88C`–`0x8B2` (thanks lines) were removed 2026-10-02 |
 | `0x8B6` | Book | `PhysicalLettersParchment` | Parchment, the blank letter ([WRITING.md](WRITING.md#parchment)): the vanilla note's look, empty, value 2, weight 0.1 |
 | `0x8B7` | ConstructibleObject | `PhysicalLettersRecipeParchment` | Tanning rack: 1 Roll of Paper → 3 parchment |
-| `0x8B8` | LeveledItem | `PhysicalLettersLItemParchment` | 3 or 5 parchment; added in memory to Skyrim.esm `LItemMiscVendorMiscItems75` |
+| `0x8B8` | LeveledItem | `PhysicalLettersLItemParchment` | 3 or 5 parchment; added in memory to every general-goods merchant's chest (those stocking Skyrim.esm `LItemMiscVendorMiscItems75`) |
 | `0x8B9` | Faction | `PhysicalLettersHasLetterFaction` | Hidden from the player; each actor the player carries a letter for is in it (the DLL, `HandIn::RefreshRecipients` and on actor load); the hand-in topic's condition ([HAND_IN.md](HAND_IN.md#the-dialogue)) |
 | `0x8BA` | Keyword | `PhysicalLettersForReader` | On the letters addressed to the NPC the hand-in topic was chosen with, while its gift menu is open (the DLL, `BeginHandIn`); held by the filter list `0x889` |
 

@@ -20,7 +20,7 @@
 #pragma once
 
 // Parchment, the blank letter (docs/WRITING.md#parchment): crafted from a roll of paper at a
-// tanning rack (the ESP's recipe), and sold by general-goods merchants (added here, in memory).
+// tanning rack (the ESP's recipe), and always sold by general-goods merchants (added here, in memory).
 namespace PhysicalLetters::Parchment {
 
     // PhysicalLettersParchment.  Letters copy their look from it (Letters::Configure).
@@ -33,8 +33,8 @@ namespace PhysicalLetters::Parchment {
         return data ? data->LookupForm<RE::TESObjectBOOK>(kFormId, kPlugin) : nullptr;
     }
 
-    // kDataLoaded, after Writing::Connect: names it in the chosen language and adds it to the merchants'
-    // general-goods list; without Ink & Quill's writing, takes its recipe off the tanning rack instead.
+    // kDataLoaded, after Writing::Connect: names it in the chosen language and stocks it in every general-goods
+    // merchant's chest; without Ink & Quill's writing, takes its recipe off the tanning rack instead.
     void OnDataLoaded();
 
 } // namespace PhysicalLetters::Parchment
