@@ -1,43 +1,108 @@
 # Physical Letters
+A companion mod for [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) that lets you write letters to NPCs and have them delivered. The recipient reads your letter, remembers it, and replies. NPCs also write to you, and to each other, on their own.
 
-SKSE plugin for Skyrim (SE, AE and VR, one DLL) and a sibling of SkyrimNet Physical Diaries. The player writes letters to NPCs and has them delivered; the NPC reads the letter through **SkyrimNet**, remembers it, and may write back.
+## ✉️ Features
+### Writing Letters
+Write a letter by hand on a sheet of parchment. Every letter starts with a "To:" heading and requires the recipient's name and address (e.g. Lydia, 7890 Whiterun). 
 
-**Status: in development.** Tested on AE: a letter reaches its recipient after the fast-travel time along the roads, the recipient reads it (with your earlier letters to them) and SkyrimNet keeps a memory of it, and their reply comes back through the vanilla courier; so does a letter whose recipient is dead or can't be found. Sending a letter by giving it to an innkeeper or the courier, for 20 gold of postage, and the MCM are tested too. NPCs writing to you first, now and then, is tested too, and so are NPCs writing to each other (their letters can be stolen and read). When a letter's recipient is outdoors in the town you're in, the vanilla courier may bring it to them in person, and you can watch him hand it over (tested on AE). On the roads you may meet him carrying a letter that passes there: post a letter with him, threaten or brawl him for his letters, or pick his pocket (tested on AE). You can also hand a letter you carry to someone in person ("I have a letter for you."): they read it there and react aloud, the text known to them alone, and may write back (tested on AE; needs SkyrimNet's `PublicRegisterEvent`). The topic shows only to someone you carry a letter for, and lists only their letters (built, not yet tested). You write letters on parchment (crafted from a roll of paper at a tanning rack, or bought from general-goods merchants) with **Ink & Quill - Writing Framework** installed: read a parchment, write the recipient's name and address after "To:" (suggestions fill them in) and your letter below it, and save (tested on AE, and so is mailing it); you can edit a letter you haven't sent (built, not yet tested).
+The address is comprised of the last 4 digits of the NPCs SkyrimNet UUID and home location. While writing, matching NPC's will autocomplete. If there are multiple NPCs sharing a name, pressing Tab will cycle through them.
 
-## Requirements
+This feature requires **Ink & Quill**.
 
-- SKSE and the Address Library for your runtime.
-- SkyUI for the MCM (optional: the INI works without it).
-- **Ink & Quill - Writing Framework** to write letters (optional: without it you can't write letters, and parchment isn't sold or crafted; NPCs still write to you and to each other).
-- **SkyrimNet with public API v11** (0.25.1, not released yet). With an older SkyrimNet the plugin loads, logs why, and letters are never read.
+**Crafting**
+Craft **3** parchment from **1** roll of paper at a tanning rack, or buy it from general goods merchants.
 
-## What it installs
+### Mailing Letters
+Give a letter to an innkeeper or courier to mail it (20 gold default). Delivery time follows the same speed as fast travel and can be configured in the MCM. A letter to someone who has died or can't be found is returned to sender.
 
-| Path | What |
-|---|---|
-| `SKSE/Plugins/PhysicalLetters.dll` | The plugin |
-| `Physical Letters.esp` | ESL-flagged plugin: the postage dialogue for innkeepers and the courier, and the courier's errand to an NPC in town (quest, scene, lines), the courier on the road, handing a letter over in person, and parchment (its recipe, and the merchants' list it's added to) |
-| `Scripts/PhysicalLetters_TIF_Postage.pex` | The dialogue's script (opens the gift menu) |
-| `Scripts/PhysicalLetters_CourierQuest.pex`, `Scripts/PhysicalLetters_TIF_CourierHandOver.pex` | The courier's errand |
-| `Scripts/PhysicalLetters_RoadCourierQuest.pex`, `Scripts/PhysicalLetters_TIF_Road*.pex` | The courier on the road |
-| `Scripts/PhysicalLetters_HandInQuest.pex`, `Scripts/PhysicalLetters_TIF_HandIn.pex` | Handing a letter over in person |
-| `Sound/Voice/Physical Letters.esp/` | The courier's lines: copies of his vanilla voice files, under the plugin's own records |
-| `Scripts/PhysicalLetters_MCM.pex`, `Interface/Translations/` | The MCM |
-| `Source/Scripts/*.psc` | The scripts' sources |
-| `Seq/Physical Letters.seq` | Lets the postage and hand-in dialogue start with the game |
-| `SKSE/Plugins/PhysicalLetters/Locales/` | Letter text in each language: item names, item cards, the "To:" line, the parchment's name ([docs/LOCALIZATION.md](docs/LOCALIZATION.md)) |
-| `SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/` | A SkyrimNet plugin: the prompts (reading a letter, yours or someone else's; NPCs writing). It shows under SkyrimNet's Installed Plugins with an External badge. |
+Alternatively, you can hand an NPC the letter in person.
 
-At run time it writes `SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.db` (under MO2's `overwrite/`) and logs to `Documents/My Games/Skyrim Special Edition/SKSE/PhysicalLetters.log` (VR: `Skyrim VR` instead of `Skyrim Special Edition`).
+### Replies
+The recipient reads your letter through SkyrimNet, remembers it, and may write back. NPCs remember your earlier letters, so a correspondence builds over time. Their reply is delivered by the courier.
 
-## Settings
+### The Courier
+When a letter is scheduled to be delivered to an NPC and you are nearby, the courier will approach the NPC and deliver the letter in person. Distant deliveries are handled off-screen.
 
-In the MCM (Physical Letters) or `SKSE/Plugins/PhysicalLetters.ini`, which the plugin writes on first start: the postage, whether NPCs write back to your letters and how long they take, the travel-time tuning, when an undeliverable letter comes back, how often NPCs write to you first, whether and how much they write to each other, whether the courier delivers in person in town, whether he can be met on the road, whether NPCs get the "I have a letter for you." topic, whom your letters can be addressed to, and the size and font of letter text. Letters are written in the game's language; `Language` in the INI's `[General]` picks another (INI only). See [docs/SETTINGS.md](docs/SETTINGS.md).
+While traveling the roads of Skyrim, you may encounter the courier out on a delivery. He carries real letters that can be intercepted and read. Pick his pocket, shake him down, or hand him a letter you need delivered.
 
-## Building
+### NPCs Write to You
+About once a week, someone you know may write to you if they have a reason to: news, gratitude, worry, a favor to ask, or simply missing you. Former followers, your spouse and your children grow more likely to write the longer you've been apart.
 
-`.\Build_Local.ps1` builds the plugin and deploys it to the dev mod folders named in the gitignored `Build_Config_Local.ps1`. See [docs/INDEX.md](docs/INDEX.md) for how the code works.
+### Letters Between NPCs
+NPCs write to each other too, and their letters are delivered by the courier. Intercept one and you can read it, or hand it to its recipient yourself.
 
-## License
+### Written in Blood
+With no ink, **Ink & Quill** lets you write in your own blood. The recipient sees which parts are written in blood, and reacts to it.
 
-GPL-3.0 (CommonLibSSE-NG is GPL-3). See [LICENSE.md](LICENSE.md).
+## 📋 Requirements
+> [!NOTE]
+> Physical Letters supports all versions of Skyrim. VR and 1.7.104 are currently untested.
+- [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) Beta 26+
+- [SkyUI](https://www.nexusmods.com/skyrimspecialedition/mods/12604) (for MCM)
+- [SKSE](https://skse.silverlock.org/)
+- [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444) or [VR Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/58101)
+- [Ink & Quill](https://github.com/zevck/Ink-and-Quill) to write your own letters
+
+## 🌐 Localization
+The mod supports all 9 official Skyrim languages: English, French, German, Italian, Spanish, Polish, Russian, Traditional Chinese, and Japanese. Letter names, item descriptions, the "To:" line, parchment and MCM menus are all localized automatically based on your game language.
+
+### Language Override
+If your game language is set to English but you want letters in another language, add a `Language` line to `PhysicalLetters.ini` under `[General]`:
+
+```ini
+[General]
+Language = GERMAN
+DebugLog = 0
+```
+
+This will load `Locales/GERMAN.ini` for letter text. The value must match the name of a locale file in the `Locales` folder. Ensure you have the proper fonts installed to support that language.
+
+### Adding a New Language
+Community translators can add support for any language without recompiling the plugin. Two files are needed:
+
+**1. Locale file** - `SKSE/Plugins/PhysicalLetters/Locales/{LANGUAGE}.ini`
+
+This controls the text written on and about letters. Example:
+
+```ini
+; SKSE/Plugins/PhysicalLetters/Locales/PORTUGUESE.ini
+
+[Letters]
+To = Para:
+Letter = Carta
+LetterTo = Carta para {Name}
+LetterFrom = Carta de {Name}
+Card = Uma carta para {Recipient} de {Author}.
+ReturnDeceased = Devolver ao remetente (falecimento)
+ReturnNotFound = Devolver ao remetente (paradeiro desconhecido)
+Unreadable = A tinta escorreu; a carta não pode ser lida.
+Parchment = Pergaminho
+```
+
+Available placeholders:
+- `{Name}` - the recipient (in LetterTo) or the author (in LetterFrom)
+- `{Recipient}` - who the letter is for (in Card)
+- `{Author}` - who wrote it (in Card)
+> [!NOTE]
+> Names are filled in as they are, so write each line to read correctly for any name: avoid words that change with the person's gender or with the name's first letter. A space follows the "To:" label unless it ends in a full-width colon. Any key left out falls back to English.
+
+**2. MCM translation file** (optional) - `Interface/Translations/Physical Letters_{LANGUAGE}.txt`
+
+This translates the in-game settings menu. Use the English file as a template. If you would like to correct or contribute any translations feel free to submit a PR.
+
+## 🗺️ Planned Features
+**Forgeries** - send an NPC a letter from another NPC. NPCs have a percent chance to see through the deception. Potential integration with the vanilla quest's Quill of Gemination for a higher chance.
+
+**Courier Jobs** - work as a courier to deliver real letters across Skyrim that shape the world.
+
+**Messenger Birds** - a perk to mail letters from anywhere in the world with a power.
+
+## 🗒️ Notes
+- Every letter an NPC reads or writes is an LLM call through SkyrimNet. How often NPCs write to you and to each other can be changed or turned off in the MCM. Higher letter counts make the world more lively, but also increase costs.
+- On default settings, each letter dispatch is around $0.0018, though it depends on your configured LLMs. This runs about once an in game week, so costs are quite low.
+- Letter replies are roughly the same as dialogue output, maybe a little higher depending on letter length.
+- Physical Letters currently uses SkyrimNet's meta variant for selection, and default/dialogue for writing.
+- By default you can only write to unique NPCs. The MCM can also allow generic NPCs SkyrimNet has memories for, or any named NPC.
+
+## 🔑 License
+Physical Letters is released under the GNU General Public License v3.0 or later (GPL-3.0-or-later). See [LICENSE.md](LICENSE.md) for the full text.

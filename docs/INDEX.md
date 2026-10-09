@@ -15,6 +15,7 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
 | [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
 | [SETTINGS.md](SETTINGS.md) | The INI, the MCM, adding a setting |
+| [RELEASES.md](RELEASES.md) | The release archive: `Build_Release.ps1`, what it packs and checks |
 | [LOCALIZATION.md](LOCALIZATION.md) | Which language, the locale files for letter text (names, cards, the "To:" label), renaming saved letters |
 | [PLUGIN.md](PLUGIN.md) | The ESP: Spriggit source in git, building it, editing it in the CK; its Papyrus scripts and SEQ file |
 

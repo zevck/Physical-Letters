@@ -20,6 +20,8 @@ SKSE plugin (CommonLibSSE-NG, C++23; one DLL for SE, AE and VR). The player writ
 
 `.\Build_Local.ps1`: incremental plugin build and deploy to the `Physical Letters - Dev` mod folder in each test instance (paths in the gitignored `Build_Config_Local.ps1`). PASS/FAIL also goes to `%TEMP%\snpl-build-result.json`. Never `/t:Rebuild`: it rebuilds all of CommonLib. After a fresh clone: `git submodule update --init --recursive` (CommonLib has a nested `openvr` submodule).
 
+`.\Build_Release.ps1`: the archive players install, `build\release\Physical Letters <version>.zip`, from a commit (`-allowDirty` for a test release). See [docs/RELEASES.md](docs/RELEASES.md).
+
 The ESP's source is Spriggit YAML in `spriggit/PhysicalLetters`, edited as text (no CK needed); the `.esp` is built from it and never committed. If the `.esp` was edited in the CK or xEdit, run `.\utilities\esp_to_spriggit.ps1` before building. A Papyrus change is done only when its `.pex` is compiled (Pyro, via the build) and shipped. See [docs/PLUGIN.md](docs/PLUGIN.md).
 
 Ask before committing.
