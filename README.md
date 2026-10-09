@@ -105,4 +105,4 @@ This translates the in-game settings menu. Use the English file as a template. I
 - By default you can only write to unique NPCs. The MCM can also allow generic NPCs SkyrimNet has memories for, or any named NPC.
 
 ## 🔑 License
-Physical Letters is released under the GNU General Public License v3.0 or later (GPL-3.0-or-later). See [LICENSE.md](LICENSE.md) for the full text.
+Physical Letters is released under the GNU General Public License v3.0 or later (GPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
