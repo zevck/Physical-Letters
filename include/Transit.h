@@ -47,7 +47,7 @@ namespace PhysicalLetters::Transit {
     // time in game hours, nothing if the holder hasn't the letter.
     std::optional<double> Send(RE::TESObjectBOOK* book, const Letter& letter, RE::TESObjectREFR* holder);
 
-    // The player handed `reader` the letter; to its recipient it's delivered now.  Read there, aloud,
+    // The player handed `reader`, its recipient, the letter: delivered now.  Read there, aloud,
     // near the player (HandIn::ReadThere), then the reading: a memory, maybe a reply (docs/HAND_IN.md).
     void HandIn(const Letter& letter, RE::Actor* reader);
 

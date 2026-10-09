@@ -26,6 +26,8 @@
 #include "SkyrimNet.h"
 #include "Transit.h"
 
+#include <unordered_set>
+
 namespace PhysicalLetters::HandIn {
 
     namespace {
@@ -36,14 +38,96 @@ namespace PhysicalLetters::HandIn {
         // Further than this from the player, a letter handed over isn't read on the spot.
         constexpr float kNearDistance = 2048.0f;
 
+        constexpr RE::FormID kHasLetterFaction = 0x8B9;  // PhysicalLettersHasLetterFaction: recipients, the topic's condition
+        constexpr RE::FormID kForReaderKeyword = 0x8BA;  // PhysicalLettersForReader: on their letters, the gift menu's filter
+
         // The NPC whose hand-in gift menu is open (the topic's TIF), 0 when none: only a letter given
         // there is handed over.  Game thread.
         RE::FormID g_handInTo = 0;
+        // The recipients of the letters the player carries: FormID -> UUID, checked against each other when
+        // the actor is there to mark.  Game thread.
+        std::unordered_map<RE::FormID, std::string> g_recipients;
+        std::unordered_set<std::string> g_unplaced;  // recipient UUIDs SkyrimNet has no FormID for, logged once
+        std::vector<RE::FormID> g_tagged;            // letters carrying kForReaderKeyword, while the gift menu is open
+
+        RE::BGSKeyword* Keyword(RE::FormID id)
+        {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            return data ? data->LookupForm<RE::BGSKeyword>(id, kPlugin) : nullptr;
+        }
+
+        RE::TESFaction* HasLetterFaction()
+        {
+            auto* data = RE::TESDataHandler::GetSingleton();
+            return data ? data->LookupForm<RE::TESFaction>(kHasLetterFaction, kPlugin) : nullptr;
+        }
+
+        // `actor` in the faction exactly while the player carries a letter for them (docs/HAND_IN.md#the-dialogue).
+        // Not before the session is ready: until then nobody is known to be a recipient.
+        void Apply(RE::Actor* actor, RE::TESFaction* faction)
+        {
+            if (!actor || !faction || actor->IsPlayerRef() || !Session::IsReady()) return;
+            const auto it = g_recipients.find(actor->GetFormID());
+            // A runtime FormID can belong to someone else by now: the UUID must still be theirs.
+            const bool want = it != g_recipients.end() && SkyrimNet::UuidForFormId(actor->GetFormID()) == it->second;
+            const bool in = actor->IsInFaction(faction);
+            if (want == in) return;
+            if (want) actor->AddToFaction(faction, 0);
+            else actor->RemoveFromFaction(faction);
+            SKSE::log::debug("[HandIn] {} {} the hand-in topic", actor->GetName(), want ? "gets" : "loses");
+        }
+
+        // Every task here: an exception must not cross into the engine.
+        template <class F>
+        void Guarded(std::string_view what, F&& body)
+        {
+            try {
+                body();
+            } catch (const std::exception& e) {
+                SKSE::log::error("[HandIn] {} failed: {}", what, e.what());
+            }
+        }
+
+        // Each letter the player carries, with its LetterDB record.
+        template <class F>
+        void ForEachCarriedLetter(F&& visit)
+        {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            if (!player || !Session::IsReady()) return;
+            for (const auto& [item, entry] : player->GetInventory()) {
+                auto* book = item ? item->As<RE::TESObjectBOOK>() : nullptr;
+                if (!book || entry.first <= 0) continue;
+                const auto id = Letters::IdFor(book->GetFormID());
+                if (id.empty()) continue;
+                if (const auto letter = LetterDB::GetSingleton()->Get(id)) visit(book, *letter);
+            }
+        }
+
+        void ClearTagged()
+        {
+            if (auto* keyword = Keyword(kForReaderKeyword)) {
+                for (const auto bookId : g_tagged) {
+                    if (auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(bookId)) book->RemoveKeyword(keyword);
+                }
+            }
+            g_tagged.clear();
+        }
 
         void BeginHandIn(RE::StaticFunctionTag*, RE::Actor* recipient)
         {
             g_handInTo = recipient ? recipient->GetFormID() : 0;
-            SKSE::log::info("[HandIn] The player offers a letter to {}", recipient ? recipient->GetName() : "nobody");
+            // Only the letters addressed to them show in the gift menu (by UUID: same-looking NPCs apart).
+            ClearTagged();
+            const auto uuid = recipient ? SkyrimNet::UuidForFormId(recipient->GetFormID()) : std::string{};
+            if (auto* keyword = Keyword(kForReaderKeyword); keyword && !uuid.empty()) {
+                ForEachCarriedLetter([&](RE::TESObjectBOOK* book, const Letter& letter) {
+                    if (letter.recipientUuid != uuid) return;
+                    book->AddKeyword(keyword);
+                    g_tagged.push_back(book->GetFormID());
+                });
+            }
+            SKSE::log::info("[HandIn] The player offers {} letter(s) to {}", g_tagged.size(),
+                            recipient ? recipient->GetName() : "nobody");
         }
 
         // What the player was doing when the letter left their inventory.
@@ -59,9 +143,9 @@ namespace PhysicalLetters::HandIn {
             auto* holder = RE::TESForm::LookupByID<RE::Actor>(holderId);
             if (!book || !holder || holder->IsDead() || how.barter || !how.gift) return;
             const auto letter = Session::IsReady() ? LetterDB::GetSingleton()->Get(Letters::IdFor(bookId)) : std::nullopt;
-            // The hand-in topic's menu, or the postage menu of the letter's own recipient.
+            // The hand-in topic's menu, or the postage menu, of the letter's own recipient.
             const bool post = Postage::TakesPost(holder);
-            const bool handIn = holderId == g_handInTo || (post && letter && IsRecipient(holder, *letter));
+            const bool handIn = (holderId == g_handInTo || post) && letter && IsRecipient(holder, *letter);
             const bool own = !letter || letter->authorUuid == SkyrimNet::UuidForFormId(kPlayer);
             if (!handIn && own && post) {
                 Postage::Post(book, holder, letter);
@@ -87,8 +171,14 @@ namespace PhysicalLetters::HandIn {
             RE::BSEventNotifyControl ProcessEvent(const RE::TESContainerChangedEvent* a_event,
                                                   RE::BSTEventSource<RE::TESContainerChangedEvent>*) override
             {
-                if (!a_event || a_event->oldContainer != kPlayer || a_event->newContainer == 0 ||
-                    a_event->newContainer == kPlayer || Letters::IdFor(a_event->baseObj).empty()) {
+                if (!a_event || (a_event->oldContainer != kPlayer && a_event->newContainer != kPlayer) ||
+                    Letters::IdFor(a_event->baseObj).empty()) {
+                    return RE::BSEventNotifyControl::kContinue;
+                }
+                // A letter came or went: who the topic shows to (after the hand-over below, tasks run in order).
+                const bool toNpc = a_event->oldContainer == kPlayer && a_event->newContainer != 0 && a_event->newContainer != kPlayer;
+                if (!toNpc) {
+                    SKSE::GetTaskInterface()->AddTask([]() { Guarded("Refreshing the recipients", RefreshRecipients); });
                     return RE::BSEventNotifyControl::kContinue;
                 }
                 // The menus as they are now: by the task, the menu may have closed.
@@ -99,6 +189,7 @@ namespace PhysicalLetters::HandIn {
                     // An exception must not cross into the engine.
                     try {
                         Transferred(bookId, holderId, how);
+                        RefreshRecipients();
                     } catch (const std::exception& e) {
                         SKSE::log::error("[HandIn] Handing over letter 0x{:X} failed: {}", bookId, e.what());
                     }
@@ -121,11 +212,63 @@ namespace PhysicalLetters::HandIn {
                                                   RE::BSTEventSource<RE::MenuOpenCloseEvent>*) override
             {
                 if (a_event && !a_event->opening && a_event->menuName == RE::GiftMenu::MENU_NAME) {
-                    SKSE::GetTaskInterface()->AddTask([]() { g_handInTo = 0; });
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        g_handInTo = 0;
+                        Guarded("Ending the hand-over", ClearTagged);
+                    });
                 }
                 return RE::BSEventNotifyControl::kContinue;
             }
         };
+
+        // An actor loaded: a recipient while away, or one no longer, gets the faction right before
+        // anyone can talk to them.  Only the FormID here; the check is a task.
+        class LoadSink : public RE::BSTEventSink<RE::TESObjectLoadedEvent> {
+        public:
+            static LoadSink* GetSingleton()
+            {
+                static LoadSink singleton;
+                return &singleton;
+            }
+
+            RE::BSEventNotifyControl ProcessEvent(const RE::TESObjectLoadedEvent* a_event,
+                                                  RE::BSTEventSource<RE::TESObjectLoadedEvent>*) override
+            {
+                if (a_event && a_event->loaded && a_event->formID != kPlayer) {
+                    SKSE::GetTaskInterface()->AddTask([id = a_event->formID]() {
+                        Guarded("Checking a loaded actor", [id]() {
+                            if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(id)) Apply(actor, HasLetterFaction());
+                        });
+                    });
+                }
+                return RE::BSEventNotifyControl::kContinue;
+            }
+        };
+    }
+
+    void RefreshRecipients()
+    {
+        auto* faction = HasLetterFaction();
+        if (!faction || !Session::IsReady()) return;
+        const auto playerUuid = SkyrimNet::UuidForFormId(kPlayer);
+        g_recipients.clear();
+        ForEachCarriedLetter([&](RE::TESObjectBOOK*, const Letter& letter) {
+            if (letter.recipientUuid.empty() || letter.recipientUuid == playerUuid) return;
+            if (const auto formId = SkyrimNet::FormIdForUuid(letter.recipientUuid)) {
+                g_recipients[formId] = letter.recipientUuid;
+            } else if (g_unplaced.insert(letter.recipientUuid).second) {
+                SKSE::log::info("[HandIn] SkyrimNet has no actor for {} (UUID {}): the topic can't show for them",
+                                letter.recipientName, letter.recipientUuid);
+            }
+        });
+        // The loaded ones now; the others when they load (LoadSink): a faction is saved with each actor.
+        if (auto* lists = RE::ProcessLists::GetSingleton()) {
+            lists->ForAllActors([faction](RE::Actor* actor) {
+                Apply(actor, faction);
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+        }
+        SKSE::log::debug("[HandIn] The player carries letters for {} NPC(s)", g_recipients.size());
     }
 
     bool IsRecipient(RE::Actor* holder, const Letter& letter)
@@ -138,6 +281,7 @@ namespace PhysicalLetters::HandIn {
         if (auto* ui = RE::UI::GetSingleton()) ui->AddEventSink<RE::MenuOpenCloseEvent>(MenuSink::GetSingleton());
         if (auto* events = RE::ScriptEventSourceHolder::GetSingleton()) {
             events->AddEventSink<RE::TESContainerChangedEvent>(TransferSink::GetSingleton());
+            events->AddEventSink<RE::TESObjectLoadedEvent>(LoadSink::GetSingleton());
             SKSE::log::info("[HandIn] Watching for letters handed over");
         }
     }
@@ -157,8 +301,10 @@ namespace PhysicalLetters::HandIn {
     {
         // A direct narration perceived by the reader alone: they read it and react aloud; nobody
         // else learns the text (docs/HAND_IN.md#reading-it-there).
-        auto text = std::format("{} hands {} a letter from {} to {}. It reads:\n{}", RE::PlayerCharacter::GetSingleton()->GetName(),
-                                reader->GetName(), letter.authorName, letter.recipientName, letter.body);
+        // Always the reader's own letter: from the player, or one the player intercepted.
+        const bool fromPlayer = letter.authorUuid == SkyrimNet::UuidForFormId(kPlayer);
+        auto text = std::format("{} hands {} a letter{}. It reads:\n{}", RE::PlayerCharacter::GetSingleton()->GetName(),
+                                reader->GetName(), fromPlayer ? std::string{} : " from " + letter.authorName, letter.body);
         if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) text += "\n\n" + blood;
         const auto readerId = reader->GetFormID();
         // SkyrimNet stores the event: off the game thread, as its API allows.
@@ -189,6 +335,10 @@ namespace PhysicalLetters::HandIn {
     void Revert()
     {
         g_handInTo = 0;
+        ClearTagged();
+        // The faction comes with the save being loaded, matching its inventory: nothing to undo.
+        g_recipients.clear();
+        g_unplaced.clear();
     }
 
 } // namespace PhysicalLetters::HandIn

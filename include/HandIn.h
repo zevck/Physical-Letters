@@ -21,9 +21,13 @@
 
 #include "LetterDB.h"
 
-// Handing a letter to an NPC in person (docs/HAND_IN.md): the topic "I have a letter for you."
-// (every letter carries its gift menu's keyword) and the letters given in its gift menu.  Game thread.
+// Handing a letter to its recipient in person (docs/HAND_IN.md): the topic "I have a letter for you."
+// (shown to NPCs the player carries a letter for) and the letter given in its gift menu.  Game thread.
 namespace PhysicalLetters::HandIn {
+
+    // Puts every loaded NPC the player carries a letter for in PhysicalLettersHasLetterFaction (the topic's
+    // condition) and the others out; one that loads later is checked then.  Once the session is ready.
+    void RefreshRecipients();
 
     // Whether `holder` is the letter's recipient.
     bool IsRecipient(RE::Actor* holder, const Letter& letter);

@@ -229,7 +229,7 @@ namespace PhysicalLetters::Letters {
             book->value = 0;
             book->data.flags = static_cast<RE::OBJ_BOOK::Flag>(0);
             book->SetFullName(name.c_str());
-            // Any letter can be handed over: the hand-in topic's condition and gift menu look for it.
+            // The hand-in topic's "the player carries a letter" condition looks for it.
             auto* data = RE::TESDataHandler::GetSingleton();
             if (auto* keyword = data ? data->LookupForm<RE::BGSKeyword>(kHandInKeyword, kPlugin) : nullptr) {
                 if (!book->HasKeyword(keyword)) book->AddKeyword(keyword);

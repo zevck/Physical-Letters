@@ -15,7 +15,7 @@ Context variables the plugin sets:
 | `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. |
 | `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
 
-**What the reader knows of the writer**: an "About" section, the public part of the writer's SkyrimNet profile: gender, race (`decnpc`) and the character summary (`render_character_profile("bio_summary", …)`). It's what SkyrimNet shows an NPC of someone they speak to (its `dialogue_target` profile, also what telepathy uses), less what only sight gives (physical activity, appearance, worn equipment, health): a letter's reader can't see its writer. Background, personality, relationships, occupation and memories are private in SkyrimNet's profile too, and stay out. The summary is whatever the writer's bio says; some mention secrets, but SkyrimNet shows it to anyone the writer talks to as well. The same section describes the addressee in someone else's letter (`physical_letters/read_other_letter`, the writer's left out when the reader wrote it), the player in `physical_letters/write_letter` and the recipient in `physical_letters/npc_letter` (2026-10-03; the latter had the summary alone before).
+**What the reader knows of the writer**: an "About" section, the public part of the writer's SkyrimNet profile: gender, race (`decnpc`) and the character summary (`render_character_profile("bio_summary", …)`). It's what SkyrimNet shows an NPC of someone they speak to (its `dialogue_target` profile, also what telepathy uses), less what only sight gives (physical activity, appearance, worn equipment, health): a letter's reader can't see its writer. Background, personality, relationships, occupation and memories are private in SkyrimNet's profile too, and stay out. The summary is whatever the writer's bio says; some mention secrets, but SkyrimNet shows it to anyone the writer talks to as well. The same section describes the player in `physical_letters/write_letter` and the recipient in `physical_letters/npc_letter` (2026-10-03; the latter had the summary alone before).
 
 **How many earlier letters the prompt shows** is set at the top of the template: `{% set max_earlier_letters = 5 %}`. Edit it there (or in a SkyrimNet overlay of the prompt); up to 20 are passed.
 
@@ -58,9 +58,9 @@ A parcel leaves the queue only when the reading succeeds (or can never succeed: 
 
 Retries wait 30 s, then double. After 5 failures the letter waits for the next load, which retries it again. Before every LLM call, and again before storing, the reading checks for the delivery's tagged memory, so a retry never makes a second memory of one delivery.
 
-## Someone else's letter
+## A letter handed over
 
-A letter handed over in person is read by this call too, after the reader's reaction on the spot ([HAND_IN.md](HAND_IN.md#reading-it-there)). One read by someone it isn't addressed to has its own prompt, `physical_letters/read_other_letter`, and is never answered: [HAND_IN.md](HAND_IN.md#someone-elses-letter).
+A letter handed over in person is read by this call too, after the reader's reaction on the spot ([HAND_IN.md](HAND_IN.md#reading-it-there)). Only its recipient is handed it, so every reading is the recipient's (until 2026-10-07 someone else could be, with its own prompt, `read_other_letter`).
 
 ## Not done yet
 

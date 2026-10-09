@@ -19,6 +19,7 @@
 
 #include "Writing.h"
 #include "Config.h"
+#include "HandIn.h"
 #include "InkAndQuillAPI.h"
 #include "LetterDB.h"
 #include "Letters.h"
@@ -146,6 +147,12 @@ namespace PhysicalLetters::Writing {
                 }
                 g_letter = letter;
                 SKSE::log::info("[Writing] Letter to {} rewritten", recipientName);
+                // Its recipient may have changed (the item didn't move: no container event).
+                try {
+                    HandIn::RefreshRecipients();
+                } catch (const std::exception& e) {
+                    SKSE::log::error("[Writing] Refreshing the hand-in recipients failed: {}", e.what());
+                }
                 g_api->ReplySave(reply, true, "", reading.c_str());
                 return;
             }

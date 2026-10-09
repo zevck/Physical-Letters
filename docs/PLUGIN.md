@@ -56,15 +56,17 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x885` | Package | `PhysicalLettersRoadSceneApproach` | The scene's approach: jog to the Recipient alias, radius 150 |
 | `0x886` | DialogResponses in vanilla `DGIntimidateVictoryTopic` (`0x047AC6`, overridden to hold it) | | The courier's yield after losing vanilla's brawl, "Don't hurt me! You win." (shared `0x0E0CBF`); otherwise a copy of vanilla's generic `0x047ADB` (script `TIF__00047ADB`, links, walk-away topic). Previous info `0x0F07B9`, so it comes just before vanilla's generic yields (`0x047ADB`, `0x078F76`, `0x047ADC`), the last in the topic; without the link a new info lands after them |
 | `0x887` | Quest | `PLHandInQuest` | Holds the hand-in topic ([HAND_IN.md](HAND_IN.md#the-dialogue)); script `PhysicalLetters_HandInQuest` (the TIF's native `BeginHandIn`). Starts with the game, listed in the SEQ file. Its 20 recipient aliases were removed 2026-10-02 |
-| `0x889` | FormList | `PhysicalLettersHandInFilter` | Holds the keyword `0x8B3`; the hand-in gift menu's filter |
+| `0x889` | FormList | `PhysicalLettersHandInFilter` | Holds the keyword `0x8BA` (until 2026-10-07 `0x8B3`, every letter); the hand-in gift menu's filter |
 | `0x88A` | DialogBranch | `PhysicalLettersHandInBranch` | Top-level, player |
 | `0x88B` | DialogTopic | `PhysicalLettersHandInTopic` | "I have a letter for you." |
-| `0x8B3` | Keyword | `PhysicalLettersHandInLetter` | On every letter (the DLL, when a letter is made or loaded); the hand-in topic's condition and its gift menu's filter |
+| `0x8B3` | Keyword | `PhysicalLettersHandInLetter` | On every letter (the DLL, when a letter is made or loaded); the hand-in topic's "the player carries a letter" condition (until 2026-10-07 also its gift menu's filter) |
 | `0x8B4` | Global (short) | `PhysicalLettersHandInDialogue` | 1 with `[Delivery] HandInDialogue` on; set by the DLL on new game, load and MCM change; in the topic's condition |
-| `0x8B5` | DialogResponses | | The topic's one answer: the player carries a letter (`GetKeywordItemCount` `0x8B3` > 0) and the global `0x8B4` is 1; a single space (silent, no visible subtitle), TIF `PhysicalLetters_TIF_HandIn` on begin (the gift menu covers the response). `0x888` (an alias faction), `0x88C`–`0x8B2` (thanks lines) were removed 2026-10-02 |
+| `0x8B5` | DialogResponses | | The topic's one answer: the player carries a letter (`GetKeywordItemCount` `0x8B3` > 0), the speaker is a recipient (`GetInFaction` `0x8B9`) and the global `0x8B4` is 1; a single space (silent, no visible subtitle), TIF `PhysicalLetters_TIF_HandIn` on begin (the gift menu covers the response). `0x888` (an alias faction), `0x88C`–`0x8B2` (thanks lines) were removed 2026-10-02 |
 | `0x8B6` | Book | `PhysicalLettersParchment` | Parchment, the blank letter ([WRITING.md](WRITING.md#parchment)): the vanilla note's look, empty, value 2, weight 0.1 |
 | `0x8B7` | ConstructibleObject | `PhysicalLettersRecipeParchment` | Tanning rack: 1 Roll of Paper → 3 parchment |
 | `0x8B8` | LeveledItem | `PhysicalLettersLItemParchment` | 3 or 5 parchment; added in memory to Skyrim.esm `LItemMiscVendorMiscItems75` |
+| `0x8B9` | Faction | `PhysicalLettersHasLetterFaction` | Hidden from the player; each actor the player carries a letter for is in it (the DLL, `HandIn::RefreshRecipients` and on actor load); the hand-in topic's condition ([HAND_IN.md](HAND_IN.md#the-dialogue)) |
+| `0x8BA` | Keyword | `PhysicalLettersForReader` | On the letters addressed to the NPC the hand-in topic was chosen with, while its gift menu is open (the DLL, `BeginHandIn`); held by the filter list `0x889` |
 
 The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`, `HandIn.cpp`, `Parchment.cpp`).
 

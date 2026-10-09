@@ -53,15 +53,11 @@ namespace PhysicalLetters::Reading {
     nlohmann::json Correspondence(const std::string& readerUuid, const std::string& otherUuid, RE::FormID readerFormId,
                                   double now, const std::string& skipId = {}, bool skipRemembered = false);
 
-    // Who reads: the letter's recipient, or someone else the player handed it to
-    // (docs/HAND_IN.md#someone-elses-letter).  Someone else never replies.
-    enum class Reader { kRecipient, kHandedOther };
-
-    // Game thread.  The work runs on other threads; `done` is then called on the game
-    // thread, once, unless SkyrimNet drops the LLM task (the caller times out).
+    // The letter's recipient (`readerFormId`) reads it.  Game thread.  The work runs on other threads;
+    // `done` is then called on the game thread, once, unless SkyrimNet drops the LLM task (the caller times out).
     // `canReply` false (a thread between NPCs at its limit, or [NpcLetters] Replies off): the recipient
     // is told not to reply, and no reply is returned.
-    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID readerFormId, bool canReply, Reader reader,
+    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID readerFormId, bool canReply,
               std::function<void(Outcome)> done);
 
 } // namespace PhysicalLetters::Reading

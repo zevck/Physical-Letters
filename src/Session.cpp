@@ -18,6 +18,7 @@
  */
 
 #include "Session.h"
+#include "HandIn.h"
 #include "LetterDB.h"
 #include "Letters.h"
 #include "SkyrimNet.h"
@@ -77,6 +78,7 @@ namespace PhysicalLetters::Session {
         }
         Letters::AttachTexts();
         g_ready = true;
+        HandIn::RefreshRecipients();  // who the hand-in topic shows to: needs LetterDB
         SKSE::log::info("[Session] Ready (save id {}, timeline state {})", saveId,
                         static_cast<int>(SkyrimNet::GetTimelineState()));
     }

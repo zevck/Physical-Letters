@@ -10,7 +10,7 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [DELIVERY.md](DELIVERY.md) | Travel time (fast travel's navmesh path), the hand-over, undeliverable letters, replies and the courier |
 | [COURIER.md](COURIER.md) | The vanilla courier carrying a letter to an NPC in the player's town: the errand, other courier mods, when it falls back to unseen delivery |
 | [ROAD_COURIER.md](ROAD_COURIER.md) | The courier met on the road with the letters passing there: vanilla's road triggers, detecting a passing letter, the encounter, the dialogue (intimidate, brawl) |
-| [HAND_IN.md](HAND_IN.md) | Handing a letter to its recipient in person: the recipient aliases and their faction, the dialogue, the gift menu, delivery |
+| [HAND_IN.md](HAND_IN.md) | Handing a letter to its recipient in person: who the topic shows to (the recipients' faction), the dialogue, the gift menu filtered to their letters, delivery |
 | [WRITING.md](WRITING.md) | Writing letters as an Ink & Quill client: parchment, the "To:" line, matching the recipient, saving and editing |
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
 | [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
