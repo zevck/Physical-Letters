@@ -52,9 +52,19 @@ Nothing reads or writes letters, LetterDB or SkyrimNet until the session is **re
 - The save id is asked for only once SkyrimNet is ready: asked earlier, SkyrimNet makes up a new one.
 - Until then letters show `...`. If the session isn't ready 30 seconds after a load, the log says why, once.
 
+## Writing the prompts
+
+The prompts are in the SkyrimNet plugin folder (`SKSE/Plugins/SkyrimNet/external/zevick.physical-letters/prompts/physical_letters/`). Three rules (user, 2026-10-09):
+
+- **No comments in them.** What each context variable holds is in the feature's doc ([READING.md](READING.md#the-prompt), [NPC_LETTERS.md](NPC_LETTERS.md), [NPC_TO_NPC.md](NPC_TO_NPC.md)).
+- **Instructions say what to do**, not what not to do: "writes only about what they know and have lived through", not "don't invent events".
+- **No named or sample examples:** an example name, number or word pulls the model towards it. JSON shapes use placeholders (`{"pick": <number>, "why": "<reason>"}`), and one-word fields ask for one word without listing any.
+
+`components/memory_importance.prompt` is SkyrimNet's Importance Score Guidelines copied word for word from its `memory/generate_memory.prompt` ([READING.md](READING.md#the-prompt)); when SkyrimNet changes that text, copy it again.
+
 ## LLM calls in the log
 
-Every LLM call goes through `SkyrimNet::SendPrompt`, which logs it at info: `[LLM] #<n> <prompt> sent (<variant> variant, <bytes> bytes of context)` and, when SkyrimNet answers, `[LLM] #<n> <prompt> answered` (or `failed`); `#n` counts from 1 each start. The prompts: `read_letter` (a reading, [READING.md](READING.md)), `who_writes` (the cheap pick) and `write_letter` ([NPC_LETTERS.md](NPC_LETTERS.md)), `npc_propose` (cheap) and `npc_letter` ([NPC_TO_NPC.md](NPC_TO_NPC.md)). Counting the `sent` lines per prompt and multiplying by each prompt's average cost in SkyrimNet's request log (it records OpenRouter's cost per request) gives a session's cost. Not counted here: SkyrimNet's own calls a letter leads to, such as the reaction to a letter handed over in person.
+Every LLM call goes through `SkyrimNet::SendPrompt`, which logs it at info: `[LLM] #<n> <prompt> sent (<variant> variant, <bytes> bytes of context)` and, when SkyrimNet answers, `[LLM] #<n> <prompt> answered` (or `failed`); `#n` counts from 1 each start. The prompts: `read_letter` (a reading, [READING.md](READING.md)), `who_writes` (the cheap player-letter pick, [NPC_LETTERS.md](NPC_LETTERS.md)), `npc_propose` (cheap NPC recipient proposals, [NPC_TO_NPC.md](NPC_TO_NPC.md)), and `write_letter` (shared by both writing paths). Counting the `sent` lines per prompt and multiplying by each prompt's average cost in SkyrimNet's request log (it records OpenRouter's cost per request) gives a session's cost. Not counted here: SkyrimNet's own calls a letter leads to, such as the reaction to a letter handed over in person.
 
 ## Threading
 

@@ -80,4 +80,4 @@ A letter an NPC writes first carries its letter tag on the **writer's** memory o
 | A save from before routes (`LTRN` v5 or older) | Its letters have no route: they aren't met on the road |
 | SkyrimNet missing or too old | Letters keep their look, show `...`, nothing is delivered; the log says why |
 
-Tested in game on AE (2026-09-30): creation, sending, delivery after the delay, reading and the memory; Keep, Clear and a load during a reading; replies through the courier and the correspondence; the hand-over; returned letters and their card line. Not tested yet: a letter sent again (`read_before`), the retry path, a second character, SE and VR.
+Tested in game on AE (2026-09-30): creation, sending, delivery after the delay, reading and the memory; Keep, Clear and a load during a reading; replies through the courier and the correspondence; the hand-over; returned letters and their card line. On SE (2026-10-09): creation, sending, delivery and reading (a letter to Jarl Balgruuf). Not tested yet: a letter sent again (`read_before`), the retry path, a second character, and VR.

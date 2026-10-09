@@ -27,17 +27,17 @@ The log names each NPC drawn with their events, days since last seen and weight;
 
 ## The pick
 
-`physical_letters/who_writes.prompt`, on SkyrimNet's `meta` OpenRouter variant (a fast, cheap model in its default config; a config without it uses the default model), like the NPC-to-NPC proposals ([NPC_TO_NPC.md](NPC_TO_NPC.md)). Per candidate (`candidates`, numbered from 1): name, where they are (`place`, `Travel::PlaceName`), whether they've never met the player (`never_met`), short profile (`short_inline`), days since seen, the newest 8 lines of their latest exchanges with the player and the same memories the letter gets. The player's name is `player`, and where they are now `player_place`. It answers `{"pick":2,"why":"..."}`, `0` for nobody, short because `meta`'s output is capped at 100 tokens in SkyrimNet's default config. The answer is read with a regex (`ReadPick`), so one cut short after the number still counts. Nobody, a number out of range or an unreadable answer ends the attempt; the log gives the reason.
+`physical_letters/who_writes.prompt`, on SkyrimNet's `meta` OpenRouter variant (a fast, cheap model in its default config; a config without it uses the default model), like the NPC-to-NPC proposals ([NPC_TO_NPC.md](NPC_TO_NPC.md)). Per candidate (`candidates`, numbered from 1): name, where they are (`place`, `Travel::PlaceName`), whether they've never met the player (`never_met`), short profile (`short_inline`), days since seen, the newest 8 lines of their latest exchanges with the player and the same memories the letter gets. The player's name is `player`, and where they are now `player_place`. It answers `{"pick": <number>, "why": "<reason>"}` (the prompt shows that shape, not a sample value: a sample number skews the pick), `0` for nobody, short because `meta`'s output is capped at 100 tokens in SkyrimNet's default config. The answer is read with a regex (`ReadPick`), so one cut short after the number still counts. Nobody, a number out of range or an unreadable answer ends the attempt; the log gives the reason.
 
-The memories are fetched once per shortlisted NPC, on a worker thread, before the pick.
+The memories are fetched once per shortlisted NPC, on a worker thread, before the pick. The pick's reason is logged only; the full writing call independently decides the purpose from its richer context.
 
 ## The letter prompt
 
-`physical_letters/write_letter.prompt`, next to the reading prompt ([READING.md](READING.md#the-prompt)), in the same style. Context:
+`physical_letters/write_letter.prompt` is shared with NPC-to-NPC writing ([NPC_TO_NPC.md](NPC_TO_NPC.md)). It allows practical correspondence without an established friendship, preserves continuity with earlier letters, and treats locations as decision context rather than character knowledge. Its `components/letter_format` instructions are also used by replies. Context for letters to the player:
 
 | Variable | Value |
 |---|---|
-| `place`, `player_place` | Where the NPC is and where the player is now (`Travel::PlaceName`) |
+| `place`, `recipient_place` | Where the NPC is and where the player is now (`Travel::PlaceName`); proximity context only, not knowledge granted to the writer |
 | `never_met` | True when the NPC has never dealt with the player (`MinEvents` 0) |
 | `npc` | `{ UUID, name }` of the NPC who might write |
 | `recipient` | The player's name |
@@ -47,7 +47,7 @@ The memories are fetched once per shortlisted NPC, on a worker thread, before th
 | `correspondence` | The earlier letters between them that the NPC knows of (`Reading::Correspondence`) |
 | `memories` | Up to 8 of the NPC's memories most relevant to the player, letters excluded |
 
-It returns JSON: `write` (bool), `letter`, `memory`, `emotion`, `importance`, read with the same tolerant parsing as a reading ([READING.md](READING.md#reading-the-answer)). If the NPC doesn't write after all (or the answer can't be read), nothing happens until the next attempt: no one else is asked. An LLM failure ends the attempt, and so does no answer within 5 minutes for any one step, the pool scan or an LLM call (SkyrimNet drops cancelled LLM tasks without calling back).
+It returns JSON: `tie`, `purpose`, `write` (bool), `letter`, `memory`, `emotion`, `importance` (`tie` and `purpose` are logged by the NPC-to-NPC path and unused here), read with the same tolerant parsing as a reading ([READING.md](READING.md#reading-the-answer)). If the NPC doesn't write after all (or the answer can't be read), nothing happens until the next attempt: no one else is asked. An LLM failure ends the attempt, and so does no answer within 5 minutes for any one step, the pool scan or an LLM call (SkyrimNet drops cancelled LLM tasks without calling back).
 
 **Each attempt has an id** (with the session generation): every step checks it before acting, and giving an attempt up changes it, so an answer arriving after the timeout, or after a load, is dropped and logged; it can't write a letter or end a newer attempt.
 

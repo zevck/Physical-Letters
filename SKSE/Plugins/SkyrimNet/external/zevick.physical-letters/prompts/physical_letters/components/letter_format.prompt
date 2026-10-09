@@ -1,0 +1,3 @@
+    Write the letter as plain text representing the words on the paper: an appropriate salutation, a few short paragraphs at most, and the writer's signature on its own line. Separate the salutation, body paragraphs and signature with blank lines. Match the length and formality to the writer and purpose; a short note is fine.
+
+    Your entire response is one valid JSON object. Use double-quoted keys and strings, booleans for decisions, and a number for importance. Within JSON strings, encode line breaks as \n and blank lines as \n\n, and escape quotation marks.

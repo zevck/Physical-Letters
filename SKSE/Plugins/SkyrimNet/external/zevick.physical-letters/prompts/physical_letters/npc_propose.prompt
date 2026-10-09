@@ -1,12 +1,5 @@
-{# Physical Letters: a cheap pass that proposes, for a few NPCs, whom each would write a letter
-   to.  Sent with PublicSendCustomPromptToLLM on the "meta" variant, whose output may be capped
-   short (SkyrimNet's default: 100 tokens), so the answer is names only.  Context:
-     writers  [{ number, UUID, name, place, memories, letters }]: memories are their newest,
-              letters their recent letters with other NPCs ("wrote to X, 5 days ago")
-     player   the player's name (letters to the player are a separate feature)
-     names    at most this many names per writer, best first #}
 [ system ]
-    You decide whom each of these people in Skyrim would plausibly write a letter to, if anyone. Use what their profiles and memories say, and what you know of Skyrim. Answer with compact JSON only, no explanation.
+    You decide whom each of these people in Skyrim would plausibly write a letter to, if anyone. Use what their profiles and memories say, and what you know of Skyrim. Your whole answer is one compact JSON object.
 [ end system ]
 
 [ user ]
@@ -29,9 +22,10 @@
     {% endfor %}
     For each person, name up to {{ names }} people they'd write to, best first:
 
-    - A specific person, by the name they go by, not a description of them ("Nilsine Shatter-Shield", not "Torsten's daughter" or "Windhelm's steward"). Someone who lives somewhere else, not someone they live with or next to.
-    - Only a tie they really have, from their profile, memories or Skyrim's lore. Sharing a trade or a town isn't friendship, but it can be a reason for a letter of that kind.
-    - Not {{ player }}.
+    - A specific person, by their own name as Skyrim knows them.
+    - Someone who lives in another place than the writer.
+    - A personal or practical connection, from their profile, memories or Skyrim's lore. A shared trade, responsibility or local concern is enough for a letter about that subject. Ground personal familiarity in their established relationship and shared experiences.
+    - A fellow NPC ({{ player }} is the player character).
 
-    Return only names, on one line, keyed by the person's number; leave out anyone with no one to write to: {"1":["Name","Name"],"3":["Name"]}
+    Return only names, on one line, keyed by the person's number, for the people who have someone to write to: {"<number>": ["<name>", "<name>"]}
 [ end user ]

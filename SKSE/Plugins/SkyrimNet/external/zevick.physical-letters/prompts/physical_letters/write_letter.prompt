@@ -1,20 +1,4 @@
-{# Physical Letters: an NPC may write to the player unprompted.  Sent by the plugin with
-   PublicSendCustomPromptToLLM; context variables:
-     npc              UUID, name of the NPC who might write
-     recipient        the player's name
-     recipient_UUID   the player's UUID, for their public profile
-     place            where the NPC is
-     player_place     where the player is now
-     never_met        true when the NPC has never dealt with the player
-     days_since_seen  game days since the NPC last dealt with the player (-1 unknown)
-     correspondence   earlier letters between the two that the NPC knows of, oldest first
-                      (up to 20): from, to, days_ago, body
-     dialogue         their latest spoken exchanges, oldest first (up to 10): speaker, text
-     memories         the NPC's memories most relevant to the player (letters excluded) #}
-
-{# How many of the most recent earlier letters to show. #}
 {% set max_earlier_letters = 5 %}
-
 {% set actor = decnpc(npc.UUID) %}
 {% set first_earlier_letter = length(correspondence) - max_earlier_letters %}
 [ system ]
@@ -29,8 +13,8 @@
 [ end system ]
 
 [ user ]
-    ## Where They Are
-    {{ actor.name }} is in {{ place }}; {{ recipient }} is in {{ player_place }}.{% if never_met %} {{ actor.name }} has never met {{ recipient }}.{% endif %}
+    ## Locations for Deciding Whether to Write
+    {{ actor.name }} is in {{ place }}; {{ recipient }} is in {{ recipient_place }}. Use these locations to judge whether they could talk in person. Ground {{ actor.name }}'s knowledge of {{ recipient }}'s whereabouts in their conversations, memories and earlier letters.{% if never_met %} {{ actor.name }} has never met {{ recipient }}.{% endif %}
 
     {% if days_since_seen >= 0 %}
     ## Time Apart
@@ -57,7 +41,7 @@
     {% endif %}
 
     {% if memories and length(memories) > 0 %}
-    ## What {{ actor.name }} Remembers of {{ recipient }}
+    ## What {{ actor.name }} Remembers That May Bear on It
     {% for memory in memories -%}
     - {{ memory }}
     {% endfor %}
@@ -65,19 +49,21 @@
 
     ## Instructions
 
-    1. **Decide whether {{ actor.name }} writes.** People write when they have a reason: news of their own, something unfinished between them, gratitude, worry, a favour to ask, a grudge, or simply missing someone. Someone who barely knows {{ recipient }}, or has nothing to say, doesn't write; someone who has never met {{ recipient }} writes only with a real reason, such as having heard of {{ recipient }} and needing their help; someone close enough to walk over and talk doesn't write. It's fine to decide not to.
+    1. **Decide whether {{ actor.name }} writes.** Judge their connection and a reason to write from the profiles, memories, conversations and Skyrim's lore. A shared trade, responsibility or local concern is enough to support a practical letter. Keep professional contact professional, and ground personal familiarity in their established relationship and shared experiences. People also write with news, unfinished business, gratitude, worry, a favour to ask, a grudge, or simply because they miss someone they are close to. Match the tone to the connection they actually have. Someone close enough to walk over and talk prefers speaking in person. Set 'write' to true when their connection, purpose and distance make a letter worthwhile, and false otherwise. Either decision is a valid outcome.
 
-    2. **If {{ actor.subjectivePronoun }} writes, write the letter** in {{ actor.possessiveAdjective }} own voice: addressed to {{ recipient }}, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. Draw on what they last talked about, what {{ actor.subjectivePronoun }} remembers, and {{ actor.possessiveAdjective }} own life as the profile describes it. {{ actor.name }} can only write about what {{ actor.subjectivePronoun }} knows; don't invent major events. If there are earlier letters, this continues a correspondence: stay consistent and don't repeat what was already written.
+    2. **If {{ actor.subjectivePronoun }} writes, write the letter** to {{ recipient }} in {{ actor.possessiveAdjective }} own voice, signed with {{ actor.possessiveAdjective }} name. Draw on what they last talked about, what {{ actor.subjectivePronoun }} remembers, and {{ actor.possessiveAdjective }} own life as the profile describes it. Include news about other people when it matters to {{ recipient }}. Use profiles as background for characterization, and ground {{ actor.name }}'s personal knowledge in what {{ actor.subjectivePronoun }} has experienced or learned. Follow the supplied context where it differs from Skyrim's lore. If there are earlier letters, continue the correspondence: stay consistent, answer what remains open, and give a reason when following up on an earlier request or sentiment. Ground news and events in the supplied context; an existing concern or relationship can itself provide a reason to write.
 
     3. **Write the memory {{ actor.name }} keeps of writing it**, in first person as {{ actor.name }}, one or two sentences: that {{ actor.subjectivePronoun }} wrote to {{ recipient }} and what about.
 
-    **IMPORTANT**: Return ONLY a valid JSON object. Do not include explanatory text before or after the JSON.
+{{ render_template("physical_letters/components/letter_format") }}
 
-    Return JSON with exactly these fields:
+    **IMPORTANT**: Your whole answer is one valid JSON object, with exactly these fields:
+    - 'tie': their personal or practical connection, in a few words
+    - 'purpose': what the letter is for, in a few words
     - 'write': true if {{ actor.name }} writes, false if not
-    - 'letter': the letter, or "" if {{ actor.subjectivePronoun }} doesn't write
-    - 'memory': the first-person memory described above, or "" if {{ actor.subjectivePronoun }} doesn't write
-    - 'emotion': {{ actor.name }}'s main feeling while writing, one word (e.g. "fond", "worried", "restless")
+    - 'letter': the letter, or "" if {{ actor.subjectivePronoun }} decides against writing
+    - 'memory': the first-person memory described above, or "" if {{ actor.subjectivePronoun }} decides against writing
+    - 'emotion': {{ actor.name }}'s main feeling while writing, in one word
     - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0), scored as SkyrimNet scores memories:
 {{ render_template("physical_letters/components/memory_importance") }}
 [ end user ]

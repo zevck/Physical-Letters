@@ -420,7 +420,7 @@ namespace PhysicalLetters::NpcLetters {
                     { "recipient", player.name },
                     { "recipient_UUID", SkyrimNet::UuidNumber(player.uuid) },
                     { "place", candidate.place },
-                    { "player_place", player.place },
+                    { "recipient_place", player.place },
                     { "never_met", candidate.events == 0 },
                     { "days_since_seen", static_cast<int>(candidate.daysSinceSeen) },
                     { "correspondence", Reading::Correspondence(candidate.uuid, player.uuid, candidate.formId, player.now) },

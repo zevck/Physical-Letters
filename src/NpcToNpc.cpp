@@ -46,7 +46,7 @@ namespace PhysicalLetters::NpcToNpc {
 
         // The cheap pass that proposes recipients, and the letter itself (docs/NPC_TO_NPC.md#an-attempt).
         constexpr auto kProposePrompt = "physical_letters\\npc_propose";
-        constexpr auto kWritePrompt = "physical_letters\\npc_letter";
+        constexpr auto kWritePrompt = "physical_letters\\write_letter";
         // SkyrimNet's OpenRouter variant for the proposals: a fast, cheap model in its default
         // config.  A config without it uses its default model.
         constexpr auto kProposeVariant = "meta";
@@ -479,15 +479,18 @@ namespace PhysicalLetters::NpcToNpc {
 
         // Worker thread.  The letter call on the default model: it judges the tie and the purpose
         // from both profiles, writes, or declines.
-        void Write(Pair pair, Token token, std::string playerName, int memoryCount, double now)
+        void Write(Pair pair, Token token, int memoryCount, double now)
         {
             try {
                 const json context = {
                     { "npc", { { "UUID", SkyrimNet::UuidNumber(pair.writer.uuid) }, { "name", pair.writer.name } } },
                     { "place", pair.writer.place },
-                    { "recipient",
-                      { { "UUID", SkyrimNet::UuidNumber(pair.recipient.uuid) }, { "name", pair.recipient.name }, { "place", pair.recipientPlace } } },
-                    { "player", playerName },
+                    { "recipient", pair.recipient.name },
+                    { "recipient_UUID", SkyrimNet::UuidNumber(pair.recipient.uuid) },
+                    { "recipient_place", pair.recipientPlace },
+                    { "never_met", false },  // unknown; don't assert they've never met
+                    { "days_since_seen", -1 },
+                    { "dialogue", json::array() },
                     { "memories", Memories(pair.writer.formId, memoryCount) },
                     { "correspondence", Reading::Correspondence(pair.writer.uuid, pair.recipient.uuid, pair.writer.formId, now) },
                 };
@@ -588,9 +591,9 @@ namespace PhysicalLetters::NpcToNpc {
             auto pair = std::move(pairs[std::uniform_int_distribution<std::size_t>(0, pairs.size() - 1)(Rng())]);
             g_stepSince = std::chrono::steady_clock::now();  // the timeout is per LLM call
             ++g_tally.writes;
-            std::thread([pair = std::move(pair), token, playerName,
+            std::thread([pair = std::move(pair), token,
                          memoryCount = Config::GetSingleton()->Get(Config::kN2nMemories), now = Now()]() mutable {
-                Write(std::move(pair), token, std::move(playerName), memoryCount, now);
+                Write(std::move(pair), token, memoryCount, now);
             }).detach();
         }
 

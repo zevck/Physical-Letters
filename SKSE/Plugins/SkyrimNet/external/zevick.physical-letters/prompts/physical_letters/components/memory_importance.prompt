@@ -1,5 +1,3 @@
-{# SkyrimNet's Importance Score Guidelines, copied word for word from its memory/generate_memory.prompt:
-   rendered under 'importance' by the four prompts that make memories (docs/READING.md#the-prompt).  Keep in step. #}
       **High Importance (0.7-1.0):**
       - Life-threatening or dangerous situations
       - Major emotional events (love, loss, betrayal, triumph)
