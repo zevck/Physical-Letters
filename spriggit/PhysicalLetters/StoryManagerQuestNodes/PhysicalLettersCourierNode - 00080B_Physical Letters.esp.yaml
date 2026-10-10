@@ -15,9 +15,11 @@ Conditions:
     Global: 000809:Physical Letters.esp
   ComparisonValue: 1
 - MutagenObjectType: ConditionFloat
+  CompareOperator: LessThan
   Data:
     MutagenObjectType: GetGlobalValueConditionData
     Global: 039FBB:Skyrim.esm
+  ComparisonValue: 1
 - MutagenObjectType: ConditionFloat
   Data:
     MutagenObjectType: GetEventDataConditionData

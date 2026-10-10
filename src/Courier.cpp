@@ -25,6 +25,17 @@ namespace PhysicalLetters::Courier {
         // WICourier, with WICourierScript attached.
         constexpr RE::FormID kCourierQuestId = 0x039F82;
         constexpr std::string_view kCourierQuestPlugin = "Skyrim.esm";
+        constexpr RE::FormID kItemCountId = 0x039FBB;  // WICourierItemCount
+
+        // Another mod can leave the count below 0, and then the courier never comes again (docs/DELIVERY.md).
+        void RepairItemCount(RE::TESDataHandler* a_data)
+        {
+            auto* count = a_data->LookupForm<RE::TESGlobal>(kItemCountId, kCourierQuestPlugin);
+            if (count && count->value < 0.0f) {
+                SKSE::log::warn("[Courier] WICourierItemCount was {}: set to 0 so the courier comes again", count->value);
+                count->value = 0.0f;
+            }
+        }
     }
 
     bool Give(RE::TESBoundObject* a_item)
@@ -36,6 +47,7 @@ namespace PhysicalLetters::Courier {
             SKSE::log::error("[Courier] The courier quest {}:0x{:X} wasn't found", kCourierQuestPlugin, kCourierQuestId);
             return false;
         }
+        RepairItemCount(data);
         const auto handle = vm->GetObjectHandlePolicy()->GetHandleForObject(RE::TESQuest::FORMTYPE, quest);
         // The VM takes ownership of the arguments (as in CommonLib's RegistrationSet).
         auto* args = RE::MakeFunctionArguments(static_cast<RE::TESForm*>(a_item), static_cast<std::int32_t>(1));

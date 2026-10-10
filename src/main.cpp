@@ -73,6 +73,9 @@ namespace {
             PhysicalLetters::Writing::Connect();
             break;
         case SKSE::MessagingInterface::kDataLoaded:
+            // Here, not at plugin load: Dynamic String Distributor hooks GetDescription at kPostPostLoad by copying its
+            // first bytes, and a jump of ours there crashed the game (docs/ARCHITECTURE.md).
+            PhysicalLetters::TextHook::Install();
             PhysicalLetters::Locale::Load();
             PhysicalLetters::SkyrimNet::Init();
             PhysicalLetters::Letters::CheckTemplate();
@@ -149,7 +152,6 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
     PhysicalLetters::Papyrus::Register();
 
     PhysicalLetters::Serialization::Register();
-    PhysicalLetters::TextHook::Install();
     SKSE::GetMessagingInterface()->RegisterListener(OnMessage);
 
     return true;

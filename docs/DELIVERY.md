@@ -61,6 +61,8 @@ When the parcel is due, it goes to the vanilla courier: `WICourierScript.addItem
 - `addItemToContainer` puts the item in `WICourierContainerRef` and raises the global `WICourierItemCount`, which makes the courier quest run on the player's next change of location.
 - The courier finds the player in a town (`LocTypeHabitation`); his dialogue calls `GiveItemsToPlayer`, which moves everything to the player and shows the vanilla "items added" message.
 
+**A count below 0.** Vanilla's courier node needs `WICourierItemCount` ≥ 1, and other mods can push it below 0. `GiveItemsToPlayer` sets it to 0 but leaves quest items in the container (`RemoveAllItems` skips them). When a mod's quest later takes such a letter back with `removeRefFromContainer`, the letter is still there, so the count drops to -1. After that each new letter only brings it back to 0, and the courier never comes again. So `Courier::Give` sets a count below 0 to 0 before adding our letter, with a warning in the log. It never lowers the count: a quest item left in the container would keep bringing the courier back for nothing. NarrativeEngine made the same repair in its own code.
+
 Once with the courier, the letter is out of our queue; the courier's container holds it, and the engine saves it there.
 
 ## The hand-over
