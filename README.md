@@ -9,7 +9,7 @@ The address is comprised of the last 4 digits of the NPCs SkyrimNet UUID and hom
 
 This feature requires **Ink & Quill**.
 
-**Crafting**
+### Crafting
 Craft **3** parchment from **1** roll of paper at a tanning rack, or buy it from general goods merchants.
 
 ### Mailing Letters
