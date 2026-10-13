@@ -62,6 +62,8 @@ namespace PhysicalLetters::Writing {
         bool g_bodyLockedAtStart = false;  // a new letter: its body had no run when the session began
         bool g_bloodHeading = false;       // the letter's "To:" line is red (begun in blood)
 
+        bool BloodAllowed() { return Config::GetSingleton()->Get(Config::kWritingBlood) != 0; }
+
         void* UserOf(std::uint32_t session) { return reinterpret_cast<void*>(static_cast<std::uintptr_t>(session)); }
         bool IsCurrent(void* user) { return g_session != 0 && user == UserOf(g_session); }
 
@@ -236,8 +238,9 @@ namespace PhysicalLetters::Writing {
         }
 
         // Ink & Quill's session over `shown`, the caret at the end of run `caretRun` (-1: the page being
-        // read).
-        bool Begin(const Letter& shown, int caretRun, RE::FormID book, std::optional<Letter> letter, bool bodyLocked = false)
+        // read), written the `way` chosen (IQ_WRITE_ASK: Ink & Quill decides).
+        bool Begin(const Letter& shown, int caretRun, RE::FormID book, std::optional<Letter> letter, bool bodyLocked = false,
+                   std::int32_t way = IQ_WRITE_ASK)
         {
             Recipients::Reset();
             const std::string marked = Letters::Marked(shown, bodyLocked);
@@ -259,6 +262,8 @@ namespace PhysicalLetters::Writing {
             session.onSave = OnSave;
             session.onEnd = OnEnd;
             session.onChange = OnChange;
+            session.way = way;
+            session.noBlood = !BloodAllowed();  // with ASK (an edit): no ink means Ink & Quill's notice, not its blood prompt
             const bool begun = g_api->BeginSession(&session);
             // Refused (its OnEnd has run): Ink & Quill still has the one before, if there was one.
             if (!begun && g_session == 0) {
@@ -269,16 +274,79 @@ namespace PhysicalLetters::Writing {
             return begun;
         }
 
-        // Parchment read from the player's inventory: a new letter, the caret after "To: ".
-        bool OnParchmentOpen(void*, std::uint32_t)
+        // A new letter on parchment, the caret after "To: ", written the way chosen.  A blood one's "To:" line is red
+        // (as Physical Diaries' headings).
+        bool BeginParchment(std::int32_t way)
+        {
+            const Letter blank{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer), .bloodHeading = way == IQ_WRITE_BLOOD };
+            return Begin(blank, 0, 0, std::nullopt, true, way);
+        }
+
+        // The way-of-writing box's answer: begins if the parchment is still open and nobody is writing.
+        class WayChoice : public RE::IMessageBoxCallback {
+        public:
+            WayChoice(std::vector<std::int32_t> ways, RE::FormID parchment) : ways_(std::move(ways)), parchment_(parchment) {}
+
+            void Run(std::uint8_t a_button) override
+            {
+                const auto button = static_cast<std::size_t>(a_button);
+                if (button >= ways_.size()) {
+                    SKSE::log::info("[Writing] The parchment's box: cancelled");
+                    return;
+                }
+                auto* ui = RE::UI::GetSingleton();
+                auto* open = ui && ui->IsMenuOpen(RE::BookMenu::MENU_NAME) ? RE::BookMenu::GetTargetForm() : nullptr;
+                if (!open || open->GetFormID() != parchment_ || !Session::IsReady()) {
+                    SKSE::log::info("[Writing] The parchment's box: answered after the parchment closed");
+                    return;
+                }
+                SKSE::log::info("[Writing] The parchment's box: way {}", ways_[button]);
+                BeginParchment(ways_[button]);
+            }
+
+        private:
+            std::vector<std::int32_t> ways_;
+            RE::FormID parchment_;
+        };
+
+        // Parchment read from the player's inventory.  How it's written is the player's choice when there's one: Special
+        // Ink with the Quill of Gemination, and ink or (without ink) blood; with ink alone it begins at once.
+        bool OnParchmentOpen(void*, std::uint32_t parchment)
         {
             if (!Session::IsReady()) {
                 Notify(Strings::kWriteNotReady);
                 return false;
             }
-            // Blood is chosen once the session starts: the "To:" line is red if it will be (as Physical Diaries' headings).
-            const Letter blank{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer), .bloodHeading = g_api->WouldBeInBlood() };
-            return Begin(blank, 0, 0, std::nullopt, true);
+            // The edit key on the parchment while its box is open: no second box.  Asked of the UI, not a flag, which a
+            // box closed unanswered (a load) would leave set.
+            if (auto* ui = RE::UI::GetSingleton(); ui && ui->IsMenuOpen(RE::MessageBoxMenu::MENU_NAME)) return false;
+            const bool special = g_api->HasQuillOfGemination() && g_api->HasSpecialInk();
+            // No ink where Ink & Quill needs it (materials required, a quill): blood instead, if allowed (Writing.Blood).
+            const bool noInk = g_api->WouldBeInBlood();
+            const std::int32_t plain = noInk && BloodAllowed() ? IQ_WRITE_BLOOD : IQ_WRITE_INK;
+            const bool plainUsable = !noInk || (plain == IQ_WRITE_BLOOD && g_api->CanBleed());
+            // Nothing to choose between: Ink & Quill checks the materials and shows its notice if one is missing.
+            if (!special && (plain == IQ_WRITE_INK || !plainUsable)) return BeginParchment(plain);
+            std::vector<std::int32_t> ways;
+            std::vector<std::string_view> labels;
+            if (special) {
+                ways.push_back(IQ_WRITE_SPECIAL_INK);
+                labels.push_back(Strings::kWriteSpecialInk);
+            }
+            if (plainUsable) {
+                ways.push_back(plain);
+                labels.push_back(plain == IQ_WRITE_BLOOD ? Strings::kWriteBlood : Strings::kWriteInk);
+            }
+            labels.push_back(Strings::kWriteCancel);
+            auto* data = RE::UIMessageDataFactory::Create<RE::MessageBoxData>();
+            if (!data) return BeginParchment(plain);
+            data->bodyText = std::string{ Strings::kWriteHow }.c_str();
+            for (const auto label : labels) data->buttonText.push_back(std::string{ label }.c_str());
+            data->cancelButtonIndex = static_cast<std::int32_t>(labels.size() - 1);  // Escape
+            data->callback = RE::BSTSmartPointer<RE::IMessageBoxCallback>(new WayChoice(std::move(ways), parchment));
+            RE::MessageBoxMenu::QueueMessage(data);
+            SKSE::log::info("[Writing] The parchment's box: {} way(s) offered", labels.size() - 1);
+            return true;
         }
 
         // The edit key on an open letter: ours if it's one the player wrote and carries (not sent).

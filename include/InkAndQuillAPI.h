@@ -36,6 +36,8 @@
  *  - Text is "marked text": the book's text as the client renders it for reading, with what the player can't
  *    change between U+E002 and U+E003.  The runs between locks are what the player writes; blood text in a run
  *    is between U+E000 and U+E001.
+ *  - Structs only grow at the end: a client built with an older header keeps working (its IQ_Session's size says
+ *    which fields it has).
  */
 
 #pragma once
@@ -43,7 +45,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define IQ_API_VERSION 1
+#define IQ_API_VERSION 2  /* docs/API.md#versions */
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +60,15 @@ typedef enum IQ_Ink
     IQ_INK_USED = 1,     /* one use taken */
     IQ_INK_RAN_DRY = 2,  /* that was the inkwell's last use: it's gone */
 } IQ_Ink;
+
+/* How a session writes (IQ_Session::way, onBegin). */
+typedef enum IQ_WriteWay
+{
+    IQ_WRITE_ASK = 0,          /* Ink & Quill decides: ink, else it offers blood (way only; onBegin never gets it) */
+    IQ_WRITE_INK = 1,
+    IQ_WRITE_BLOOD = 2,
+    IQ_WRITE_SPECIAL_INK = 3,  /* the Quill of Gemination with Special Ink: one bottle per save.  docs/API.md#special-ink */
+} IQ_WriteWay;
 
 /* One book open for writing.  Ink & Quill copies it; user is handed back to every callback. */
 typedef struct IQ_Session
@@ -79,6 +90,16 @@ typedef struct IQ_Session
     /* Optional.  The player changed run's text (typed, erased, pasted); the caret is caretOffset characters into it.
        In the key's own UI task: a Reload from here shows with the keystroke.  docs/API.md#reacting-to-typing */
     void (*onChange)(void* user, int32_t run, int32_t caretOffset);
+
+    /* Version 2. */
+    /* An IQ_WriteWay: ASK, or the way the client chose (its own prompt): only that way's materials are checked, and
+       a missing one ends the session with a notice. */
+    int32_t way;
+    /* With way ASK: true, no blood is offered when the player has no ink (the NeedsInk notice instead).  Whether a
+       client's books can be written in blood is the client's to decide (its own setting).  docs/API.md#starting */
+    bool noBlood;
+    /* Optional.  Writing has begun, before the player types: how (INK, BLOOD or SPECIAL_INK).  docs/API.md#starting */
+    void (*onBegin)(void* user, int32_t way);
 } IQ_Session;
 
 /* The edit key in an open book no session is writing in.  Return true if this book is yours and you called
@@ -138,7 +159,8 @@ typedef struct IQ_API
     /* Optional: the name Ink & Quill's MCM lists the calling mod under (else its DLL's file name). */
     void (*SetClientName)(const char* name);
 
-    /* A session begun now would be in blood (unless the player declines): for a new heading before BeginSession.
+    /* A session begun now with way ASK would be in blood (a quill but no ink, materials required; unless the player
+       declines or noBlood is set): for a new heading before BeginSession.
        InBlood once it has begun. */
     bool (*WouldBeInBlood)(void);
 
@@ -158,6 +180,13 @@ typedef struct IQ_API
     /* Whether a key works as a client's key while writing (RegisterKeys): an IQ_KEY_ value; message (optional) gets why
        not, translated, for the client's MCM to show.  docs/API.md#clients-keys */
     int32_t (*CheckKey)(uint32_t keyCode, const char** message);
+
+    /* Version 2. */
+    /* The player carries the Quill of Gemination, and Special Ink (the bottle a Special Ink session spends). */
+    bool (*HasQuillOfGemination)(void);
+    bool (*HasSpecialInk)(void);
+    /* The player is writing in Special Ink. */
+    bool (*InSpecialInk)(void);
 } IQ_API;
 
 /* CheckKey's answers. */

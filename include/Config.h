@@ -85,13 +85,15 @@ namespace PhysicalLetters {
         // else, 1 generic NPCs SkyrimNet has memories of, 2 any named NPC.
         static constexpr Setting kGenericRecipients { "Writing", "GenericRecipients", 0, 0, 2 };
         static constexpr int kGenericUniqueOnly = 0, kGenericKnown = 1, kGenericAnyone = 2;
+        // Letters can be written in blood when there's no ink (docs/WRITING.md#starting); Ink & Quill leaves it to us.
+        static constexpr Setting kWritingBlood { "Writing", "Blood", 1, 0, 1 };
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kFontSize, kFont, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcReplies, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcMissDays,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kCourierEnabled, kCourierWaitHours,
-            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue, kGenericRecipients,
+            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue, kGenericRecipients, kWritingBlood,
         };
 
         static Config* GetSingleton()

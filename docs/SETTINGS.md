@@ -42,6 +42,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 | `[NpcToNpc] NamesPerWriter` | 3 | 1–5 | Recipients proposed per person, best first; the first usable one is kept |
 | `[NpcToNpc] MemoriesPerWriter` | 3 | 0–10 | Newest memories each person's proposal and letter see (most involve the player; 0 = none) |
 | `[Writing] GenericRecipients` | 0 | 0–2 | Whom the player's letters can be addressed to besides unique NPCs: 0 nobody else, 1 generic NPCs SkyrimNet has memories of, 2 any NPC with the name ([WRITING.md](WRITING.md#the-recipient)). MCM: a menu |
+| `[Writing] Blood` | 1 | 0–1 | Letters can be written in blood when the player has no ink: the parchment's box offers Blood in place of Ink, and editing a letter lets Ink & Quill offer it. Off: Blood is never offered (Ink & Quill shows "no ink" instead); Ink & Quill has no setting of its own for it since its API version 2 ([WRITING.md](WRITING.md#starting)). MCM: a toggle |
 
 **Every setting is one row in `Config::kSettings`**: section, key, default, range. Reads clamp to the range and fall back to the default on a non-number, so a hand-edited INI can't feed the code nonsense. `Save()` writes only the keys in the table (anything else is dropped at the next start), building the file in memory first so a failure can't leave it half-written.
 
@@ -53,7 +54,7 @@ Code: `include/Config.h`, `src/Papyrus.cpp`, `Source/Scripts/PhysicalLetters_MCM
 
 Three pages, two columns each (`SetCursorFillMode(LEFT_TO_RIGHT)`; a section's header takes a row, the right half empty):
 
-- **General:** General (NPCs write to you, NPCs reply to you; NPCs write to each other, whom you can write to, letter text size and font), Logging (debug logging).
+- **General:** General (NPCs write to you, NPCs reply to you; NPCs write to each other, whom you can write to, writing in blood, letter text size and font), Logging (debug logging).
 - **NPC Letters:** NPC-Player Letters (the schedule, cooldown, interactions needed, not after talking within, days until they miss you, people considered), NPC-NPC Letters (known only, then the schedule, limits and proposals).
 - **Delivery:** Delivery (postage, writing time, the hand-over dialogue, travel times, returning undeliverable letters), Courier (in town, on the roads, the road meeting's cooldown, speech and bounty).
 

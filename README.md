@@ -41,7 +41,7 @@ With no ink, **Ink & Quill** lets you write in your own blood. The recipient see
 - [SkyUI](https://www.nexusmods.com/skyrimspecialedition/mods/12604) (for MCM)
 - [SKSE](https://skse.silverlock.org/)
 - [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444) or [VR Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/58101)
-- [Ink & Quill](https://github.com/zevck/Ink-and-Quill) to write your own letters
+- [Ink & Quill](https://github.com/zevck/Ink-and-Quill) 0.2 or later to write your own letters
 
 ## 🌐 Localization
 The mod supports all 9 official Skyrim languages: English, French, German, Italian, Spanish, Polish, Russian, Traditional Chinese, and Japanese. Letter names, item descriptions, the "To:" line, parchment and MCM menus are all localized automatically based on your game language.

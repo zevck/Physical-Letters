@@ -86,6 +86,13 @@ namespace PhysicalLetters::Strings {
         return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
     }
 
+    // The box a parchment opens with when the player can choose how to write (docs/WRITING.md#starting).
+    inline constexpr std::string_view kWriteHow = "How will you write this letter?";
+    inline constexpr std::string_view kWriteSpecialInk = "Special Ink";
+    inline constexpr std::string_view kWriteInk = "Ink";
+    inline constexpr std::string_view kWriteBlood = "Blood";
+    inline constexpr std::string_view kWriteCancel = "Cancel";
+
     // A save of a letter the player writes, refused (docs/WRITING.md#saving).
     inline constexpr std::string_view kWriteNotReady = "Letters aren't ready yet. Try again in a moment.";
     inline std::string WriteNoName()

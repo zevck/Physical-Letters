@@ -43,6 +43,6 @@ Nothing language-dependent is stored for the text: the "To:" label, the card and
 
 ## Not localized yet
 
-The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`).
+The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`).
 
 The eight non-English files were written by Claude (2026-10-04); they ship until native speakers correct them.
