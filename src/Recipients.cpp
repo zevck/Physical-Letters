@@ -25,6 +25,7 @@
 #include "Strings.h"
 
 #include <map>
+#include <nlohmann/json.hpp>
 #include <set>
 
 namespace PhysicalLetters::Recipients {
@@ -33,7 +34,14 @@ namespace PhysicalLetters::Recipients {
         using MarkedText::Trim;
         using MarkedText::TrimLeft;
         using MarkedText::WithoutBlood;
-        using Names = std::map<std::string, std::vector<RE::Actor*>>;  // actors by lowercase name
+        using json = nlohmann::json;
+
+        // The actors one name stands for, and the name as found.
+        struct Group {
+            std::string name;
+            std::vector<RE::Actor*> actors;
+        };
+        using Names = std::map<std::string, Group>;  // by lowercase name
 
         constexpr RE::FormID kLocTypeHold = 0x016771;
         // Letters typed before any suggestion: one letter starts too many names to check.
@@ -43,13 +51,14 @@ namespace PhysicalLetters::Recipients {
         constexpr std::size_t kMaxCompletions = 10;  // Tab cycles through at most these
         constexpr std::size_t kNumberDigits = 4;     // the end of the UUID an address shows, longer if needed
         constexpr int kMaxLocationDepth = 16;
+        constexpr int kMaxSearched = 500;  // PublicSearchActors' cap
 
         // This session's answers: SkyrimNet and the locations are asked about each actor once.
         std::unordered_map<RE::FormID, bool> g_hasMemories;
         std::unordered_map<RE::FormID, std::string> g_uuids;
         std::unordered_map<RE::FormID, std::string> g_names;
         std::unordered_map<RE::FormID, std::string> g_places;
-        // This change's scan of the form map (NewText): later lookups of longer prefixes filter it.
+        // This change's search of SkyrimNet's actors and scan of the form map (NewText): longer prefixes filter it.
         std::optional<std::pair<std::string, Names>> g_scan;
 
         std::string Lower(std::string text)
@@ -62,6 +71,26 @@ namespace PhysicalLetters::Recipients {
         bool StartsWith(std::string_view text, std::string_view prefix)
         {
             return text.size() >= prefix.size() && _strnicmp(text.data(), prefix.data(), prefix.size()) == 0;
+        }
+
+        // Neither the player nor deleted or disabled: flags in the record, read before anything is asked of it.
+        bool IsInWorld(RE::Actor* actor) { return !actor->IsPlayerRef() && !actor->IsDeleted() && !actor->IsDisabled(); }
+
+        // A real, named person, from the record's own data: other mods' hooks never see a malformed record, a creature
+        // or a nameless one (docs/WRITING.md).  Hearthfire's planters are named NPCs of a Nord race without a voice.
+        bool IsNamedPerson(RE::Actor* actor)
+        {
+            auto* base = IsInWorld(actor) ? actor->GetActorBase() : nullptr;
+            return base && !base->fullName.empty() && Actors::IsPerson(actor);
+        }
+
+        // The name the game gives the actor, not through GetDisplayFullName: other mods hook it (NPCs Names Distributor
+        // names an actor it hasn't seen when asked), and a scan asks about thousands (docs/WRITING.md).
+        std::string OwnName(RE::Actor* actor)
+        {
+            auto* base = actor->GetObjectReference();
+            const char* name = base ? actor->extraList.GetDisplayName(base) : nullptr;
+            return name ? name : "";
         }
 
         bool IsUnique(RE::Actor* actor)
@@ -79,6 +108,9 @@ namespace PhysicalLetters::Recipients {
             return ask && (g_hasMemories[formId] = SkyrimNet::HasMemories(formId));
         }
 
+        // An actor SkyrimNet has registered, checked from its record's own data as the scan's: a person, alive.
+        bool IsRegisteredPerson(RE::Actor* actor) { return IsInWorld(actor) && Actors::IsPerson(actor) && !actor->IsDead(); }
+
         // By GenericRecipients (docs/WRITING.md#the-recipient); `ask` as Known.
         bool CanReceive(RE::Actor* actor, int generic, bool ask)
         {
@@ -86,31 +118,84 @@ namespace PhysicalLetters::Recipients {
             return generic == Config::kGenericKnown && Known(actor, ask);
         }
 
-        // Every actor in memory (persistent ones anywhere, the rest in loaded cells) of an NPC race,
-        // not the player, deleted, disabled or dead, whose name starts with `prefix`.
+        // `actor` under `name`, once.
+        void Add(Names& found, const std::string& name, RE::Actor* actor)
+        {
+            auto& [shown, actors] = found[Lower(name)];
+            if (shown.empty()) shown = name;
+            if (std::ranges::find(actors, actor) == actors.end()) actors.push_back(actor);
+        }
+
+        // Those SkyrimNet has registered (the player has been near them), under the name it stored then: a name another
+        // mod gives.  Its records only: no game function is asked a name, nobody is registered (docs/WRITING.md).
+        void AddRegistered(Names& found, std::string_view prefix)
+        {
+            if (!SkyrimNet::CanSearchActors()) return;
+            const auto entries = json::parse(SkyrimNet::SearchActors(std::string{ prefix }, kMaxSearched), nullptr, false);
+            if (!entries.is_array()) return;
+            int kept = 0, runtime = 0, unmatched = 0, rejected = 0;
+            for (const auto& entry : entries) {
+                const auto name = entry.value("name", std::string{});
+                const auto uuid = entry.value("uuid", std::uint64_t{ 0 });
+                const auto formId = entry.value("formId", 0u);
+                if (entry.value("isPlayer", false) || uuid == 0 || formId == 0 || name.empty() || !StartsWith(name, prefix)) continue;
+                // A runtime form's ID may be another actor's now.
+                if (formId >= 0xFF000000) {
+                    ++runtime;
+                    continue;
+                }
+                const auto uuidText = std::to_string(uuid);
+                auto* actor = SkyrimNet::FormIdForUuid(uuidText) == formId ? RE::TESForm::LookupByID<RE::Actor>(formId) : nullptr;
+                if (!actor) {
+                    ++unmatched;
+                    continue;
+                }
+                if (!IsRegisteredPerson(actor)) {
+                    ++rejected;
+                    continue;
+                }
+                g_uuids[formId] = uuidText;
+                g_names[formId] = name;
+                Add(found, name, actor);
+                ++kept;
+            }
+            SKSE::log::debug("[Recipients] SkyrimNet: {} registered for \"{}\": {} kept, {} runtime, {} not mapped back, {} not people",
+                             entries.size(), prefix, kept, runtime, unmatched, rejected);
+        }
+
+        // Every actor whose name starts with `prefix`: SkyrimNet's under its names, then every person in memory
+        // (persistent ones anywhere, the rest in loaded cells) under their own.
         Names ActorsStarting(std::string_view prefix)
         {
             const std::string key = Lower(std::string{ prefix });
             if (g_scan && key.starts_with(g_scan->first)) {
                 Names found;
-                for (const auto& [name, actors] : g_scan->second) {
-                    if (name.starts_with(key)) found.emplace(name, actors);
+                for (const auto& [name, group] : g_scan->second) {
+                    if (name.starts_with(key)) found.emplace(name, group);
                 }
                 return found;
             }
             Names found;
-            auto* npcType = Actors::NpcType();  // before the lock: a lookup takes it too
-            const auto& [forms, lock] = RE::TESForm::GetAllForms();
-            const RE::BSReadLockGuard guard{ lock };
-            if (!forms || !npcType) return found;
-            for (const auto& [formId, form] : *forms) {
-                if (!form || form->GetFormType() != RE::FormType::ActorCharacter) continue;
-                auto* actor = static_cast<RE::Actor*>(form);
-                if (actor->IsPlayerRef() || actor->IsDeleted() || actor->IsDisabled() || actor->IsDead()) continue;
-                const char* name = actor->GetDisplayFullName();
-                if (!name || !*name || !StartsWith(name, prefix)) continue;
-                if (Actors::IsNpcRace(actor, npcType)) found[Lower(name)].push_back(actor);
+            AddRegistered(found, prefix);
+            // Only the actors are taken under the form map's lock: nothing is called on them while it's held.
+            std::vector<RE::Actor*> actors;
+            {
+                const auto& [forms, lock] = RE::TESForm::GetAllForms();
+                const RE::BSReadLockGuard guard{ lock };
+                if (!forms) return found;
+                for (const auto& [formId, form] : *forms) {
+                    if (form && form->GetFormType() == RE::FormType::ActorCharacter) actors.push_back(static_cast<RE::Actor*>(form));
+                }
             }
+            std::size_t added = 0;
+            for (auto* actor : actors) {
+                if (!IsNamedPerson(actor) || actor->IsDead()) continue;
+                const auto name = OwnName(actor);
+                if (name.empty() || !StartsWith(name, prefix)) continue;
+                Add(found, name, actor);
+                ++added;
+            }
+            SKSE::log::debug("[Recipients] Form map: {} actor(s), {} named \"{}...\" by their own name", actors.size(), added, prefix);
             g_scan.emplace(key, found);
             return found;
         }
@@ -180,12 +265,12 @@ namespace PhysicalLetters::Recipients {
                 auto& uuid = g_uuids[formId];
                 if (uuid.empty()) uuid = SkyrimNet::UuidForFormId(formId);
                 if (uuid.empty()) {
-                    SKSE::log::warn("[Recipients] No SkyrimNet UUID for {} (0x{:X})", actor->GetDisplayFullName(), formId);
+                    SKSE::log::warn("[Recipients] No SkyrimNet UUID for {} (0x{:X})", OwnName(actor), formId);
                     continue;
                 }
                 auto& name = g_names[formId];
                 if (name.empty()) name = SkyrimNet::ActorName(uuid);
-                if (name.empty()) name = actor->GetDisplayFullName();
+                if (name.empty()) name = OwnName(actor);
                 out.push_back({ .actor = actor, .uuid = uuid, .name = name });
             }
             std::size_t digits = kNumberDigits;
@@ -227,7 +312,7 @@ namespace PhysicalLetters::Recipients {
             const auto actors = ActorsStarting(name);
             const auto it = actors.find(Lower(name));
             if (it == actors.end()) return {};
-            const auto people = People(it->second, true);
+            const auto people = People(it->second.actors, true);
             if (people.size() > kMaxPeople) {
                 SKSE::log::debug("[Recipients] {} people named \"{}\": too many to address", people.size(), name);
                 return { .tooMany = true };
@@ -258,11 +343,11 @@ namespace PhysicalLetters::Recipients {
         const auto comma = start.find(',');
         if (comma == std::string::npos) {
             const std::string typed = Trim(start);
-            for (const auto& [key, actors] : ActorsStarting(start)) {
-                const std::string name = actors.front()->GetDisplayFullName();
+            for (const auto& [key, group] : ActorsStarting(start)) {
+                const std::string& name = group.name;
                 if (_stricmp(name.c_str(), typed.c_str()) != 0) {
                     // An incomplete name: SkyrimNet isn't asked about generic NPCs yet (docs/WRITING.md).
-                    const auto people = People(actors, false);
+                    const auto people = People(group.actors, false);
                     if (!people.empty() && people.size() <= kMaxPeople) out.push_back(name.substr(start.size()));
                 } else if (typed == start) {
                     // A complete name: its people's addresses, first.

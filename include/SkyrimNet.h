@@ -84,7 +84,7 @@ namespace PhysicalLetters::SkyrimNet {
                       const std::vector<RE::FormID>& audience);
     bool CanRegisterEvents();
 
-    // Whether this SkyrimNet has PublicSearchActors (letters between NPCs need it).
+    // Whether this SkyrimNet has PublicSearchActors (letters between NPCs need it; the "To:" line uses it).
     bool CanSearchActors();
     // Actors SkyrimNet has registered in this save whose name contains `name` ("" = all), best
     // match first: [{ uuid (number), formId, name, isPlayer }].  Same-named actors are all

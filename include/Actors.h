@@ -36,11 +36,13 @@ namespace PhysicalLetters::Actors {
         return race && npcType && race->HasKeyword(npcType);
     }
 
-    // Someone who can write: an NPC race with a voice.
+    // Someone who can write: an NPC race, or a playable one (a mod's own race may lack the keyword), with a voice.
     inline bool IsPerson(RE::Actor* actor)
     {
         auto* base = actor ? actor->GetActorBase() : nullptr;
-        return IsNpcRace(actor) && base && base->voiceType;
+        auto* race = actor ? actor->GetRace() : nullptr;
+        const bool people = IsNpcRace(actor) || (race && race->data.flags.any(RE::RACE_DATA::Flag::kPlayable));
+        return people && base && base->voiceType;
     }
 
 } // namespace PhysicalLetters::Actors

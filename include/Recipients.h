@@ -33,7 +33,8 @@ namespace PhysicalLetters::Recipients {
     // A writing session begins: SkyrimNet's answers from the last one are forgotten.
     void Reset();
 
-    // The line changed (each onChange and save): the form map is scanned again, once, for what follows.
+    // The line changed (each onChange and save): SkyrimNet's actors are searched and the form map scanned again,
+    // once, for what follows.
     void NewText();
 
     // What could follow the line as typed, best first, for Ink & Quill's suggestions (docs/WRITING.md#the-name-as-you-type):
