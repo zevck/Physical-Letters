@@ -165,12 +165,24 @@ namespace PhysicalLetters {
                 in_reply_to     TEXT NOT NULL DEFAULT '',
                 blood           TEXT NOT NULL DEFAULT '',
                 address         TEXT NOT NULL DEFAULT '',
-                blood_heading   INTEGER NOT NULL DEFAULT 0
+                blood_heading   INTEGER NOT NULL DEFAULT 0,
+                signed_uuid     TEXT NOT NULL DEFAULT '',
+                signed_name     TEXT NOT NULL DEFAULT '',
+                signed_address  TEXT NOT NULL DEFAULT '',
+                special_ink     INTEGER NOT NULL DEFAULT 0,
+                forgery         INTEGER NOT NULL DEFAULT 0,
+                anonymous       INTEGER NOT NULL DEFAULT 0
             );
         )") && AddColumn("ALTER TABLE letters ADD COLUMN in_reply_to TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN blood TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN address TEXT NOT NULL DEFAULT '';") &&
-               AddColumn("ALTER TABLE letters ADD COLUMN blood_heading INTEGER NOT NULL DEFAULT 0;");
+               AddColumn("ALTER TABLE letters ADD COLUMN blood_heading INTEGER NOT NULL DEFAULT 0;") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN signed_uuid TEXT NOT NULL DEFAULT '';") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN signed_name TEXT NOT NULL DEFAULT '';") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN signed_address TEXT NOT NULL DEFAULT '';") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN special_ink INTEGER NOT NULL DEFAULT 0;") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN forgery INTEGER NOT NULL DEFAULT 0;") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN anonymous INTEGER NOT NULL DEFAULT 0;");
     }
 
     bool LetterDB::AddColumn(const char* sql)
@@ -192,7 +204,8 @@ namespace PhysicalLetters {
         if (!db_) return false;
         Statement s{ db_,
                      "INSERT OR REPLACE INTO letters (letter_id, author_uuid, author_name, recipient_uuid, "
-                     "recipient_name, body, written_at, in_reply_to, blood, address, blood_heading) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, signed_uuid, signed_name, "
+                     "signed_address, special_ink, forgery, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                      "Insert" };
         return s.Bind(1, letter.id)
             .Bind(2, letter.authorUuid)
@@ -205,12 +218,19 @@ namespace PhysicalLetters {
             .Bind(9, letter.blood)
             .Bind(10, letter.address)
             .Bind(11, letter.bloodHeading ? 1 : 0)
+            .Bind(12, letter.signedUuid)
+            .Bind(13, letter.signedName)
+            .Bind(14, letter.signedAddress)
+            .Bind(15, letter.specialInk ? 1 : 0)
+            .Bind(16, letter.forgery)
+            .Bind(17, letter.anonymous ? 1 : 0)
             .Run();
     }
 
     namespace {
         constexpr auto kLetterColumns =
-            "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to, blood, address, blood_heading";
+            "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, "
+            "signed_uuid, signed_name, signed_address, special_ink, forgery, anonymous";
 
         Letter ReadLetter(const Statement& s)
         {
@@ -224,7 +244,13 @@ namespace PhysicalLetters {
                            .inReplyTo = s.Text(7),
                            .blood = s.Text(8),
                            .address = s.Text(9),
-                           .bloodHeading = s.Int(10) != 0 };
+                           .bloodHeading = s.Int(10) != 0,
+                           .signedUuid = s.Text(11),
+                           .signedName = s.Text(12),
+                           .signedAddress = s.Text(13),
+                           .specialInk = s.Int(14) != 0,
+                           .forgery = s.Int(15),
+                           .anonymous = s.Int(16) != 0 };
         }
     }
 

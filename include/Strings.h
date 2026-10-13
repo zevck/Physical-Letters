@@ -86,6 +86,18 @@ namespace PhysicalLetters::Strings {
         return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
     }
 
+    // The player's letter's first line, before its sender's name (docs/FORGERY.md#the-from-line): "From:", "差出人：".
+    inline std::string FromLabelText()
+    {
+        return Locale::Text("From", "From:");
+    }
+
+    inline std::string FromLabel()
+    {
+        auto label = FromLabelText();
+        return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
+    }
+
     // The box a parchment opens with when the player can choose how to write (docs/WRITING.md#starting).
     inline constexpr std::string_view kWriteHow = "How will you write this letter?";
     inline constexpr std::string_view kWriteSpecialInk = "Special Ink";
@@ -122,6 +134,16 @@ namespace PhysicalLetters::Strings {
     {
         return std::format("Nobody named \"{}\" fits \"{}\". The addresses for that name: {}.", name, typed, addresses);
     }
+    // The "From:" line, refused (docs/FORGERY.md#the-from-line).
+    inline std::string WriteSenderTooMany(const std::string& name)
+    {
+        return std::format("Too many people are named \"{}\" to sign as one of them.", name);
+    }
+    inline std::string WriteSenderDead(const std::string& name)
+    {
+        return std::format("{} is dead: a letter can't come from them.", name);
+    }
+    inline constexpr std::string_view kWriteSenderIsRecipient = "A letter can't be from the person it's to.";
 
     // An address's place when the recipient's home can't be placed under a hold (docs/WRITING.md#the-recipient).
     inline constexpr std::string_view kNoPlace = "Tamriel";

@@ -95,10 +95,10 @@ function Setup()
     Slider(23, "Courier.IntimidateSpeech", "$PL_RoadSpeech", "$PL_TipRoadSpeech", 5)
     Slider(24, "Courier.RobberyBounty", "$PL_RoadBounty", "$PL_TipRoadBounty", 5)
 
-    _toggleNames = new string[9]
-    _toggleLabels = new string[9]
-    _toggleTips = new string[9]
-    _toggleOids = new int[9]
+    _toggleNames = new string[10]
+    _toggleLabels = new string[10]
+    _toggleTips = new string[10]
+    _toggleOids = new int[10]
     Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
     Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
     Toggle(2, "NpcToNpc.Enabled", "$PL_N2n", "$PL_TipN2n")
@@ -108,6 +108,7 @@ function Setup()
     Toggle(6, "Delivery.HandInDialogue", "$PL_HandIn", "$PL_TipHandIn")
     Toggle(7, "NpcLetters.Replies", "$PL_NpcReplies", "$PL_TipNpcReplies")
     Toggle(8, "Writing.Blood", "$PL_Blood", "$PL_TipBlood")
+    Toggle(9, "NpcLetters.ForgeryReplies", "$PL_ForgeryReplies", "$PL_TipForgeryReplies")
     _recipientsOid = -1
 
     _recipientChoices = new string[3]
@@ -184,6 +185,7 @@ event OnPageReset(string page)
         AddHeader("$PL_HeaderGeneral")
         AddToggle(0)
         AddToggle(7)
+        AddToggle(9)
         AddToggle(2)
         _recipientsOid = AddMenuOption("$PL_Recipients", _recipientChoices[GetSetting("Writing.GenericRecipients")])
         AddToggle(8)

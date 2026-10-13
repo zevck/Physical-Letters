@@ -163,8 +163,30 @@ namespace PhysicalLetters::Recipients {
                              entries.size(), prefix, kept, runtime, unmatched, rejected);
         }
 
+        // Every actor in memory (persistent ones anywhere, the rest in loaded cells), taken under the form map's lock;
+        // nothing is called on them while it's held.
+        std::vector<RE::Actor*> AllActors()
+        {
+            std::vector<RE::Actor*> actors;
+            const auto& [forms, lock] = RE::TESForm::GetAllForms();
+            const RE::BSReadLockGuard guard{ lock };
+            if (!forms) return actors;
+            for (const auto& [formId, form] : *forms) {
+                if (form && form->GetFormType() == RE::FormType::ActorCharacter) actors.push_back(static_cast<RE::Actor*>(form));
+            }
+            return actors;
+        }
+
+        // A unique person of this own name is dead (nobody alive has it: the caller looked them up first).
+        bool IsDeadPerson(const std::string& name)
+        {
+            return std::ranges::any_of(AllActors(), [&name](RE::Actor* actor) {
+                return IsNamedPerson(actor) && IsUnique(actor) && actor->IsDead() && _stricmp(OwnName(actor).c_str(), name.c_str()) == 0;
+            });
+        }
+
         // Every actor whose name starts with `prefix`: SkyrimNet's under its names, then every person in memory
-        // (persistent ones anywhere, the rest in loaded cells) under their own.
+        // under their own.
         Names ActorsStarting(std::string_view prefix)
         {
             const std::string key = Lower(std::string{ prefix });
@@ -177,16 +199,7 @@ namespace PhysicalLetters::Recipients {
             }
             Names found;
             AddRegistered(found, prefix);
-            // Only the actors are taken under the form map's lock: nothing is called on them while it's held.
-            std::vector<RE::Actor*> actors;
-            {
-                const auto& [forms, lock] = RE::TESForm::GetAllForms();
-                const RE::BSReadLockGuard guard{ lock };
-                if (!forms) return found;
-                for (const auto& [formId, form] : *forms) {
-                    if (form && form->GetFormType() == RE::FormType::ActorCharacter) actors.push_back(static_cast<RE::Actor*>(form));
-                }
-            }
+            const auto actors = AllActors();
             std::size_t added = 0;
             for (auto* actor : actors) {
                 if (!IsNamedPerson(actor) || actor->IsDead()) continue;
@@ -392,6 +405,27 @@ namespace PhysicalLetters::Recipients {
         if (people.size() > 1) return Strings::WriteSeveral(name, Listed(people), people.front().address);
         if (rest.empty()) return Strings::WriteAddress(name, people.front().address);
         return Strings::WriteNoneAt(name, rest, Listed(people));
+    }
+
+    std::variant<Recipient, Signature, std::string> ResolveSender(const std::string& line, const std::string& recipientUuid)
+    {
+        const std::string start = Trim(WithoutBlood(line));
+        const auto comma = start.find(',');
+        const std::string name = Trim(start.substr(0, comma));
+        if (name.empty()) return Signature{};
+        const auto found = Lookup(name);
+        if (found.tooMany) return Strings::WriteSenderTooMany(name);
+        if (found.people.empty()) {
+            // Nobody alive by that name: a signature, unless it's a dead person's.
+            if (IsDeadPerson(name)) return Strings::WriteSenderDead(name);
+            return Signature{ .name = start };
+        }
+        auto resolved = Resolve(line);
+        if (const auto* person = std::get_if<Recipient>(&resolved)) {
+            if (person->uuid == recipientUuid) return std::string{ Strings::kWriteSenderIsRecipient };
+            return *person;
+        }
+        return std::get<std::string>(resolved);
     }
 
 } // namespace PhysicalLetters::Recipients

@@ -42,7 +42,18 @@ namespace PhysicalLetters {
         std::string address;
         // The player's letter begun in blood: its "To:" line is red (decided when writing begins).
         bool bloodHeading = false;
+        // The player's letter whose "From:" line doesn't name them (docs/FORGERY.md): a person (UUID, name, address) or,
+        // with no UUID, a name that's nobody's.  "" when they signed with their own name.
+        std::string signedUuid;
+        std::string signedName;
+        std::string signedAddress;
+        bool specialInk = false;  // the player's letter, saved in Special Ink
+        int forgery = 0;          // a forgery's roll at save: kForgeryNone, kForgeryPasses or kForgerySeen
+        bool anonymous = false;   // the player's letter with an empty "From:" line: no name at all
     };
+
+    // Letter::forgery (docs/FORGERY.md#the-roll).
+    inline constexpr int kForgeryNone = 0, kForgeryPasses = 1, kForgerySeen = 2;
 
     // SQLite store for letters, one per SkyrimNet save folder:
     //   Data/SKSE/Plugins/PhysicalLetters/SkyrimNet-<save id>/letters.db

@@ -41,7 +41,11 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `in_reply_to` | For a reply, the id of the letter it answers ('' otherwise; replies from before this column have '' too, and so don't appear in the correspondence) |
 | `blood` | A letter the player wrote partly in blood: the body with that text between U+E000 and U+E001, for the book to show red; '' otherwise ([WRITING.md](WRITING.md#the-text)) |
 | `address` | A letter the player wrote: the recipient's address after their name on the "To:" line ("6391 Dawnstar", [WRITING.md](WRITING.md#the-recipient)); '' otherwise, and for letters from before addresses |
-| `blood_heading` | 1 when the player began the letter in blood: its "To:" line is red ([WRITING.md](WRITING.md#the-text)); 0 otherwise |
+| `blood_heading` | 1 when the player began the letter in blood: its "From:" and "To:" lines are red ([WRITING.md](WRITING.md#the-text)); 0 otherwise |
+| `signed_uuid`, `signed_name`, `signed_address` | The player's letter whose "From:" line doesn't name them ([FORGERY.md](FORGERY.md)): a person's UUID, name and address, or only a name that's nobody's; empty when they signed with their own name, and for every other letter |
+| `anonymous` | 1 when the player's letter has an empty "From:" line ([FORGERY.md](FORGERY.md#the-from-line)); 0 otherwise |
+| `special_ink` | 1 when the player's letter was saved in Special Ink; 0 otherwise |
+| `forgery` | A forgery's roll at save ([FORGERY.md](FORGERY.md#the-roll)): 0 none (not a forgery), 1 it passes for the named person's, 2 seen through |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 

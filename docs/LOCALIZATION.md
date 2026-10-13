@@ -20,6 +20,7 @@ All in `[Letters]`, UTF-8. A line starting with `;` is a comment; a `;` later in
 
 | Key | English | Where |
 |---|---|---|
+| `From` | `From:` | The player's letter's first line, before its sender ([FORGERY.md](FORGERY.md#the-from-line)). A space follows it, unless it ends in a full-width colon. |
 | `To` | `To:` | The player's letter's first line, before the recipient ([WRITING.md](WRITING.md#the-text)). A space follows it, unless it ends in a full-width colon (Chinese "收件人：", Japanese "宛先：") |
 | `Letter` | `Letter` | A letter's item name when the name of who it's to or from is unknown |
 | `LetterTo` | `Letter to {Name}` | The item name of the player's letters and letters between NPCs; `{Name}` is the recipient |
@@ -39,7 +40,7 @@ A letter is always one letter, so number never varies. The French "To:" is "Dest
 
 ## Letters already written
 
-Nothing language-dependent is stored for the text: the "To:" label, the card and the return note are built every time. Item names are kept in the co-save (`DynamicForms`), so `Letters::AttachTexts` names each letter again in the current language once LetterDB is open, and the save keeps the new name. Until then (moments after a load) a letter shows the name it was saved with.
+Nothing language-dependent is stored for the text: the "From:" and "To:" labels, the card and the return note are built every time. Item names are kept in the co-save (`DynamicForms`), so `Letters::AttachTexts` names each letter again in the current language once LetterDB is open, and the save keeps the new name. Until then (moments after a load) a letter shows the name it was saved with.
 
 ## Not localized yet
 

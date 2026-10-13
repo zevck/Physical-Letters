@@ -45,4 +45,13 @@ namespace PhysicalLetters::Recipients {
     // message for the player).
     std::variant<Recipient, std::string> Resolve(const std::string& line);
 
+    // A "From:" line's name that's nobody's ("The Dark Brotherhood"), or none (an anonymous letter): no person behind it.
+    struct Signature {
+        std::string name;
+    };
+
+    // Whom the "From:" line names, besides the player (docs/FORGERY.md#the-from-line): a person, as Resolve (the whole
+    // address); a name that's nobody's; or why neither (a dead person's, `recipientUuid`'s own, or one Resolve refuses).
+    std::variant<Recipient, Signature, std::string> ResolveSender(const std::string& line, const std::string& recipientUuid);
+
 } // namespace PhysicalLetters::Recipients

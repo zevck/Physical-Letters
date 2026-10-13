@@ -87,13 +87,15 @@ namespace PhysicalLetters {
         static constexpr int kGenericUniqueOnly = 0, kGenericKnown = 1, kGenericAnyone = 2;
         // Letters can be written in blood when there's no ink (docs/WRITING.md#starting); Ink & Quill leaves it to us.
         static constexpr Setting kWritingBlood { "Writing", "Blood", 1, 0, 1 };
+        // Someone fooled by a forgery may write back to the person it named (docs/FORGERY.md).
+        static constexpr Setting kForgeryReplies { "NpcLetters", "ForgeryReplies", 1, 0, 1 };
         // INI order.
         static constexpr Setting kSettings[] = {
             kDebugLog, kFontSize, kFont, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcReplies, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcMissDays,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kCourierEnabled, kCourierWaitHours,
-            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue, kGenericRecipients, kWritingBlood,
+            kRoadEncounters, kRoadCooldown, kRoadIntimidate, kRobberyBounty, kHandInDialogue, kGenericRecipients, kWritingBlood, kForgeryReplies,
         };
 
         static Config* GetSingleton()

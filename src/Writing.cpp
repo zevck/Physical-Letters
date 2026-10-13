@@ -90,19 +90,57 @@ namespace PhysicalLetters::Writing {
             g_api->ReplySave(reply, false, std::string{ message }.c_str(), nullptr);
         }
 
-        // Run 0: the recipient's name (its first line); run 1: the body.  A save makes a new letter
+        // The "From:" line's sender, besides the player.  An edit's line as it was loaded is its letter's sender, as the
+        // "To:" line (docs/FORGERY.md#the-from-line).
+        std::variant<Recipients::Recipient, Recipients::Signature, std::string> ResolveFrom(const std::string& line,
+                                                                                            const std::string& recipientUuid)
+        {
+            if (g_letter && (g_letter->anonymous || !g_letter->signedName.empty())) {
+                const auto& l = *g_letter;
+                const std::string loaded = l.signedAddress.empty() ? l.signedName : l.signedName + ", " + l.signedAddress;
+                if (_stricmp(Trim(WithoutBlood(line)).c_str(), loaded.c_str()) == 0) {
+                    if (l.signedUuid.empty()) return Recipients::Signature{ .name = l.signedName };
+                    if (l.signedUuid != recipientUuid) {
+                        return Recipients::Recipient{ .uuid = l.signedUuid, .name = l.signedName, .address = l.signedAddress };
+                    }
+                }
+            }
+            return Recipients::ResolveSender(line, recipientUuid);
+        }
+
+        // A forgery passes for the named person's hand (docs/FORGERY.md#the-roll): 25% at Pickpocket 15, 90% at 100, in a
+        // line between, held at the ends.  Always in Special Ink.
+        int RollForgery(bool specialInk)
+        {
+            constexpr float kLowSkill = 15.0f, kHighSkill = 100.0f;
+            constexpr float kLowChance = 25.0f, kHighChance = 90.0f;
+            if (specialInk) {
+                SKSE::log::info("[Writing] A forgery in Special Ink: it passes");
+                return kForgeryPasses;
+            }
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            const float skill = player ? player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kPickpocket) : kLowSkill;
+            const float chance = std::clamp(kLowChance + (skill - kLowSkill) * (kHighChance - kLowChance) / (kHighSkill - kLowSkill),
+                                            kLowChance, kHighChance);
+            static std::mt19937 rng{ std::random_device{}() };
+            const bool passes = std::uniform_real_distribution<float>(0.0f, 100.0f)(rng) < chance;
+            SKSE::log::info("[Writing] A forgery: Pickpocket {:.0f}, {:.0f}% to pass: {}", skill, chance, passes ? "passes" : "seen through");
+            return passes ? kForgeryPasses : kForgerySeen;
+        }
+
+        // Runs: 0 the "From:" line, 1 the "To:" line, 2 the body (none while it's locked).  A save makes a new letter
         // record, the parchment's or the edited letter's (docs/WRITING.md#saving).
         void OnSave(void* user, const char* const* runs, std::int32_t count, IQ_SaveReply* reply)
         {
             if (!IsCurrent(user)) return;  // no answer: refused
-            // One run: the body is still locked, waiting for a recipient.
-            if ((count != 1 && count != 2) || !runs[0] || (count == 2 && !runs[1])) {
-                SKSE::log::error("[Writing] {} runs to save, not 1 or 2", count);
+            // Two runs: the body is still locked, waiting for a recipient.
+            if ((count != 2 && count != 3) || !runs[0] || !runs[1] || (count == 3 && !runs[2])) {
+                SKSE::log::error("[Writing] {} runs to save, not 2 or 3", count);
                 return Refuse(reply, Strings::kWriteFailed);
             }
             if (!Session::IsReady()) return Refuse(reply, Strings::kWriteNotReady);
             // Lines typed after the name (Enter keeps the caret in its run) begin the body.
-            const std::string_view nameRun{ runs[0] };
+            const std::string_view nameRun{ runs[1] };
             const auto lineEnd = nameRun.find('\n');
             const std::string line{ nameRun.substr(0, lineEnd) };
             // The recipient before the body: an unaddressed letter says so, not that it's empty.
@@ -110,12 +148,31 @@ namespace PhysicalLetters::Writing {
             auto found = ResolveLine(line);
             if (const auto* message = std::get_if<std::string>(&found)) return Refuse(reply, *message);
             const auto& recipient = std::get<Recipients::Recipient>(found);
+            // The sender: the player by their exact name, else whom the line names (docs/FORGERY.md#the-from-line).
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            const std::string_view fromRun{ runs[0] };
+            const std::string fromLine = Trim(WithoutBlood(std::string{ fromRun.substr(0, fromRun.find('\n')) }));
+            std::string signedUuid, signedName, signedAddress;
+            bool anonymous = false;
+            if (fromLine != player->GetName()) {
+                auto sender = ResolveFrom(fromLine, recipient.uuid);
+                if (const auto* message = std::get_if<std::string>(&sender)) return Refuse(reply, *message);
+                if (const auto* person = std::get_if<Recipients::Recipient>(&sender)) {
+                    signedUuid = person->uuid;
+                    signedName = person->name;
+                    signedAddress = person->address;
+                } else {
+                    signedName = std::get<Recipients::Signature>(sender).name;
+                    anonymous = signedName.empty();
+                }
+            }
             const std::string rest = lineEnd == std::string_view::npos ? std::string{} : Trim(nameRun.substr(lineEnd + 1));
             // Only the end is trimmed: blank lines the player puts before the first paragraph are kept.
-            const std::string after = count == 2 ? TrimRight(runs[1]) : std::string{};
+            const std::string after = count == 3 ? TrimRight(runs[2]) : std::string{};
             const std::string marked = rest.empty() ? after : after.empty() ? rest : rest + "\n\n" + after;
             const std::string body = TrimRight(WithoutBlood(marked));
-            SKSE::log::info("[Writing] Saving: \"{}\", body {} bytes ({} typed after the name)", line, body.size(), rest.size());
+            SKSE::log::info("[Writing] Saving: \"{}\" from \"{}\", body {} bytes ({} typed after the name)", line, fromLine,
+                            body.size(), rest.size());
             if (Trim(body).empty()) return Refuse(reply, Strings::kWriteEmpty);
             const auto playerUuid = SkyrimNet::UuidForFormId(kPlayer);
             if (playerUuid.empty()) {
@@ -124,14 +181,15 @@ namespace PhysicalLetters::Writing {
             }
             const std::string& recipientName = recipient.name;
             const std::string blood = marked != body ? marked : std::string{};
+            const bool specialInk = g_api->InSpecialInk();
 
             if (g_letter && g_letter->recipientUuid == recipient.uuid && g_letter->address == recipient.address &&
-                g_letter->body == body && g_letter->blood == blood) {
-                // Only the name's spelling or spacing changed: the letter is as it was.
+                g_letter->body == body && g_letter->blood == blood && g_letter->signedUuid == signedUuid &&
+                g_letter->signedName == signedName && g_letter->signedAddress == signedAddress && g_letter->anonymous == anonymous) {
+                // Only the names' spelling or spacing changed: the letter is as it was.
                 g_api->ReplySave(reply, true, "", TextHook::ForBookMenu(Letters::Reading(*g_letter)).c_str());
                 return;
             }
-            auto* player = RE::PlayerCharacter::GetSingleton();
             const Letter letter{ .id = Letters::NewId(),
                                  .authorUuid = playerUuid,
                                  .authorName = player->GetName(),
@@ -141,7 +199,13 @@ namespace PhysicalLetters::Writing {
                                  .writtenAt = RE::Calendar::GetSingleton()->GetDaysPassed(),
                                  .blood = blood,
                                  .address = recipient.address,
-                                 .bloodHeading = g_bloodHeading };
+                                 .bloodHeading = g_bloodHeading,
+                                 .signedUuid = signedUuid,
+                                 .signedName = signedName,
+                                 .signedAddress = signedAddress,
+                                 .specialInk = specialInk,
+                                 .forgery = signedUuid.empty() ? kForgeryNone : RollForgery(specialInk),
+                                 .anonymous = anonymous };
             const std::string reading = TextHook::ForBookMenu(Letters::Reading(letter));
             if (g_book) {
                 if (!Letters::Rewrite(RE::TESForm::LookupByID<RE::TESObjectBOOK>(g_book), letter)) {
@@ -182,45 +246,73 @@ namespace PhysicalLetters::Writing {
             return MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
         }
 
-        // The player changed a run, in the key's own UI task: with the caret at the end of the "To:" line,
-        // Ink & Quill's suggestions for it (Tab cycles, Right accepts).
+        // Ink & Quill's text again with these two lines, the body open or locked (its text kept here while locked), the
+        // caret at `caretRun` and `caretOffset` (-1: its end).
+        bool ReloadLines(const std::string& fromLine, const std::string& toLine, const std::vector<std::string>& runs, bool open,
+                         std::int32_t caretRun, std::int32_t caretOffset)
+        {
+            if (runs.size() == 3) g_lockedBody = runs[2];
+            const Letter shown{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer),
+                                .authorName = fromLine,
+                                .recipientName = toLine,
+                                .blood = g_lockedBody,
+                                .bloodHeading = g_bloodHeading };
+            const std::string marked = Letters::Marked(shown, !open);
+            const std::string reading = g_letter ? TextHook::ForBookMenu(Letters::Reading(*g_letter)) : std::string{ kParchmentText };
+            // A reopened body counts as saved with its text at the session's start, if it had one: unchanged, it's no save
+            // and no ink (Ink & Quill's from = -2 - k).
+            const std::int32_t from[] = { 0, 1, runs.size() == 3 ? 2 : g_bodyLockedAtStart ? -1 : -2 - 2 };
+            if (!g_api->Reload(marked.c_str(), reading.c_str(), from, open ? 3 : 2, caretRun, caretOffset)) {
+                SKSE::log::error("[Writing] Ink & Quill couldn't reload the letter's first lines");
+                return false;
+            }
+            return true;
+        }
+
+        // Ink & Quill's suggestions for a name line, with the caret at its end (counted as Ink & Quill does, without
+        // blood markers): a completion goes after it.
+        void Suggest(const std::string& line, std::int32_t caretOffset, bool force)
+        {
+            std::vector<std::string> completions;
+            if (force || caretOffset == Utf16Length(WithoutBlood(line))) completions = Recipients::Completions(line);
+            std::vector<const char*> texts;
+            for (const auto& text : completions) texts.push_back(text.c_str());
+            g_api->Suggest(texts.data(), static_cast<std::int32_t>(texts.size()));
+        }
+
+        // The player changed a run, in the key's own UI task: the "From:" line (run 0) or the "To:" line (run 1), each one
+        // line with Ink & Quill's suggestions (Tab cycles, Right accepts).
         void OnChange(void* user, std::int32_t run, std::int32_t caretOffset)
         {
-            if (!IsCurrent(user) || run != 0) return;
+            if (!IsCurrent(user) || (run != 0 && run != 1)) return;
             std::vector<std::string> runs;
             const auto count = g_api->CurrentRuns(
                 [](void* user, std::int32_t, const char* text) { static_cast<std::vector<std::string>*>(user)->emplace_back(text); },
                 &runs);
-            if ((count != 1 && count != 2) || runs.size() != static_cast<std::size_t>(count)) {
-                SKSE::log::error("[Writing] {} runs for the name's suggestions, not 1 or 2", count);
+            if ((count != 2 && count != 3) || runs.size() != static_cast<std::size_t>(count)) {
+                SKSE::log::error("[Writing] {} runs for the names' suggestions, not 2 or 3", count);
                 return;
             }
-            // One line: a line break typed (Enter) or pasted is taken out before it's drawn; Enter on a line
-            // that names someone goes on to the body.
-            std::string line = runs[0];
+            // One line: a line break typed (Enter) or pasted is taken out before it's drawn.
+            std::string line = runs[run];
             const bool broke = line.find_first_of("\r\n") != std::string::npos;
             std::erase(line, '\n');
             std::erase(line, '\r');
-            // The body is open only while the line names one person: locked, its text is kept here.
             Recipients::NewText();
+            if (run == 0) {
+                // Enter on the "From:" line goes on to the "To:" line.
+                if (broke) {
+                    ReloadLines(line, runs[1], runs, !g_bodyLocked, 1, -1);
+                    return;
+                }
+                Suggest(line, caretOffset, false);
+                return;
+            }
+            // The body is open only while the "To:" line names one person; Enter on a line that does goes on to it.
             const bool named = std::holds_alternative<Recipients::Recipient>(ResolveLine(line));
             const bool toBody = broke && named;
             if (broke || named == g_bodyLocked) {
-                if (runs.size() == 2) g_lockedBody = runs[1];
-                const Letter shown{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer),
-                                    .recipientName = line,
-                                    .blood = g_lockedBody,
-                                    .bloodHeading = g_bloodHeading };
-                const std::string marked = Letters::Marked(shown, !named);
-                const std::string reading = g_letter ? TextHook::ForBookMenu(Letters::Reading(*g_letter)) : std::string{ kParchmentText };
-                // A reopened body counts as saved with its text at the session's start, if it had one: unchanged,
-                // it's no save and no ink (Ink & Quill's from = -2 - k).
-                const std::int32_t from[] = { 0, runs.size() == 2 ? 1 : g_bodyLockedAtStart ? -1 : -2 - 1 };
-                if (!g_api->Reload(marked.c_str(), reading.c_str(), from, named ? 2 : 1, toBody ? 1 : 0,
-                                   toBody ? 0 : (broke ? -1 : caretOffset))) {
-                    SKSE::log::error("[Writing] Ink & Quill couldn't reload the letter's \"To:\" line");
-                    return;
-                }
+                if (!ReloadLines(runs[0], line, runs, named, toBody ? 2 : 1, toBody ? 0 : (broke ? -1 : caretOffset))) return;
                 if (named == g_bodyLocked) {
                     SKSE::log::info("[Writing] \"{}\" {}: the body is {}", line, named ? "names a recipient" : "names nobody",
                                     named ? "open" : "locked");
@@ -228,13 +320,7 @@ namespace PhysicalLetters::Writing {
                 g_bodyLocked = !named;
                 if (toBody) return;
             }
-            // The caret at the line's end (counted as Ink & Quill does, without blood markers): a completion
-            // goes after it.
-            std::vector<std::string> completions;
-            if (broke || caretOffset == Utf16Length(WithoutBlood(line))) completions = Recipients::Completions(line);
-            std::vector<const char*> texts;
-            for (const auto& text : completions) texts.push_back(text.c_str());
-            g_api->Suggest(texts.data(), static_cast<std::int32_t>(texts.size()));
+            Suggest(line, caretOffset, broke);
         }
 
         // Ink & Quill's session over `shown`, the caret at the end of run `caretRun` (-1: the page being
@@ -274,12 +360,15 @@ namespace PhysicalLetters::Writing {
             return begun;
         }
 
-        // A new letter on parchment, the caret after "To: ", written the way chosen.  A blood one's "To:" line is red
+        // A new letter on parchment, written the way chosen.  A blood one's "To:" line is red
         // (as Physical Diaries' headings).
         bool BeginParchment(std::int32_t way)
         {
-            const Letter blank{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer), .bloodHeading = way == IQ_WRITE_BLOOD };
-            return Begin(blank, 0, 0, std::nullopt, true, way);
+            // "From:" is the player's name, theirs to change (docs/FORGERY.md#the-from-line); the caret starts on "To:".
+            const Letter blank{ .authorUuid = SkyrimNet::UuidForFormId(kPlayer),
+                                .authorName = RE::PlayerCharacter::GetSingleton()->GetName(),
+                                .bloodHeading = way == IQ_WRITE_BLOOD };
+            return Begin(blank, 1, 0, std::nullopt, true, way);
         }
 
         // The way-of-writing box's answer: begins if the parchment is still open and nobody is writing.

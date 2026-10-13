@@ -186,8 +186,19 @@ namespace PhysicalLetters::Letters {
             return !letter.authorUuid.empty() && letter.authorUuid == SkyrimNet::UuidForFormId(kPlayer);
         }
 
-        // The player's letters open with "To: <recipient>" (docs/WRITING.md#the-text).  `marked`: Ink & Quill's
-        // marked text; `bodyLocked`: the body is locked too, so the "To:" line is the only run.
+        // The name a letter is signed with: its "From:" line's, else its author's (the item card).
+        const std::string& SignedName(const Letter& letter) { return letter.signedName.empty() ? letter.authorName : letter.signedName; }
+
+        // Whom a letter says it's from: its "From:" line's name (and address), else its author.
+        std::string SenderText(const Letter& letter)
+        {
+            if (letter.anonymous) return {};
+            if (letter.signedName.empty()) return letter.authorName;
+            return letter.signedAddress.empty() ? letter.signedName : std::format("{}, {}", letter.signedName, letter.signedAddress);
+        }
+
+        // The player's letters open with "From: <sender>" and "To: <recipient>" (docs/WRITING.md#the-text).  `marked`:
+        // Ink & Quill's marked text; `bodyLocked`: the body is locked too, so the two lines are the only runs.
         std::string Render(const Letter& letter, bool marked, bool bodyLocked = false)
         {
             const auto lock = [marked](std::string_view text) {
@@ -202,7 +213,8 @@ namespace PhysicalLetters::Letters {
             // Begun in blood: the whole line is red, typed text too (it takes the format before it).
             const std::string red = letter.bloodHeading ? std::string{ kBloodFont } : std::string{};
             const std::string end = (letter.bloodHeading ? "</font>" : "") + std::string{ BlankLine(marked) } + "</font>";
-            std::string out = Font() + red + lock(Strings::ToLabel()) + Escape(Plain(to));
+            std::string out = Font() + red + lock(Strings::FromLabel()) + Escape(Plain(SenderText(letter))) +
+                              lock("\n" + Strings::ToLabel()) + Escape(Plain(to));
             if (marked && bodyLocked) return out + lock(end + body);
             // An empty last lock: an empty body is still a run (text after the last lock is a run
             // only if there is any).
@@ -294,7 +306,7 @@ namespace PhysicalLetters::Letters {
         const auto name = NameFor(letter);
         Configure(book, Template(), name);
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
-        SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, letter.authorName));
+        SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, SignedName(letter)));
         MarkOutgoing(book, letter);
         if (!LetterDB::GetSingleton()->Insert(letter)) {
             SKSE::log::error("[Letters] Letter {} wasn't stored: its text is lost after a reload", letter.id);
@@ -351,7 +363,7 @@ namespace PhysicalLetters::Letters {
         book->SetFullName(name.c_str());
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
         const auto oldId = IdFor(book->GetFormID());
-        SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, letter.authorName));
+        SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, SignedName(letter)));
         MarkOutgoing(book, letter);
         SetReturned(oldId, std::nullopt);
         SKSE::log::info("[Letters] '{}' (0x{:X}) is letter {} now (was {})", name, book->GetFormID(), letter.id, oldId);
@@ -387,7 +399,7 @@ namespace PhysicalLetters::Letters {
                     renamed.displayName = name;
                     DynamicForms::Track(std::move(renamed));
                 }
-                SetEntry(book, record.key, Render(*letter, false), Strings::LetterCard(letter->recipientName, letter->authorName));
+                SetEntry(book, record.key, Render(*letter, false), Strings::LetterCard(letter->recipientName, SignedName(*letter)));
                 MarkOutgoing(book, *letter);
                 ++attached;
             } else {
