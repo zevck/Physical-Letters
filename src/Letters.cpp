@@ -186,8 +186,12 @@ namespace PhysicalLetters::Letters {
             return !letter.authorUuid.empty() && letter.authorUuid == SkyrimNet::UuidForFormId(kPlayer);
         }
 
-        // The name a letter is signed with: its "From:" line's, else its author's (the item card).
-        const std::string& SignedName(const Letter& letter) { return letter.signedName.empty() ? letter.authorName : letter.signedName; }
+        // The item card: whom it's to and the name it's signed with; an anonymous letter's names nobody.
+        std::string CardText(const Letter& letter)
+        {
+            if (letter.anonymous) return Strings::LetterCardTo(letter.recipientName);
+            return Strings::LetterCard(letter.recipientName, letter.signedName.empty() ? letter.authorName : letter.signedName);
+        }
 
         // Whom a letter says it's from: its "From:" line's name (and address), else its author.
         std::string SenderText(const Letter& letter)
@@ -306,7 +310,7 @@ namespace PhysicalLetters::Letters {
         const auto name = NameFor(letter);
         Configure(book, Template(), name);
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
-        SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, SignedName(letter)));
+        SetEntry(book, letter.id, Render(letter, false), CardText(letter));
         MarkOutgoing(book, letter);
         if (!LetterDB::GetSingleton()->Insert(letter)) {
             SKSE::log::error("[Letters] Letter {} wasn't stored: its text is lost after a reload", letter.id);
@@ -323,6 +327,11 @@ namespace PhysicalLetters::Letters {
     std::string Marked(const Letter& letter, bool bodyLocked)
     {
         return Render(letter, true, bodyLocked);
+    }
+
+    std::string AsWritten(std::string_view text)
+    {
+        return Plain(text);
     }
 
     BloodText BloodOf(const Letter& letter)
@@ -353,6 +362,19 @@ namespace PhysicalLetters::Letters {
         return {};
     }
 
+    Sender SenderOf(const Letter& letter)
+    {
+        if (letter.anonymous) return {};
+        if (!letter.signedName.empty()) return { .uuid = letter.signedUuid, .name = letter.signedName };
+        return { .uuid = letter.authorUuid, .name = letter.authorName };
+    }
+
+    std::string ForgerySentence(const Letter& letter)
+    {
+        if (letter.forgery != kForgerySeen) return {};
+        return std::format("The handwriting gives it away: someone else wrote it and signed it with {}'s name.", letter.signedName);
+    }
+
     bool Rewrite(RE::TESObjectBOOK* book, const Letter& letter)
     {
         if (!book || !LetterDB::GetSingleton()->Insert(letter)) {
@@ -363,7 +385,7 @@ namespace PhysicalLetters::Letters {
         book->SetFullName(name.c_str());
         DynamicForms::Track({ .formId = book->GetFormID(), .formType = RE::FormType::Book, .key = letter.id, .displayName = name });
         const auto oldId = IdFor(book->GetFormID());
-        SetEntry(book, letter.id, Render(letter, false), Strings::LetterCard(letter.recipientName, SignedName(letter)));
+        SetEntry(book, letter.id, Render(letter, false), CardText(letter));
         MarkOutgoing(book, letter);
         SetReturned(oldId, std::nullopt);
         SKSE::log::info("[Letters] '{}' (0x{:X}) is letter {} now (was {})", name, book->GetFormID(), letter.id, oldId);
@@ -399,7 +421,7 @@ namespace PhysicalLetters::Letters {
                     renamed.displayName = name;
                     DynamicForms::Track(std::move(renamed));
                 }
-                SetEntry(book, record.key, Render(*letter, false), Strings::LetterCard(letter->recipientName, SignedName(*letter)));
+                SetEntry(book, record.key, Render(*letter, false), CardText(*letter));
                 MarkOutgoing(book, *letter);
                 ++attached;
             } else {

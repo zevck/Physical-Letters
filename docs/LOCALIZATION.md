@@ -21,11 +21,12 @@ All in `[Letters]`, UTF-8. A line starting with `;` is a comment; a `;` later in
 | Key | English | Where |
 |---|---|---|
 | `From` | `From:` | The player's letter's first line, before its sender ([FORGERY.md](FORGERY.md#the-from-line)). A space follows it, unless it ends in a full-width colon. |
-| `To` | `To:` | The player's letter's first line, before the recipient ([WRITING.md](WRITING.md#the-text)). A space follows it, unless it ends in a full-width colon (Chinese "收件人：", Japanese "宛先：") |
+| `To` | `To:` | The player's letter's second line, below "From:", before the recipient ([WRITING.md](WRITING.md#the-text)). A space follows it, unless it ends in a full-width colon (Chinese "收件人：", Japanese "宛先：") |
 | `Letter` | `Letter` | A letter's item name when the name of who it's to or from is unknown |
 | `LetterTo` | `Letter to {Name}` | The item name of the player's letters and letters between NPCs; `{Name}` is the recipient |
 | `LetterFrom` | `Letter from {Name}` | The item name of letters to the player; `{Name}` is the author |
 | `Card` | `A letter to {Recipient} from {Author}.` | The item card under the model in the inventory |
+| `CardTo` | `A letter to {Recipient}.` | An anonymous letter's item card: `Card` without its author ([FORGERY.md](FORGERY.md#the-from-line)). |
 | `ReturnDeceased`, `ReturnNotFound` | `Return to sender (deceased)`, `(not found)` | Added to a returned letter's item card ([DELIVERY.md](DELIVERY.md#undeliverable-letters)) |
 | `Unreadable` | `The ink has run; the letter can't be read.` | The page of a letter LetterDB has no text for |
 | `Parchment` | `Parchment` | The blank letter's item name; the ESP's is English, so it's set at `kDataLoaded` |
@@ -44,6 +45,6 @@ Nothing language-dependent is stored for the text: the "From:" and "To:" labels,
 
 ## Not localized yet
 
-The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`).
+The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`, `Letters::ForgerySentence`), the memory's "The letter from …" / "The unsigned letter:", and the hand-over narration's "… a letter from …" / ", unsigned".
 
 The eight non-English files were written by Claude (2026-10-04); they ship until native speakers correct them.

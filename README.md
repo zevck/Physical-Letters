@@ -3,7 +3,7 @@ A companion mod for [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) t
 
 ## ✉️ Features
 ### Writing Letters
-Write a letter by hand on a sheet of parchment. Every letter starts with a "To:" heading and requires the recipient's name and address (e.g. Lydia, 7890 Whiterun). 
+Write a letter by hand on a sheet of parchment. Every letter starts with a "From:" heading, already filled in with your name, and a "To:" heading that requires the recipient's name and address (e.g. Lydia, 7890 Whiterun). 
 
 The address is comprised of the last 4 digits of the NPCs SkyrimNet UUID and home location. While writing, matching NPC's will autocomplete. If there are multiple NPCs sharing a name, pressing Tab will cycle through them.
 
@@ -31,6 +31,9 @@ About once a week, someone you know may write to you if they have a reason to: n
 ### Letters Between NPCs
 NPCs write to each other too, and their letters are delivered by the courier. Intercept one and you can read it, or hand it to its recipient yourself.
 
+### Forgeries
+Change the "From:" line to someone else's name and address, and the letter goes out in their name. Whether the recipient sees through your handwriting depends on your Pickpocket skill; with the Quill of Gemination and Special Ink, never. Fooled, they may write back to the person whose name you used. You can also sign with any name that isn't a person's, or leave "From:" empty to send it anonymously.
+
 ### Written in Blood
 With no ink, **Ink & Quill** lets you write in your own blood. The recipient sees which parts are written in blood, and reacts to it.
 
@@ -44,7 +47,7 @@ With no ink, **Ink & Quill** lets you write in your own blood. The recipient see
 - [Ink & Quill](https://github.com/zevck/Ink-and-Quill) 0.2 or later to write your own letters
 
 ## 🌐 Localization
-The mod supports all 9 official Skyrim languages: English, French, German, Italian, Spanish, Polish, Russian, Traditional Chinese, and Japanese. Letter names, item descriptions, the "To:" line, parchment and MCM menus are all localized automatically based on your game language.
+The mod supports all 9 official Skyrim languages: English, French, German, Italian, Spanish, Polish, Russian, Traditional Chinese, and Japanese. Letter names, item descriptions, the "From:" and "To:" lines, parchment and MCM menus are all localized automatically based on your game language.
 
 ### Language Override
 If your game language is set to English but you want letters in another language, add a `Language` line to `PhysicalLetters.ini` under `[General]`:
@@ -69,10 +72,12 @@ This controls the text written on and about letters. Example:
 
 [Letters]
 To = Para:
+From = De:
 Letter = Carta
 LetterTo = Carta para {Name}
 LetterFrom = Carta de {Name}
 Card = Uma carta para {Recipient} de {Author}.
+CardTo = Uma carta para {Recipient}.
 ReturnDeceased = Devolver ao remetente (falecimento)
 ReturnNotFound = Devolver ao remetente (paradeiro desconhecido)
 Unreadable = A tinta escorreu; a carta não pode ser lida.
@@ -82,17 +87,15 @@ Parchment = Pergaminho
 Available placeholders:
 - `{Name}` - the recipient (in LetterTo) or the author (in LetterFrom)
 - `{Recipient}` - who the letter is for (in Card)
-- `{Author}` - who wrote it (in Card)
+- `{Author}` - the name it's signed with (in Card); CardTo is the card of an unsigned letter
 > [!NOTE]
-> Names are filled in as they are, so write each line to read correctly for any name: avoid words that change with the person's gender or with the name's first letter. A space follows the "To:" label unless it ends in a full-width colon. Any key left out falls back to English.
+> Names are filled in as they are, so write each line to read correctly for any name: avoid words that change with the person's gender or with the name's first letter. A space follows the "From:" and "To:" labels unless they end in a full-width colon. Any key left out falls back to English.
 
 **2. MCM translation file** (optional) - `Interface/Translations/Physical Letters_{LANGUAGE}.txt`
 
 This translates the in-game settings menu. Use the English file as a template. If you would like to correct or contribute any translations feel free to submit a PR.
 
 ## 🗺️ Planned Features
-**Forgeries** - send an NPC a letter from another NPC. NPCs have a percent chance to see through the deception. Potential integration with the vanilla quest's Quill of Gemination for a higher chance.
-
 **Courier Jobs** - work as a courier to deliver real letters across Skyrim that shape the world.
 
 **Messenger Birds** - a perk to mail letters from anywhere in the world with a power.

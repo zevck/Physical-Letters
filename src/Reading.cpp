@@ -86,16 +86,20 @@ namespace PhysicalLetters::Reading {
 
             // The summary first: SkyrimNet embeds only the start of a long memory, so the
             // summary is what semantic search matches; the exact letters follow for recall.
-            std::string content = std::format("{}\n\nThe letter from {}:\n{}", memory, letter.authorName, letter.body);
+            const auto sender = Letters::SenderOf(letter);
+            std::string content = sender.name.empty() ? std::format("{}\n\nThe unsigned letter:\n{}", memory, letter.body)
+                                                      : std::format("{}\n\nThe letter from {}:\n{}", memory, sender.name, letter.body);
+            if (const auto forged = Letters::ForgerySentence(letter); !forged.empty()) content += "\n\n" + forged;
             if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) content += "\n\n" + blood;
             if (replies && !replyText.empty()) content += std::format("\n\nMy reply:\n{}", replyText);
 
             const auto tags = json::array({ "physical_letters", "letter_received", LetterTag(letter.id), tag }).dump();
-            // The writer, the player or an NPC.
-            RE::FormID author = SkyrimNet::FormIdForUuid(letter.authorUuid);
-            if (author == 0) author = kPlayer;
+            // Whom it's from, to the reader: the player, an NPC, or the person a forgery names.  A signature or an
+            // anonymous letter has nobody (never the player, who wrote it: docs/FORGERY.md#reading-it).
+            RE::FormID author = sender.uuid.empty() ? 0 : SkyrimNet::FormIdForUuid(sender.uuid);
+            if (author == 0 && !sender.uuid.empty() && sender.uuid == letter.authorUuid) author = kPlayer;
             const int memoryId = SkyrimNet::AddMemory(recipientFormId, content, importance, "RELATIONSHIP", emotion, tags,
-                                                      std::format("[{}]", author));
+                                                      author ? std::format("[{}]", author) : std::string{ "[]" });
             if (memoryId == 0) {
                 SKSE::log::error("[Reading] SkyrimNet didn't store {}'s memory of letter {}", readerName, letter.id);
                 return { Result::kRetry };
@@ -148,7 +152,7 @@ namespace PhysicalLetters::Reading {
         if (skipRemembered) remembered.push_back(skipId);
         auto entries = json::array();
         for (const auto& earlier : LetterDB::GetSingleton()->Between(readerUuid, otherUuid)) {
-            if (earlier.id == skipId) continue;
+            if (earlier.id == skipId || earlier.forgery == kForgerySeen) continue;
             bool known = false;
             if (earlier.recipientUuid == readerUuid) {
                 known = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(earlier.id));
@@ -159,7 +163,7 @@ namespace PhysicalLetters::Reading {
                 known = SkyrimNet::HasMemoryWithTag(readerFormId, LetterTag(earlier.id));
             }
             if (!known) continue;
-            entries.push_back({ { "from", earlier.authorName },
+            entries.push_back({ { "from", Letters::SenderOf(earlier).name },
                                 { "to", earlier.recipientName },
                                 { "days_ago", static_cast<int>(std::max(0.0, now - earlier.writtenAt)) },
                                 { "body", earlier.body } });
@@ -192,9 +196,11 @@ namespace PhysicalLetters::Reading {
                     return;
                 }
 
-                // Other memories of the writer: the letters themselves are in the correspondence.
+                // Whom it's from, to the reader (docs/FORGERY.md#reading-it).  Other memories of them: the letters
+                // themselves are in the correspondence.
+                const auto sender = Letters::SenderOf(letter);
                 auto memories = json::array();
-                const auto found = json::parse(SkyrimNet::Memories(readerFormId, kMaxMemories, letter.authorName, "physical_letters"),
+                const auto found = json::parse(SkyrimNet::Memories(readerFormId, kMaxMemories, sender.name, "physical_letters"),
                                                nullptr, false);
                 if (found.is_array()) {
                     for (const auto& m : found) {
@@ -209,7 +215,7 @@ namespace PhysicalLetters::Reading {
                 json context = {
                     { "npc", { { "UUID", uuid }, { "name", readerName } } },
                     { "letter",
-                      { { "author", letter.authorName },
+                      { { "author", sender.name },
                         { "recipient", letter.recipientName },
                         { "body", letter.body },
                         { "read_before", readBefore },
@@ -222,11 +228,16 @@ namespace PhysicalLetters::Reading {
                                              : blood.amount == Letters::Blood::kPart ? "part"
                                                                                      : "";
                 context["letter"]["blood_text"] = blood.passages;
-                // Who wrote it, and to whom: their public profile for the prompt (docs/READING.md#the-prompt).
-                context["letter"]["author_UUID"] = SkyrimNet::UuidNumber(letter.authorUuid);
+                // Whom it's from, and to whom: their public profile for the prompt (docs/READING.md#the-prompt); a
+                // forgery seen through says so; a signature or an anonymous letter has nobody behind it.
+                context["letter"]["named"] = !sender.uuid.empty();
+                context["letter"]["anonymous"] = letter.anonymous;
+                context["letter"]["forged"] = letter.forgery == kForgerySeen;
+                context["letter"]["author_UUID"] = sender.uuid.empty() ? 0 : SkyrimNet::UuidNumber(sender.uuid);
                 context["letter"]["recipient_UUID"] = SkyrimNet::UuidNumber(letter.recipientUuid);
-                context["correspondence"] =
-                    Correspondence(letter.recipientUuid, letter.authorUuid, readerFormId, now, letter.id, readBefore);
+                context["correspondence"] = sender.uuid.empty() ? json::array()
+                                                                : Correspondence(letter.recipientUuid, sender.uuid, readerFormId, now,
+                                                                                 letter.id, readBefore);
 
                 const bool queued = SkyrimNet::SendPrompt(
                     kPrompt, context.dump(),

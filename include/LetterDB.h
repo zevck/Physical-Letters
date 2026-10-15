@@ -40,14 +40,13 @@ namespace PhysicalLetters {
         // The player's letter: the recipient's address as the "To:" line shows it after their name
         // ("6391 Dawnstar"); "" for other letters and those written before addresses.
         std::string address;
-        // The player's letter begun in blood: its "To:" line is red (decided when writing begins).
+        // The player's letter begun in blood: its "From:" and "To:" lines are red (decided when writing begins).
         bool bloodHeading = false;
         // The player's letter whose "From:" line doesn't name them (docs/FORGERY.md): a person (UUID, name, address) or,
         // with no UUID, a name that's nobody's.  "" when they signed with their own name.
         std::string signedUuid;
         std::string signedName;
         std::string signedAddress;
-        bool specialInk = false;  // the player's letter, saved in Special Ink
         int forgery = 0;          // a forgery's roll at save: kForgeryNone, kForgeryPasses or kForgerySeen
         bool anonymous = false;   // the player's letter with an empty "From:" line: no name at all
     };
@@ -71,8 +70,8 @@ namespace PhysicalLetters {
         bool Insert(const Letter& letter);
         std::optional<Letter> Get(const std::string& id);
 
-        // Every letter between the two, either way, oldest first.  From every save of the
-        // character: the caller decides which belong to this one.
+        // Every letter between the two, either way, oldest first; one signed with another name is that person's, never
+        // its author's (docs/FORGERY.md#reading-it).  From every save of the character: the caller decides which belong.
         std::vector<Letter> Between(const std::string& uuidA, const std::string& uuidB);
         // Every letter the actor wrote or received, newest first, at most `limit`.
         std::vector<Letter> Involving(const std::string& uuid, int limit);

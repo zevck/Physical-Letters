@@ -11,9 +11,9 @@ Context variables the plugin sets:
 | Variable | Value |
 |---|---|
 | `npc` | `{ UUID, name }` of the recipient; the template uses `decnpc(npc.UUID)` and `render_character_profile("full", npc.UUID)` |
-| `letter` | `{ author, recipient, body, read_before, can_reply, blood, blood_text, author_UUID, recipient_UUID }`; the UUIDs are for the writer's public profile (below); `blood` is `"all"` or `"part"` when the player wrote it in blood (`Letters::BloodOf`, from LetterDB's `blood`), with the passages in `blood_text`, one per line, and the template says so after the letter; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)) or, for any letter from the player (mailed or handed over), when `[NpcLetters] Replies` is off ([SETTINGS.md](SETTINGS.md)): the prompt then says not to reply, and a reply is ignored |
-| `correspondence` | Earlier letters between the two that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. |
-| `memories` | Up to 8 of the recipient's other memories most relevant to the writer (letters excluded: they're in `correspondence`) |
+| `letter` | `{ author, recipient, body, read_before, can_reply, blood, blood_text, named, anonymous, forged, author_UUID, recipient_UUID }`; `author` and `author_UUID` are whom the reader takes it to be from (`Letters::SenderOf`: a forgery's named person, a signature's name with UUID 0, nothing for an anonymous letter; [FORGERY.md](FORGERY.md#reading-it)), with `named`, `anonymous` and `forged` (a forgery seen through) saying which; the UUIDs are for the writer's public profile (below); `blood` is `"all"` or `"part"` when the player wrote it in blood (`Letters::BloodOf`, from LetterDB's `blood`), with the passages in `blood_text`, one per line, and the template says so after the letter; `read_before` is true when the recipient already has a memory of this letter (it was sent again); `can_reply` is false when a thread between NPCs is at its limit ([NPC_TO_NPC.md](NPC_TO_NPC.md#keeping-it-bounded)) or, for any letter from the player (mailed or handed over), when `[NpcLetters] Replies` is off ([SETTINGS.md](SETTINGS.md)); for a forgery that fools the reader, when `[NpcLetters] ForgeryReplies` is off; always for a signature, an anonymous letter or a forgery seen through ([FORGERY.md](FORGERY.md#replies)): the prompt then says not to reply, and a reply is ignored |
+| `correspondence` | Earlier letters between the recipient and whom the letter is from, that the recipient knows of, oldest first, up to 20: `{ from, to, days_ago, body }`. The letter being read isn't in it; the recipient's replies to it are, when it was sent again. Empty for a signature or an anonymous letter; a forgery counts as its named person's letter, unless the recipient saw through it ([FORGERY.md](FORGERY.md#reading-it)). |
+| `memories` | Up to 8 of the recipient's other memories most relevant to whom the letter is from (searched by that name; letters excluded: they're in `correspondence`) |
 
 **What the reader knows of the writer**: an "About" section, the public part of the writer's SkyrimNet profile: gender, race (`decnpc`) and the character summary (`render_character_profile("bio_summary", …)`). It's what SkyrimNet shows an NPC of someone they speak to (its `dialogue_target` profile, also what telepathy uses), less what only sight gives (physical activity, appearance, worn equipment, health): a letter's reader can't see its writer. Background, personality, relationships, occupation and memories are private in SkyrimNet's profile too, and stay out. The summary is whatever the writer's bio says; some mention secrets, but SkyrimNet shows it to anyone the writer talks to as well. The same section describes either recipient in the shared `physical_letters/write_letter` prompt. Writing and reading both include `physical_letters/components/letter_format`: plain letter text with a salutation, blank lines between paragraphs, a separate signature, and JSON escaping instructions.
 
@@ -32,13 +32,15 @@ It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importan
 
 ## The memory
 
-`PublicAddMemory` for the recipient: type `RELATIONSHIP`, the letter's author as related actor (the player, or the NPC who wrote it), the emotion, the importance, and the tags `physical_letters`, `letter_received`, `physical_letters_letter:<letter id>` and `physical_letters_delivery:<delivery id>` ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). The content:
+`PublicAddMemory` for the recipient: type `RELATIONSHIP`, whom the letter is from as related actor (the player, the NPC who wrote it, or the person a forgery names; nobody for a signature or an anonymous letter, [FORGERY.md](FORGERY.md#reading-it)), the emotion, the importance, and the tags `physical_letters`, `letter_received`, `physical_letters_letter:<letter id>` and `physical_letters_delivery:<delivery id>` ([PERSISTENCE.md](PERSISTENCE.md#was-a-delivery-read)). The content:
 
 ```
 <the first-person memory>
 
-The letter from <author>:
+The letter from <whom it's from>:    (or: The unsigned letter:)
 <the exact letter>
+
+The handwriting gives it away: …    (only for a forgery seen through: Letters::ForgerySentence)
 
 It is written in blood.    (or: Part of it is written in blood: <the passages>; only if it was)
 
@@ -66,4 +68,4 @@ A letter handed over in person is read by this call too, after the reader's reac
 
 - The recipient's location and the time are not in the prompt.
 
-A reply becomes a letter to the player and travels to the courier: [DELIVERY.md](DELIVERY.md#replies-and-the-courier).
+A reply becomes a letter to the player and travels to the courier: [DELIVERY.md](DELIVERY.md#replies-and-the-courier). A reply to a forgery that fooled its reader goes to the person it names: [FORGERY.md](FORGERY.md#replies).

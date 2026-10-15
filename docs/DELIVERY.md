@@ -52,7 +52,7 @@ A returning letter is a state-2 parcel like a reply: the same letter form, now a
 
 ## Replies and the courier
 
-When a reading returns a reply ([READING.md](READING.md); never with `[NpcLetters] Replies` off, [SETTINGS.md](SETTINGS.md)), the same game-thread step that ends the reading creates the reply letter (author the NPC, recipient the player, "Letter from X", the same template) and queues it as a parcel *to the player* (`LTRN` state 2). A save can't hold a finished reading without its reply. If a save was made between the memory and that step, the reading after a load finds the memory and takes the reply from LetterDB's stored reading.
+When a reading returns a reply ([READING.md](READING.md); never with `[NpcLetters] Replies` off, [SETTINGS.md](SETTINGS.md)), the same game-thread step that ends the reading creates the reply letter (author the NPC, recipient the player, "Letter from X", the same template) and queues it as a parcel *to the player* (`LTRN` state 2). A forgery that fooled its reader is answered to the person it names instead, as a letter between NPCs, by `[NpcLetters] ForgeryReplies`; a signature, an anonymous letter or a forgery seen through gets no reply ([FORGERY.md](FORGERY.md#replies)). A save can't hold a finished reading without its reply. If a save was made between the memory and that step, the reading after a load finds the memory and takes the reply from LetterDB's stored reading.
 
 A letter an NPC writes first takes the same path, queued after the travel time alone, with no writing time (`Transit::QueueToPlayer`, [NPC_LETTERS.md](NPC_LETTERS.md#the-letter)).
 

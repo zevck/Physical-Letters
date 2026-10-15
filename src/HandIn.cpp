@@ -299,12 +299,14 @@ namespace PhysicalLetters::HandIn {
 
     void ReadThere(const Letter& letter, RE::Actor* reader)
     {
-        // A direct narration perceived by the reader alone: they read it and react aloud; nobody
-        // else learns the text (docs/HAND_IN.md#reading-it-there).
-        // Always the reader's own letter: from the player, or one the player intercepted.
-        const bool fromPlayer = letter.authorUuid == SkyrimNet::UuidForFormId(kPlayer);
+        // A direct narration perceived by the reader alone: they read it and react aloud; nobody else learns the text.
+        // Always the reader's own letter; whose name it bears, if not the player's (docs/HAND_IN.md#reading-it-there).
+        const auto sender = Letters::SenderOf(letter);
+        const bool fromPlayer = !sender.uuid.empty() && sender.uuid == SkyrimNet::UuidForFormId(kPlayer);
+        const std::string from = fromPlayer ? std::string{} : sender.name.empty() ? std::string{ ", unsigned" } : " from " + sender.name;
         auto text = std::format("{} hands {} a letter{}. It reads:\n{}", RE::PlayerCharacter::GetSingleton()->GetName(),
-                                reader->GetName(), fromPlayer ? std::string{} : " from " + letter.authorName, letter.body);
+                                reader->GetName(), from, letter.body);
+        if (const auto forged = Letters::ForgerySentence(letter); !forged.empty()) text += "\n\n" + forged;
         if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) text += "\n\n" + blood;
         const auto readerId = reader->GetFormID();
         // SkyrimNet stores the event: off the game thread, as its API allows.

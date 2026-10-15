@@ -22,7 +22,7 @@
 #include "Locale.h"
 
 // Every piece of text the player sees, in one place so localization can replace it.
-// Letter text (names, cards, the "To:" label) comes from Locale; the messages are English only for now.
+// Letter text (names, cards, the "From:" and "To:" labels) comes from Locale; the messages are English only for now.
 namespace PhysicalLetters::Strings {
 
     // `text` with each {placeholder} replaced (a locale's text puts them where its language needs).
@@ -58,6 +58,12 @@ namespace PhysicalLetters::Strings {
                     { { "Recipient", recipientName }, { "Author", authorName } });
     }
 
+    // An anonymous letter's card (docs/FORGERY.md#the-from-line): the same without its author.
+    inline std::string LetterCardTo(const std::string& recipientName)
+    {
+        return Fill(Locale::Text("CardTo", "A letter to {Recipient}."), { { "Recipient", recipientName } });
+    }
+
     // A letter's page before LetterDB is open (moments after a load).
     inline constexpr std::string_view kLetterPending = "...";
     // A letter LetterDB has no text for.
@@ -72,30 +78,28 @@ namespace PhysicalLetters::Strings {
         return Locale::Text("Parchment", "Parchment");
     }
 
-    // The player's letter's first line, before the recipient's name (docs/WRITING.md#the-text), as the locale
+    // The player's letter's second line, before the recipient's name (docs/WRITING.md#the-text), as the locale
     // writes it: "To:", "宛先：".
     inline std::string ToLabelText()
     {
         return Locale::Text("To", "To:");
     }
 
-    // The label with its space after it, unless it ends in a full-width colon (Chinese, Japanese).
+    // A label with its space after it, unless it ends in a full-width colon (Chinese, Japanese).
+    inline std::string WithLabelSpace(std::string label)
+    {
+        return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
+    }
+
     inline std::string ToLabel()
     {
-        auto label = ToLabelText();
-        return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
+        return WithLabelSpace(ToLabelText());
     }
 
     // The player's letter's first line, before its sender's name (docs/FORGERY.md#the-from-line): "From:", "差出人：".
-    inline std::string FromLabelText()
-    {
-        return Locale::Text("From", "From:");
-    }
-
     inline std::string FromLabel()
     {
-        auto label = FromLabelText();
-        return label.ends_with("\xEF\xBC\x9A") ? label : label + " ";
+        return WithLabelSpace(Locale::Text("From", "From:"));
     }
 
     // The box a parchment opens with when the player can choose how to write (docs/WRITING.md#starting).

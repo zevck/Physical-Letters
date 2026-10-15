@@ -57,10 +57,10 @@ namespace PhysicalLetters::Writing {
         std::uint32_t g_sessions = 0;
         RE::FormID g_book = 0;           // the letter written in; 0: parchment
         std::optional<Letter> g_letter;  // that letter, as it was
-        bool g_bodyLocked = false;       // the "To:" line names nobody: only it can be written in
+        bool g_bodyLocked = false;       // the "To:" line names nobody: only the two lines can be written in
         std::string g_lockedBody;        // the body as written when it was locked, given back when it opens
         bool g_bodyLockedAtStart = false;  // a new letter: its body had no run when the session began
-        bool g_bloodHeading = false;       // the letter's "To:" line is red (begun in blood)
+        bool g_bloodHeading = false;       // the letter's "From:" and "To:" lines are red (begun in blood)
 
         bool BloodAllowed() { return Config::GetSingleton()->Get(Config::kWritingBlood) != 0; }
 
@@ -69,16 +69,19 @@ namespace PhysicalLetters::Writing {
 
         void Notify(std::string_view text) { RE::SendHUDMessage::ShowHUDMessage(std::string{ text }.c_str()); }
 
+        // An edit's name line as it was loaded: "name, address" (or the name), ignoring case and blood.
+        bool AsLoaded(const std::string& line, const std::string& name, const std::string& address)
+        {
+            const std::string loaded = address.empty() ? name : name + ", " + address;
+            return _stricmp(Trim(WithoutBlood(line)).c_str(), loaded.c_str()) == 0;
+        }
+
         // The "To:" line's recipient.  An edit's line as it was loaded is its letter's recipient, by UUID,
         // whatever the game or SkyrimNet calls them now (docs/WRITING.md#the-recipient).
         std::variant<Recipients::Recipient, std::string> ResolveLine(const std::string& line)
         {
-            if (g_letter) {
-                const auto& l = *g_letter;
-                const std::string loaded = l.address.empty() ? l.recipientName : l.recipientName + ", " + l.address;
-                if (_stricmp(Trim(WithoutBlood(line)).c_str(), loaded.c_str()) == 0) {
-                    return Recipients::Recipient{ .uuid = l.recipientUuid, .name = l.recipientName, .address = l.address };
-                }
+            if (g_letter && AsLoaded(line, g_letter->recipientName, g_letter->address)) {
+                return Recipients::Recipient{ .uuid = g_letter->recipientUuid, .name = g_letter->recipientName, .address = g_letter->address };
             }
             return Recipients::Resolve(line);
         }
@@ -95,14 +98,11 @@ namespace PhysicalLetters::Writing {
         std::variant<Recipients::Recipient, Recipients::Signature, std::string> ResolveFrom(const std::string& line,
                                                                                             const std::string& recipientUuid)
         {
-            if (g_letter && (g_letter->anonymous || !g_letter->signedName.empty())) {
+            if (g_letter && !g_letter->signedName.empty() && AsLoaded(line, g_letter->signedName, g_letter->signedAddress)) {
                 const auto& l = *g_letter;
-                const std::string loaded = l.signedAddress.empty() ? l.signedName : l.signedName + ", " + l.signedAddress;
-                if (_stricmp(Trim(WithoutBlood(line)).c_str(), loaded.c_str()) == 0) {
-                    if (l.signedUuid.empty()) return Recipients::Signature{ .name = l.signedName };
-                    if (l.signedUuid != recipientUuid) {
-                        return Recipients::Recipient{ .uuid = l.signedUuid, .name = l.signedName, .address = l.signedAddress };
-                    }
+                if (l.signedUuid.empty()) return Recipients::Signature{ .name = l.signedName };
+                if (l.signedUuid != recipientUuid) {
+                    return Recipients::Recipient{ .uuid = l.signedUuid, .name = l.signedName, .address = l.signedAddress };
                 }
             }
             return Recipients::ResolveSender(line, recipientUuid);
@@ -118,11 +118,10 @@ namespace PhysicalLetters::Writing {
                 SKSE::log::info("[Writing] A forgery in Special Ink: it passes");
                 return kForgeryPasses;
             }
-            auto* player = RE::PlayerCharacter::GetSingleton();
-            const float skill = player ? player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kPickpocket) : kLowSkill;
+            const float skill = RE::PlayerCharacter::GetSingleton()->AsActorValueOwner()->GetActorValue(RE::ActorValue::kPickpocket);
             const float chance = std::clamp(kLowChance + (skill - kLowSkill) * (kHighChance - kLowChance) / (kHighSkill - kLowSkill),
                                             kLowChance, kHighChance);
-            static std::mt19937 rng{ std::random_device{}() };
+            static std::mt19937_64 rng{ std::random_device{}() };
             const bool passes = std::uniform_real_distribution<float>(0.0f, 100.0f)(rng) < chance;
             SKSE::log::info("[Writing] A forgery: Pickpocket {:.0f}, {:.0f}% to pass: {}", skill, chance, passes ? "passes" : "seen through");
             return passes ? kForgeryPasses : kForgerySeen;
@@ -154,7 +153,8 @@ namespace PhysicalLetters::Writing {
             const std::string fromLine = Trim(WithoutBlood(std::string{ fromRun.substr(0, fromRun.find('\n')) }));
             std::string signedUuid, signedName, signedAddress;
             bool anonymous = false;
-            if (fromLine != player->GetName()) {
+            // Their name as the line was filled in: a page writes typographic marks plain.
+            if (fromLine != Trim(Letters::AsWritten(player->GetName()))) {
                 auto sender = ResolveFrom(fromLine, recipient.uuid);
                 if (const auto* message = std::get_if<std::string>(&sender)) return Refuse(reply, *message);
                 if (const auto* person = std::get_if<Recipients::Recipient>(&sender)) {
@@ -203,7 +203,6 @@ namespace PhysicalLetters::Writing {
                                  .signedUuid = signedUuid,
                                  .signedName = signedName,
                                  .signedAddress = signedAddress,
-                                 .specialInk = specialInk,
                                  .forgery = signedUuid.empty() ? kForgeryNone : RollForgery(specialInk),
                                  .anonymous = anonymous };
             const std::string reading = TextHook::ForBookMenu(Letters::Reading(letter));
@@ -360,7 +359,7 @@ namespace PhysicalLetters::Writing {
             return begun;
         }
 
-        // A new letter on parchment, written the way chosen.  A blood one's "To:" line is red
+        // A new letter on parchment, written the way chosen.  A blood one's "From:" and "To:" lines are red
         // (as Physical Diaries' headings).
         bool BeginParchment(std::int32_t way)
         {

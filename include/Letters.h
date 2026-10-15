@@ -54,10 +54,12 @@ namespace PhysicalLetters::Letters {
     RE::TESObjectBOOK* Create(const Letter& letter);
 
     // The letter's text as the book menu reads it (UTF-8 book markup; TextHook converts it), and
-    // as Ink & Quill edits it: the player's letters open with a "To:" line (docs/WRITING.md#the-text).
+    // as Ink & Quill edits it: the player's letters open with "From:" and "To:" lines (docs/WRITING.md#the-text).
     std::string Reading(const Letter& letter);
-    // `bodyLocked`: only the "To:" line can be written in (a new letter until it has a recipient).
+    // `bodyLocked`: only the two lines can be written in (a new letter until it has a recipient).
     std::string Marked(const Letter& letter, bool bodyLocked = false);
+    // `text` as a letter's page writes it (typographic marks made plain): what the editor gives back.
+    std::string AsWritten(std::string_view text);
 
     // How much of a letter the player wrote in blood (Letter::blood), and those passages, one per
     // line: what its reader is told (docs/READING.md).
@@ -69,6 +71,16 @@ namespace PhysicalLetters::Letters {
     BloodText BloodOf(const Letter& letter);
     // For a narration or a memory: "It is written in blood.", the passages that are, or "".
     std::string BloodSentence(const Letter& letter);
+
+    // Whom a letter's reader takes it to be from (docs/FORGERY.md#reading-it): the person its "From:" line names (a
+    // forgery, seen through or not), else its author; a signature has only a name, an anonymous letter neither.
+    struct Sender {
+        std::string uuid;
+        std::string name;
+    };
+    Sender SenderOf(const Letter& letter);
+    // For a narration or a memory: a forgery seen through says so; else "".
+    std::string ForgerySentence(const Letter& letter);
 
     // Game thread.  An edit: the letter's form now holds `letter`, a new LetterDB record (the old one
     // stays, for other saves).  False if it couldn't be stored, and nothing changed.

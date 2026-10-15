@@ -13,6 +13,8 @@ Replies can breed replies, so there are hard limits, all settings:
 - **New threads only come from the schedule**: every `IntervalDays` (5), up to a quarter shorter or longer at random. A reply continues its thread; it never starts one.
 - **A pair cooldown**: when a thread ends, its two NPCs don't start another for `PairCooldownDays` (21).
 
+A thread can also begin with the player's forgery, answered to the person it names ([FORGERY.md](FORGERY.md#replies)): the forgery is its letter 1 and the thread limit applies (the reader's reply too), but it doesn't count toward `MaxOpenThreads` (it isn't the schedule's). Its NPCs are busy in it as in any open thread, and its pair cooldown applies when it ends.
+
 Open threads aren't stored: they're the letters between NPCs with a parcel in Transit's queue (on their way or unread), followed back to their first letter. Nothing can drift or leak; a thread ends when its last parcel leaves the queue without a reply.
 
 Each letter costs a reading call, so these limits also bound the spend; starting one costs at most two calls (below).

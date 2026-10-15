@@ -215,9 +215,12 @@ namespace PhysicalLetters::NpcToNpc {
             for (const auto& id : Transit::PendingLetterIds()) {
                 const auto letter = db->Get(id);
                 if (!letter || !IsNpcLetter(*letter)) continue;
-                open.threads.insert(Thread(id).first);
                 open.npcs.insert(letter->authorUuid);
                 open.npcs.insert(letter->recipientUuid);
+                // Begun by the player's forgery: busy, but not one of the schedule's threads (docs/FORGERY.md#replies).
+                const auto root = Thread(id).first;
+                if (const auto first = db->Get(root); first && !IsNpcLetter(*first)) continue;
+                open.threads.insert(root);
             }
             return open;
         }

@@ -42,6 +42,23 @@ namespace PhysicalLetters::Transit {
             return Config::GetSingleton()->Get(Config::kNpcReplies) != 0;
         }
 
+        constexpr RE::FormID kPlayer = 0x14;
+
+        // A forgery that fools its reader: answered to the person it names (docs/FORGERY.md#replies).
+        bool FoolsReader(const Letter& letter) { return letter.forgery == kForgeryPasses; }
+
+        // Whether the reader may write back (docs/FORGERY.md#replies, DELIVERY.md#replies-and-the-courier).
+        bool CanReplyTo(const std::optional<Letter>& letter, const std::string& letterId)
+        {
+            if (letter && NpcToNpc::IsNpcLetter(*letter)) return NpcToNpc::CanReply(letterId);
+            // The forgery is its thread's first letter: the thread's limit holds, not the schedule's.
+            if (letter && FoolsReader(*letter)) {
+                return Config::GetSingleton()->Get(Config::kForgeryReplies) != 0 && NpcToNpc::CanReply(letterId);
+            }
+            if (letter && (letter->anonymous || !letter->signedName.empty())) return false;
+            return RepliesToPlayer();
+        }
+
         using Clock = std::chrono::steady_clock;
 
         enum class State : std::uint8_t {
@@ -305,17 +322,19 @@ namespace PhysicalLetters::Transit {
         }
 
         // The recipient's reply: a new letter form, and a parcel that travels once the NPC has
-        // written it, to the courier for the player, or to the NPC who wrote the letter.
+        // written it, to the courier for the player, or to the NPC who wrote the letter (or whom a forgery names).
         std::optional<Parcel> MakeReply(const Parcel& original, const std::string& text)
         {
             const auto sent = LetterDB::GetSingleton()->Get(original.letterId);
-            const bool betweenNpcs = sent && NpcToNpc::IsNpcLetter(*sent);
+            const bool toNamed = sent && FoolsReader(*sent);
+            const bool betweenNpcs = sent && (NpcToNpc::IsNpcLetter(*sent) || toNamed);
             auto* player = RE::PlayerCharacter::GetSingleton();
+            const auto to = !sent ? Letters::Sender{ SkyrimNet::UuidForFormId(kPlayer), player->GetName() } : Letters::SenderOf(*sent);
             const Letter reply{ .id = Letters::NewId(),
                                 .authorUuid = original.recipientUuid,
                                 .authorName = original.recipientName,
-                                .recipientUuid = sent ? sent->authorUuid : SkyrimNet::UuidForFormId(0x14),
-                                .recipientName = sent ? sent->authorName : std::string{ player->GetName() },
+                                .recipientUuid = to.uuid,
+                                .recipientName = to.name,
                                 .body = text,
                                 .writtenAt = Now(),
                                 .inReplyTo = original.letterId };
@@ -361,8 +380,7 @@ namespace PhysicalLetters::Transit {
             const auto letter = LetterDB::GetSingleton()->Get(it->letterId);
             const bool betweenNpcs = letter && NpcToNpc::IsNpcLetter(*letter);
             std::optional<Parcel> reply;
-            if (outcome.result == Reading::Result::kRead && !outcome.reply.empty() &&
-                (betweenNpcs ? NpcToNpc::CanReply(it->letterId) : RepliesToPlayer())) {
+            if (outcome.result == Reading::Result::kRead && !outcome.reply.empty() && CanReplyTo(letter, it->letterId)) {
                 reply = MakeReply(*it, outcome.reply);
             }
             if (betweenNpcs && !reply) NpcToNpc::ThreadEnded(*letter);
@@ -375,7 +393,7 @@ namespace PhysicalLetters::Transit {
             auto* recipient = FindRecipient(parcel);
             if (!recipient) return;
             const auto letter = LetterDB::GetSingleton()->Get(parcel.letterId);
-            const bool canReply = letter && NpcToNpc::IsNpcLetter(*letter) ? NpcToNpc::CanReply(parcel.letterId) : RepliesToPlayer();
+            const bool canReply = CanReplyTo(letter, parcel.letterId);
             parcel.reading = true;
             parcel.attempt = ++g_lastAttempt;
             parcel.startedAt = Clock::now();

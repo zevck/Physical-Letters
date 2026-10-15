@@ -169,7 +169,6 @@ namespace PhysicalLetters {
                 signed_uuid     TEXT NOT NULL DEFAULT '',
                 signed_name     TEXT NOT NULL DEFAULT '',
                 signed_address  TEXT NOT NULL DEFAULT '',
-                special_ink     INTEGER NOT NULL DEFAULT 0,
                 forgery         INTEGER NOT NULL DEFAULT 0,
                 anonymous       INTEGER NOT NULL DEFAULT 0
             );
@@ -180,7 +179,6 @@ namespace PhysicalLetters {
                AddColumn("ALTER TABLE letters ADD COLUMN signed_uuid TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN signed_name TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN signed_address TEXT NOT NULL DEFAULT '';") &&
-               AddColumn("ALTER TABLE letters ADD COLUMN special_ink INTEGER NOT NULL DEFAULT 0;") &&
                AddColumn("ALTER TABLE letters ADD COLUMN forgery INTEGER NOT NULL DEFAULT 0;") &&
                AddColumn("ALTER TABLE letters ADD COLUMN anonymous INTEGER NOT NULL DEFAULT 0;");
     }
@@ -205,7 +203,7 @@ namespace PhysicalLetters {
         Statement s{ db_,
                      "INSERT OR REPLACE INTO letters (letter_id, author_uuid, author_name, recipient_uuid, "
                      "recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, signed_uuid, signed_name, "
-                     "signed_address, special_ink, forgery, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "signed_address, forgery, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                      "Insert" };
         return s.Bind(1, letter.id)
             .Bind(2, letter.authorUuid)
@@ -221,16 +219,15 @@ namespace PhysicalLetters {
             .Bind(12, letter.signedUuid)
             .Bind(13, letter.signedName)
             .Bind(14, letter.signedAddress)
-            .Bind(15, letter.specialInk ? 1 : 0)
-            .Bind(16, letter.forgery)
-            .Bind(17, letter.anonymous ? 1 : 0)
+            .Bind(15, letter.forgery)
+            .Bind(16, letter.anonymous ? 1 : 0)
             .Run();
     }
 
     namespace {
         constexpr auto kLetterColumns =
             "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, "
-            "signed_uuid, signed_name, signed_address, special_ink, forgery, anonymous";
+            "signed_uuid, signed_name, signed_address, forgery, anonymous";
 
         Letter ReadLetter(const Statement& s)
         {
@@ -248,9 +245,8 @@ namespace PhysicalLetters {
                            .signedUuid = s.Text(11),
                            .signedName = s.Text(12),
                            .signedAddress = s.Text(13),
-                           .specialInk = s.Int(14) != 0,
-                           .forgery = s.Int(15),
-                           .anonymous = s.Int(16) != 0 };
+                           .forgery = s.Int(14),
+                           .anonymous = s.Int(15) != 0 };
         }
     }
 
@@ -268,10 +264,11 @@ namespace PhysicalLetters {
     std::vector<Letter> LetterDB::Between(const std::string& uuidA, const std::string& uuidB)
     {
         std::lock_guard lock{ mutex_ };
-        if (!db_) return {};
+        if (!db_ || uuidA.empty() || uuidB.empty()) return {};
         const auto sql = std::format(
-            "SELECT {} FROM letters WHERE (author_uuid = ?1 AND recipient_uuid = ?2) OR "
-            "(author_uuid = ?2 AND recipient_uuid = ?1) ORDER BY written_at, rowid;",
+            "SELECT {} FROM letters WHERE (((author_uuid = ?1 AND recipient_uuid = ?2) OR (author_uuid = ?2 AND recipient_uuid = ?1)) "
+            "AND signed_name = '' AND anonymous = 0) OR (signed_uuid = ?1 AND recipient_uuid = ?2) OR "
+            "(signed_uuid = ?2 AND recipient_uuid = ?1) ORDER BY written_at, rowid;",
             kLetterColumns);
         Statement s{ db_, sql.c_str(), "Between" };
         s.Bind(1, uuidA).Bind(2, uuidB);
