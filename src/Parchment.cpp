@@ -30,8 +30,8 @@ namespace PhysicalLetters::Parchment {
         constexpr RE::FormID kList = 0x8B8;             // PhysicalLettersLItemParchment: 3 or 5 parchment
         constexpr RE::FormID kVendorMiscItems = 0x09AF0A;  // Skyrim.esm LItemMiscVendorMiscItems75: tells a general store
 
-        // Vanilla's generic world containers (hundreds in houses) stock the misc list too: a merchant using one would
-        // put parchment in all of them.  Same walk as Ink & Quill's src/WritingTools.cpp: fix both.
+        // Vanilla's generic world containers (hundreds in houses) stock the misc list too: a merchant using one would put
+        // parchment in all of them.  Same walk as Ink & Quill's and Physical Diaries': fix all three.
         bool IsGenericContainer(const RE::TESObjectCONT* chest)
         {
             static constexpr std::pair<RE::FormID, std::string_view> kGeneric[] = { { 0x024CA4, "Skyrim.esm" }, { 0x09AF19, "Skyrim.esm" },
@@ -41,6 +41,20 @@ namespace PhysicalLetters::Parchment {
                 if (data && data->LookupForm(id, plugin) == chest) return true;  // Cupboard01, PersonalChestSmall(_NoRespawn)
             }
             return false;
+        }
+
+        // `list` as one more entry of `chest`, without extra data: the engine writes out of bounds rolling a leveled entry
+        // whose health isn't 1.0, and CommonLib's AddObjectToContainer gives it 100 (docs/WRITING.md#parchment).
+        bool AddToChest(RE::TESObjectCONT* chest, RE::TESLevItem* list)
+        {
+            if (!chest->AddObjectToContainer(list, 1, nullptr)) return false;
+            for (std::uint32_t i = 0; i < chest->numContainerObjects; ++i) {
+                auto* entry = chest->containerObjects[i];
+                if (!entry || entry->obj != list || !entry->itemExtra) continue;
+                delete entry->itemExtra;  // the game's heap (TES_HEAP_REDEFINE_NEW)
+                entry->itemExtra = nullptr;
+            }
+            return true;
         }
 
         // Every general-goods merchant's chest (a vendor faction's, stocking vanilla's misc list) gets `ours` as its own entry,
@@ -60,7 +74,7 @@ namespace PhysicalLetters::Parchment {
                                     faction->GetFormID(), chest->GetFormID());
                     continue;
                 }
-                if (!chest->AddObjectToContainer(ours, 1, nullptr)) continue;
+                if (!AddToChest(chest, ours)) continue;
                 ++stocked;
                 SKSE::log::info("[Parchment] Stocked chest {:08X} '{}' (vendor faction {:08X})", chest->GetFormID(),
                                 chest->GetFormEditorID() ? chest->GetFormEditorID() : "", faction->GetFormID());
