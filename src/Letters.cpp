@@ -89,8 +89,7 @@ namespace PhysicalLetters::Letters {
             return out;
         }
 
-        // The handwriting fonts lack these (as SNPD's SanitizeBookText); plain forms also keep
-        // Cyrillic text single-byte for the book menu (TextHook).  No page break or lock.
+        // The handwriting fonts lack these (as SNPD's SanitizeBookText).  No page break or lock.
         std::string Plain(std::string_view body)
         {
             static constexpr std::pair<std::string_view, std::string_view> kPlainForms[] = {
@@ -101,6 +100,9 @@ namespace PhysicalLetters::Letters {
                 { "\xE2\x80\x98", "'" },    // left single quote
                 { "\xE2\x80\x99", "'" },    // right single quote
                 { "\xE2\x80\xA6", "..." },  // ellipsis
+                { "\xD1\x91", "\xD0\xB5" }, // ё -> е (Russian handwriting fonts lack ё, Ё, №; a missing
+                { "\xD0\x81", "\xD0\x95" }, // Ё -> Е  glyph breaks the book's pagination)
+                { "\xE2\x84\x96", "No." },  // №
             };
             std::string plain{ body };
             for (const auto& [from, to] : kPlainForms) ReplaceAll(plain, from, to);

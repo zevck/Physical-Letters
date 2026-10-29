@@ -37,14 +37,20 @@ namespace PhysicalLetters::Locale {
             return text;
         }
 
-        // [General] Language in PhysicalLetters.ini if set, else the game's sLanguage ("ENGLISH" if unset).
-        std::string Language()
+        // The game's sLanguage, upper case ("ENGLISH" if unset).
+        std::string GameLanguage()
         {
-            if (auto chosen = Config::GetSingleton()->GetLanguage(); !chosen.empty()) return Upper(chosen);
             auto* settings = RE::INISettingCollection::GetSingleton();
             auto* setting = settings ? settings->GetSetting("sLanguage:General") : nullptr;
             const char* value = setting && setting->GetType() == RE::Setting::Type::kString ? setting->GetString() : nullptr;
             return Upper(value && *value ? value : "ENGLISH");
+        }
+
+        // [General] Language in PhysicalLetters.ini if set, else the game's.
+        std::string Language()
+        {
+            if (auto chosen = Config::GetSingleton()->GetLanguage(); !chosen.empty()) return Upper(chosen);
+            return GameLanguage();
         }
 
         // Every key of [Letters] in a UTF-8 ini file.
@@ -73,6 +79,7 @@ namespace PhysicalLetters::Locale {
     void Load()
     {
         const auto language = Language();
+        SKSE::log::info("[Locale] Game language (sLanguage): {}, letters in {}", GameLanguage(), language);
         const auto path = std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "PhysicalLetters" / "Locales" /
                           (language + ".ini");
         if (!std::filesystem::exists(path)) {

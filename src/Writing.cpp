@@ -29,7 +29,6 @@
 #include "Session.h"
 #include "SkyrimNet.h"
 #include "Strings.h"
-#include "TextHook.h"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -187,7 +186,7 @@ namespace PhysicalLetters::Writing {
                 g_letter->body == body && g_letter->blood == blood && g_letter->signedUuid == signedUuid &&
                 g_letter->signedName == signedName && g_letter->signedAddress == signedAddress && g_letter->anonymous == anonymous) {
                 // Only the names' spelling or spacing changed: the letter is as it was.
-                g_api->ReplySave(reply, true, "", TextHook::ForBookMenu(Letters::Reading(*g_letter)).c_str());
+                g_api->ReplySave(reply, true, "", Letters::Reading(*g_letter).c_str());
                 return;
             }
             const Letter letter{ .id = Letters::NewId(),
@@ -205,7 +204,7 @@ namespace PhysicalLetters::Writing {
                                  .signedAddress = signedAddress,
                                  .forgery = signedUuid.empty() ? kForgeryNone : RollForgery(specialInk),
                                  .anonymous = anonymous };
-            const std::string reading = TextHook::ForBookMenu(Letters::Reading(letter));
+            const std::string reading = Letters::Reading(letter);
             if (g_book) {
                 if (!Letters::Rewrite(RE::TESForm::LookupByID<RE::TESObjectBOOK>(g_book), letter)) {
                     return Refuse(reply, Strings::kWriteFailed);
@@ -257,7 +256,7 @@ namespace PhysicalLetters::Writing {
                                 .blood = g_lockedBody,
                                 .bloodHeading = g_bloodHeading };
             const std::string marked = Letters::Marked(shown, !open);
-            const std::string reading = g_letter ? TextHook::ForBookMenu(Letters::Reading(*g_letter)) : std::string{ kParchmentText };
+            const std::string reading = g_letter ? Letters::Reading(*g_letter) : std::string{ kParchmentText };
             // A reopened body counts as saved with its text at the session's start, if it had one: unchanged, it's no save
             // and no ink (Ink & Quill's from = -2 - k).
             const std::int32_t from[] = { 0, 1, runs.size() == 3 ? 2 : g_bodyLockedAtStart ? -1 : -2 - 2 };

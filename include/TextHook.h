@@ -25,8 +25,4 @@ namespace PhysicalLetters::TextHook {
     // SKSEPlugin_Load.
     void Install();
 
-    // A letter's rendered text as the hook gives it to the book menu (Win-1251 for Cyrillic): for
-    // Ink & Quill's reading text.  Never for marked text.
-    std::string ForBookMenu(const std::string& text);
-
 } // namespace PhysicalLetters::TextHook

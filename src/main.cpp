@@ -138,6 +138,9 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
     // log = false: InitializeLog already set up our logger, and CommonLib's own
     // would replace it (and reopen the same file).
     SKSE::Init(a_skse, { .log = false });
+    // The game and SKSE, for bug reports.
+    SKSE::log::info("Game: Skyrim {} {}, SKSE {}", REL::Module::IsVR() ? "VR" : REL::Module::IsAE() ? "AE" : "SE",
+                    a_skse->RuntimeVersion().string("."), REL::Version::unpack(a_skse->SKSEVersion()).string("."));
 
     // Written straight back: MO2 puts it in overwrite/, where mod updates don't replace it.
     auto* config = PhysicalLetters::Config::GetSingleton();
