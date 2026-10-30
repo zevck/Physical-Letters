@@ -40,7 +40,7 @@ It asks for JSON: `memory` (first person, 2–4 sentences), `emotion`, `importan
 The letter from <whom it's from>:    (or: The unsigned letter:)
 <the exact letter>
 
-The handwriting gives it away: …    (only for a forgery seen through: Letters::ForgerySentence)
+The handwriting looks off for <name>.    (only for a forgery whose roll failed: Letters::ForgerySentence)
 
 It is written in blood.    (or: Part of it is written in blood: <the passages>; only if it was)
 

@@ -32,7 +32,7 @@ About once a week, someone you know may write to you if they have a reason to: n
 NPCs write to each other too, and their letters are delivered by the courier. Intercept one and you can read it, or hand it to its recipient yourself.
 
 ### Forgeries
-Change the "From:" line to someone else's name and address, and the letter goes out in their name. Whether the recipient sees through your handwriting depends on your Pickpocket skill; with the Quill of Gemination and Special Ink, never. Fooled, they may write back to the person whose name you used. You can also sign with any name that isn't a person's, or leave "From:" empty to send it anonymously.
+Change the "From:" line to someone else's name and address, and the letter goes out in their name. Whether your handwriting passes for theirs depends on your Pickpocket skill; with the Quill of Gemination and Special Ink, it always does. Fooled, they may write back to the person whose name you used. You can also sign with any name that isn't a person's, or leave "From:" empty to send it anonymously.
 
 ### Written in Blood
 With no ink, **Ink & Quill** lets you write in your own blood. The recipient sees which parts are written in blood, and reacts to it.

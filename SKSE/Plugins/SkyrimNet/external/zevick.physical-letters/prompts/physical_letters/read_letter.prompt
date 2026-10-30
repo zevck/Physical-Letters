@@ -41,7 +41,7 @@
     ```
     {% if letter.forged %}
 
-    The handwriting gives it away: someone else wrote this letter and signed it with {{ letter.author }}'s name. Who that was, {{ actor.name }} cannot tell.
+    The handwriting looks off for {{ letter.author }}.
     {% endif %}
     {% if letter.blood == "all" %}
 
@@ -56,7 +56,7 @@
     {% endif %}
     {% if letter.read_before %}
 
-    {{ actor.name }} has received this very letter before, word for word{% if correspondence and length(correspondence) > 0 %}; any reply {{ actor.subjectivePronoun }} sent to it is among the earlier letters above{% endif %}. {% if letter.anonymous %}Whoever wrote it{% else if letter.forged %}Someone{% else %}{{ letter.author }}{% endif %} has sent it again.
+    {{ actor.name }} has received this very letter before, word for word{% if correspondence and length(correspondence) > 0 %}; any reply {{ actor.subjectivePronoun }} sent to it is among the earlier letters above{% endif %}. {% if letter.anonymous %}Whoever wrote it has sent it again.{% else if letter.forged %}It has come again.{% else %}{{ letter.author }} has sent it again.{% endif %}
     {% endif %}
 
     {% if memories and length(memories) > 0 %}
@@ -78,7 +78,7 @@
 
     3. **If {{ actor.subjectivePronoun }} replies, write the reply** as a letter in {{ actor.possessiveAdjective }} own voice: addressed to {{ letter.author }}, answering what the letter said, a few short paragraphs at most, signed with {{ actor.possessiveAdjective }} name. {{ actor.name }} writes only about what {{ actor.subjectivePronoun }} knows and has lived through. If there are earlier letters, this is a correspondence: answer what is new and stay consistent with what was already written.{% if letter.read_before %} Receiving the same letter twice is odd: {{ actor.name }} notices, may be puzzled, amused or irritated, and may answer briefly or only remark on it.{% endif %}
 
-    4. **Write the memory {{ actor.name }} keeps of this**, in first person as {{ actor.name }}, two to four sentences: that a letter came {% if letter.forged %}bearing {{ letter.author }}'s name, forged by someone else{% else if letter.anonymous %}unsigned{% else %}from {{ letter.author }}{% endif %}, what it said in brief, how {{ actor.subjectivePronoun }} felt about it, and whether {{ actor.subjectivePronoun }} wrote back and what {{ actor.subjectivePronoun }} said.
+    4. **Write the memory {{ actor.name }} keeps of this**, in first person as {{ actor.name }}, two to four sentences: that a letter came {% if letter.forged %}bearing {{ letter.author }}'s name, in handwriting that looked off{% else if letter.anonymous %}unsigned{% else %}from {{ letter.author }}{% endif %}, what it said in brief, how {{ actor.subjectivePronoun }} felt about it, and whether {{ actor.subjectivePronoun }} wrote back and what {{ actor.subjectivePronoun }} said.
 
 {{ render_template("physical_letters/components/letter_format") }}
 

@@ -374,7 +374,7 @@ namespace PhysicalLetters::Letters {
     std::string ForgerySentence(const Letter& letter)
     {
         if (letter.forgery != kForgerySeen) return {};
-        return std::format("The handwriting gives it away: someone else wrote it and signed it with {}'s name.", letter.signedName);
+        return std::format("The handwriting looks off for {}.", letter.signedName);
     }
 
     bool Rewrite(RE::TESObjectBOOK* book, const Letter& letter)
