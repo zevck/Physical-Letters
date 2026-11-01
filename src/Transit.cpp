@@ -50,12 +50,14 @@ namespace PhysicalLetters::Transit {
         // Whether the reader may write back (docs/FORGERY.md#replies, DELIVERY.md#replies-and-the-courier).
         bool CanReplyTo(const std::optional<Letter>& letter, const std::string& letterId)
         {
-            if (letter && NpcToNpc::IsNpcLetter(*letter)) return NpcToNpc::CanReply(letterId);
             // The forgery is its thread's first letter: the thread's limit holds, not the schedule's.
             if (letter && FoolsReader(*letter)) {
                 return Config::GetSingleton()->Get(Config::kForgeryReplies) != 0 && NpcToNpc::CanReply(letterId);
             }
+            // Nobody to write to, the player's or a DM Letter's (docs/DM_LETTER.md#sending): before the check between NPCs,
+            // which a letter with no author passes.
             if (letter && (letter->anonymous || !letter->signedName.empty())) return false;
+            if (letter && NpcToNpc::IsNpcLetter(*letter)) return NpcToNpc::CanReply(letterId);
             return RepliesToPlayer();
         }
 
@@ -89,6 +91,7 @@ namespace PhysicalLetters::Transit {
             Clock::time_point startedAt{};
             Clock::time_point retryAt{};
             bool              offScreen = false;  // no courier: delivered straight into their inventory
+            bool              readAloud = false;  // handed over and read on the spot: no event that they received it
         };
 
         std::vector<Parcel> g_parcels;
@@ -312,7 +315,9 @@ namespace PhysicalLetters::Transit {
                 return Delivery::kReturning;
             }
 
-            if (!parcel.offScreen && CourierErrand::ShouldWait(recipient)) return Delivery::kAwaitCourier;
+            // The DM Letter's hours are the DM's: no wait for the courier (docs/DM_LETTER.md#sending).
+            const bool dispatched = letter && letter->dispatched;
+            if (!parcel.offScreen && !dispatched && CourierErrand::ShouldWait(recipient)) return Delivery::kAwaitCourier;
 
             recipient->AddObjectToContainer(book, nullptr, 1, nullptr);
             LetterDB::GetSingleton()->MarkDelivered(parcel.letterId, Now());
@@ -397,7 +402,7 @@ namespace PhysicalLetters::Transit {
             parcel.reading = true;
             parcel.attempt = ++g_lastAttempt;
             parcel.startedAt = Clock::now();
-            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(), canReply,
+            Reading::Read(parcel.letterId, parcel.deliveryId, recipient->GetFormID(), canReply, !parcel.readAloud,
                           [deliveryId = parcel.deliveryId, attempt = parcel.attempt,
                            generation = Session::Generation()](const Reading::Outcome& outcome) {
                               OnReadingDone(deliveryId, attempt, generation, outcome);
@@ -433,10 +438,13 @@ namespace PhysicalLetters::Transit {
         SKSE::log::info("[Transit] The player handed letter {} from {} to {} (0x{:X})", letter.id, letter.authorName,
                         letter.recipientName, reader->GetFormID());
         // There and then, aloud; then the reading, as for a letter delivered: their memory, and maybe a reply.
-        if (HandIn::NearPlayer(reader)) HandIn::ReadThere(letter, reader);
-        if (std::ranges::any_of(g_parcels, [&](const Parcel& p) {
-                return p.letterId == letter.id && p.recipientUuid == readerUuid && p.state == State::kAwaitingReading;
-            })) {
+        const bool readAloud = HandIn::NearPlayer(reader);
+        if (readAloud) HandIn::ReadThere(letter, reader);
+        const auto owed = std::ranges::find_if(g_parcels, [&](const Parcel& p) {
+            return p.letterId == letter.id && p.recipientUuid == readerUuid && p.state == State::kAwaitingReading;
+        });
+        if (owed != g_parcels.end()) {
+            owed->readAloud = owed->readAloud || readAloud;
             SKSE::log::info("[Transit] {} still owed a reading of letter {}: it goes on", reader->GetName(), letter.id);
             return;
         }
@@ -445,7 +453,8 @@ namespace PhysicalLetters::Transit {
                               .recipientUuid = readerUuid,
                               .recipientName = reader->GetName(),
                               .dueAt = Now(),
-                              .state = State::kAwaitingReading });
+                              .state = State::kAwaitingReading,
+                              .readAloud = readAloud });
     }
 
     bool IsLetterPendingFor(const std::string& uuid)

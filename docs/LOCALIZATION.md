@@ -24,12 +24,17 @@ All in `[Letters]`, UTF-8. A line starting with `;` is a comment; a `;` later in
 | `To` | `To:` | The player's letter's second line, below "From:", before the recipient ([WRITING.md](WRITING.md#the-text)). A space follows it, unless it ends in a full-width colon (Chinese "收件人：", Japanese "宛先：") |
 | `Letter` | `Letter` | A letter's item name when the name of who it's to or from is unknown |
 | `LetterTo` | `Letter to {Name}` | The item name of the player's letters and letters between NPCs; `{Name}` is the recipient |
-| `LetterFrom` | `Letter from {Name}` | The item name of letters to the player; `{Name}` is the author |
+| `LetterFrom` | `Letter from {Name}` | The item name of letters to the player; `{Name}` is whom it's from (`Letters::SenderOf`: the author, or a DM Letter's signature or forged name; an unsigned one is plain `Letter`) |
 | `Card` | `A letter to {Recipient} from {Author}.` | The item card under the model in the inventory |
 | `CardTo` | `A letter to {Recipient}.` | An anonymous letter's item card: `Card` without its author ([FORGERY.md](FORGERY.md#the-from-line)). |
 | `ReturnDeceased`, `ReturnNotFound` | `Return to sender (deceased)`, `(not found)` | Added to a returned letter's item card ([DELIVERY.md](DELIVERY.md#undeliverable-letters)) |
 | `Unreadable` | `The ink has run; the letter can't be read.` | The page of a letter LetterDB has no text for |
 | `Parchment` | `Parchment` | The blank letter's item name; the ESP's is English, so it's set at `kDataLoaded` |
+| `DmLetter` | `DM Letter` | The DM Letter's item name ([DM_LETTER.md](DM_LETTER.md)), set at `kDataLoaded` like parchment's |
+| `DmLetterCard` | `Send a letter from anyone to anyone.` | The DM Letter's item card; the ESP's is English, so the DLL answers it (`DmLetter::CardFor`, through TextHook) |
+| `DmDelivery` | `Delivery (hours):` | The DM Letter's third line, before the hours until delivery. A space follows it, unless it ends in a full-width colon. |
+| `DmForgery` | `Forgery` | The DM Letter's second box, after Transform's on the same line ([DM_LETTER.md](DM_LETTER.md#sending)) |
+| `DmTransform` | `Transform` | The DM Letter's check box line, before `[x]` or `[ ]` (until 2026-10-31 `DmRewrite`, "Rewrite in the writer's own words", after the box) |
 
 Placeholders let a language put the name where it needs it ("{Name}への手紙"). The code knows nothing about a name: not its gender, its case or its first letter. So a text has to read right for **any** name, a man's or a woman's, starting with a vowel or a consonant:
 
@@ -45,6 +50,6 @@ Nothing language-dependent is stored for the text: the "From:" and "To:" labels,
 
 ## Not localized yet
 
-The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`, `Letters::ForgerySentence`), the memory's "The letter from …" / "The unsigned letter:", and the hand-over narration's "… a letter from …" / ", unsigned".
+The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`), the DM Letter's messages (`Strings::Dm…`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`, `Letters::ForgerySentence`), the memory's "The letter from …" / "The unsigned letter:", the hand-over narration's "… a letter from …" / ", unsigned", and the event that a reader received a letter ("… received a letter from …. It reads:" / "received an unsigned letter", [READING.md](READING.md#the-event)).
 
 The eight non-English files were written by Claude (2026-10-04); they ship until native speakers correct them.

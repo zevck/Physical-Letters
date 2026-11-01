@@ -52,10 +52,25 @@ namespace PhysicalLetters::Reading {
             return { Result::kRead, GetBool(reading, "reply") ? GetString(reading, "reply_text") : std::string{} };
         }
 
+        // That the reader received it, with its text, perceived by them alone: their recent history then brings it up in
+        // conversation, where a memory waits to be searched for (docs/READING.md#the-event).  Blocks.
+        void Announce(const Letter& letter, RE::FormID readerFormId, const std::string& readerName)
+        {
+            const auto sender = Letters::SenderOf(letter);
+            std::string line = std::format("{} received {}. It reads:\n{}", readerName,
+                                           sender.name.empty() ? std::string{ "an unsigned letter" } : "a letter from " + sender.name,
+                                           letter.body);
+            if (const auto forged = Letters::ForgerySentence(letter); !forged.empty()) line += "\n\n" + forged;
+            if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) line += "\n\n" + blood;
+            const int id = SkyrimNet::RegisterEvent("persistent_generic", line, readerFormId, 0, { readerFormId });
+            if (id > 0) SKSE::log::info("[Reading] {} received letter {}: event {}", readerName, letter.id, id);
+            else SKSE::log::warn("[Reading] SkyrimNet didn't store the event that {} received letter {}", readerName, letter.id);
+        }
+
         // Its own thread (AddMemory blocks while the memory is embedded): the memory, then
         // the reading kept in LetterDB.
         Outcome Store(const Letter& letter, const std::string& deliveryId, RE::FormID recipientFormId, const std::string& readerName,
-                      bool canReply, std::uint32_t generation, const std::string& response)
+                      bool canReply, bool announce, std::uint32_t generation, const std::string& response)
         {
             const auto reading = ParseResponse(response);
             if (!reading.is_object()) {
@@ -110,6 +125,7 @@ namespace PhysicalLetters::Reading {
             // AddMemory blocks for a while: LetterDB may belong to another session by now.
             if (generation == Session::Generation()) {
                 LetterDB::GetSingleton()->SetReading(letter.id, reading.dump(), memoryId);
+                if (announce) Announce(letter, recipientFormId, readerName);
             } else {
                 SKSE::log::info("[Reading] A load happened while memory {} was stored: LetterDB not updated", memoryId);
             }
@@ -172,7 +188,7 @@ namespace PhysicalLetters::Reading {
         return entries;
     }
 
-    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID readerFormId, bool canReply,
+    void Read(const std::string& letterId, const std::string& deliveryId, RE::FormID readerFormId, bool canReply, bool announce,
               std::function<void(Outcome)> done)
     {
         auto letter = LetterDB::GetSingleton()->Get(letterId);
@@ -185,7 +201,7 @@ namespace PhysicalLetters::Reading {
         const auto generation = Session::Generation();
         const double now = RE::Calendar::GetSingleton()->GetDaysPassed();
         // Memory queries and the LLM call block: off the game thread.
-        std::thread([letter = std::move(*letter), deliveryId, readerFormId, canReply, generation, now,
+        std::thread([letter = std::move(*letter), deliveryId, readerFormId, canReply, announce, generation, now,
                      done = std::move(done)]() {
             try {
                 const std::string& readerName = letter.recipientName;
@@ -241,17 +257,18 @@ namespace PhysicalLetters::Reading {
 
                 const bool queued = SkyrimNet::SendPrompt(
                     kPrompt, context.dump(),
-                    [letter, deliveryId, readerFormId, canReply, generation, done](std::string response, bool success) {
+                    [letter, deliveryId, readerFormId, canReply, announce, generation, done](std::string response, bool success) {
                         if (!success) {
                             SKSE::log::error("[Reading] The LLM call for letter {} failed: {}", letter.id, response);
                             Report(done, { Result::kRetry });
                             return;
                         }
-                        std::thread([letter, deliveryId, readerFormId, canReply, generation, done,
+                        std::thread([letter, deliveryId, readerFormId, canReply, announce, generation, done,
                                      response = std::move(response)]() {
                             Outcome outcome;
                             try {
-                                outcome = Store(letter, deliveryId, readerFormId, letter.recipientName, canReply, generation, response);
+                                outcome = Store(letter, deliveryId, readerFormId, letter.recipientName, canReply, announce,
+                                                generation, response);
                             } catch (const std::exception& e) {
                                 SKSE::log::error("[Reading] Storing the reading of letter {} failed: {}", letter.id, e.what());
                             }

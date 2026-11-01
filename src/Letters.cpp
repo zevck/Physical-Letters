@@ -46,6 +46,7 @@ namespace PhysicalLetters::Letters {
         using MarkedText::kLockClose;
         using MarkedText::kLockOpen;
         constexpr std::string_view kBloodFont = "<font color='#2B0202'>";  // blood's colour as Ink & Quill's editor shows it
+        constexpr std::string_view kGreyFont = "<font color='#2A2520'>";   // the DM Letter's locked Transform line: I&Q's faded suggestion ink
 
         struct Entry {
             std::string id;
@@ -273,7 +274,8 @@ namespace PhysicalLetters::Letters {
         // Letters to the player are named by their author, all others by their recipient.
         std::string NameFor(const Letter& letter)
         {
-            return letter.recipientUuid == SkyrimNet::UuidForFormId(kPlayer) ? Strings::LetterFromName(letter.authorName)
+            // Whom it's from, to the player: a DM Letter's may be unsigned or signed (docs/DM_LETTER.md).
+            return letter.recipientUuid == SkyrimNet::UuidForFormId(kPlayer) ? Strings::LetterFromName(SenderOf(letter).name)
                                                                             : Strings::LetterName(letter.recipientName);
         }
 
@@ -324,6 +326,31 @@ namespace PhysicalLetters::Letters {
     std::string Reading(const Letter& letter)
     {
         return Render(letter, false);
+    }
+
+    std::string SheetText(const Sheet& sheet, bool marked)
+    {
+        const auto lock = [marked](std::string_view text) {
+            return marked ? std::format("{}{}{}", kLockOpen, text, kLockClose) : std::string{ text };
+        };
+        const auto line = [](const std::string& text) { return Escape(Plain(text)); };
+        const std::string transformLabel = "\n" + Escape(Strings::DmTransformLabel()) + " [";
+        const std::string forgeryLabel = "   " + Escape(Strings::DmForgeryLabel()) + " [";
+        const std::string end = "]" + std::string{ BlankLine(marked) } + "</font>";
+        // Greyed out and locked, with no box: the whole line with no writer, Transform alone once Forgery is ticked.
+        const auto grey = [](std::string_view text) { return std::format("{}{}</font>", kGreyFont, text); };
+        std::string transform;
+        if (sheet.transformLocked) {
+            transform = lock(grey(transformLabel + " ]" + forgeryLabel + " ]") + std::string{ BlankLine(marked) } + "</font>");
+        } else if (sheet.forgery) {
+            transform = lock(grey(transformLabel + " ]") + forgeryLabel + "x") + lock(end);
+        } else {
+            // Each mark is locked and its box an empty run: the caret has one place in it, after the mark.
+            transform = lock(transformLabel + (sheet.rewrite ? "x" : " ")) + lock("]" + forgeryLabel + " ") + lock(end);
+        }
+        return Font() + lock(Strings::FromLabel()) + line(sheet.from) + lock("\n" + Strings::ToLabel()) + line(sheet.to) +
+               lock("\n" + Strings::DmDeliveryLabel()) + line(sheet.hours) + transform + Paragraphs(sheet.text, marked) +
+               (marked ? lock("") : std::string{});
     }
 
     std::string Marked(const Letter& letter, bool bodyLocked)

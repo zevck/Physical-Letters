@@ -1,0 +1,20 @@
+FormKey: 0008BB:Physical Letters.esp
+EditorID: PhysicalLettersDMLetter
+Name:
+  TargetLanguage: English
+  Value: DM Letter
+Model:
+  File: Clutter\Books\Note01.nif
+  Data: 0x0200000002000000000000007F86450D64647300B5139F09AD43553B64647300B5139F09
+BookText:
+  TargetLanguage: English
+  Value: <font face='$HandwrittenFont'></font>
+PickUpSound: 0C7A54:Skyrim.esm
+Teaches:
+  MutagenObjectType: BookTeachesNothing
+Value: 0
+Weight: 0
+InventoryArt: 097788:Skyrim.esm
+Description:
+  TargetLanguage: English
+  Value: Send a letter from anyone to anyone.

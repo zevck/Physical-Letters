@@ -7,6 +7,8 @@ int  Function GetSetting(string name)                  global native
 int  Function GetSettingDefault(string name)           global native
 int  Function GetSettingMin(string name)               global native
 int  Function GetSettingMax(string name)               global native
+; Puts the DM Letter in the player's inventory: 0 added, 1 already carried, 2 can't be used (docs/DM_LETTER.md).
+int  Function AddDmLetter()                            global native
 
 ; The sliders, in page order: setting, label, tooltip, format, step.
 string[] _names
@@ -28,6 +30,8 @@ int _recipientsOid = -1
 ; General.Font (0-2), a menu the same way: handwriting, the UI's font, the books' font.
 string[] _fontChoices
 int _fontOid = -1
+; The DM Letter's button.
+int _dmOid = -1
 
 event OnConfigInit()
     ModName = "Physical Letters"
@@ -117,6 +121,7 @@ function Setup()
     _recipientChoices[2] = "$PL_RecipientsAnyone"
 
     _fontOid = -1
+    _dmOid = -1
     _fontChoices = new string[3]
     _fontChoices[0] = "$PL_FontHandwritten"
     _fontChoices[1] = "$PL_FontEverywhere"
@@ -192,6 +197,10 @@ event OnPageReset(string page)
         AddSlider(10)
         _fontOid = AddMenuOption("$PL_Font", _fontChoices[GetSetting("General.Font")])
         AddGap()
+        AddHeader("$PL_HeaderDm")
+        _dmOid = AddTextOption("$PL_AddDmLetter", "")
+        AddEmptyOption()
+        AddGap()
         AddHeader("$PL_HeaderLogging")
         AddToggle(1)
     endif
@@ -216,6 +225,17 @@ event OnOptionSliderAccept(int oid, float value)
 endevent
 
 event OnOptionSelect(int oid)
+    if oid == _dmOid
+        int result = AddDmLetter()
+        if result == 0
+            SetTextOptionValue(oid, "$PL_DmAdded")
+        elseif result == 1
+            SetTextOptionValue(oid, "$PL_DmCarried")
+        else
+            SetTextOptionValue(oid, "$PL_DmUnavailable")
+        endif
+        return
+    endif
     int i = _toggleOids.Find(oid)
     if i >= 0
         bool enabled = GetSetting(_toggleNames[i]) == 0
@@ -270,7 +290,10 @@ event OnOptionDefault(int oid)
 endevent
 
 event OnOptionHighlight(int oid)
-    if oid == _recipientsOid
+    if oid == _dmOid
+        SetInfoText("$PL_TipAddDmLetter")
+        return
+    elseif oid == _recipientsOid
         SetInfoText("$PL_TipRecipients")
         return
     elseif oid == _fontOid

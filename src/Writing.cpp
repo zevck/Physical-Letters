@@ -21,6 +21,7 @@
 #include "Config.h"
 #include "HandIn.h"
 #include "InkAndQuillAPI.h"
+#include "IqClient.h"
 #include "LetterDB.h"
 #include "Letters.h"
 #include "MarkedText.h"
@@ -63,10 +64,9 @@ namespace PhysicalLetters::Writing {
 
         bool BloodAllowed() { return Config::GetSingleton()->Get(Config::kWritingBlood) != 0; }
 
-        void* UserOf(std::uint32_t session) { return reinterpret_cast<void*>(static_cast<std::uintptr_t>(session)); }
+        using IqClient::Notify;
+        using IqClient::UserOf;
         bool IsCurrent(void* user) { return g_session != 0 && user == UserOf(g_session); }
-
-        void Notify(std::string_view text) { RE::SendHUDMessage::ShowHUDMessage(std::string{ text }.c_str()); }
 
         // An edit's name line as it was loaded: "name, address" (or the name), ignoring case and blood.
         bool AsLoaded(const std::string& line, const std::string& name, const std::string& address)
@@ -87,10 +87,7 @@ namespace PhysicalLetters::Writing {
 
         // ---- Ink & Quill's callbacks ----
 
-        void Refuse(IQ_SaveReply* reply, std::string_view message)
-        {
-            g_api->ReplySave(reply, false, std::string{ message }.c_str(), nullptr);
-        }
+        void Refuse(IQ_SaveReply* reply, std::string_view message) { IqClient::Refuse(g_api, reply, message); }
 
         // The "From:" line's sender, besides the player.  An edit's line as it was loaded is its letter's sender, as the
         // "To:" line (docs/FORGERY.md#the-from-line).
@@ -267,35 +264,19 @@ namespace PhysicalLetters::Writing {
             return true;
         }
 
-        // Ink & Quill's suggestions for a name line, with the caret at its end (counted as Ink & Quill does, without
-        // blood markers): a completion goes after it.
-        void Suggest(const std::string& line, std::int32_t caretOffset, bool force)
-        {
-            std::vector<std::string> completions;
-            if (force || caretOffset == Utf16Length(WithoutBlood(line))) completions = Recipients::Completions(line);
-            std::vector<const char*> texts;
-            for (const auto& text : completions) texts.push_back(text.c_str());
-            g_api->Suggest(texts.data(), static_cast<std::int32_t>(texts.size()));
-        }
-
         // The player changed a run, in the key's own UI task: the "From:" line (run 0) or the "To:" line (run 1), each one
         // line with Ink & Quill's suggestions (Tab cycles, Right accepts).
         void OnChange(void* user, std::int32_t run, std::int32_t caretOffset)
         {
             if (!IsCurrent(user) || (run != 0 && run != 1)) return;
-            std::vector<std::string> runs;
-            const auto count = g_api->CurrentRuns(
-                [](void* user, std::int32_t, const char* text) { static_cast<std::vector<std::string>*>(user)->emplace_back(text); },
-                &runs);
-            if ((count != 2 && count != 3) || runs.size() != static_cast<std::size_t>(count)) {
-                SKSE::log::error("[Writing] {} runs for the names' suggestions, not 2 or 3", count);
+            const auto runs = IqClient::CurrentRuns(g_api);
+            if (runs.size() != 2 && runs.size() != 3) {
+                SKSE::log::error("[Writing] {} runs for the names' suggestions, not 2 or 3", runs.size());
                 return;
             }
             // One line: a line break typed (Enter) or pasted is taken out before it's drawn.
             std::string line = runs[run];
-            const bool broke = line.find_first_of("\r\n") != std::string::npos;
-            std::erase(line, '\n');
-            std::erase(line, '\r');
+            const bool broke = IqClient::TakeLineBreaks(line);
             Recipients::NewText();
             if (run == 0) {
                 // Enter on the "From:" line goes on to the "To:" line.
@@ -471,6 +452,20 @@ namespace PhysicalLetters::Writing {
     bool Available()
     {
         return g_api && g_api->IsWritingOn();
+    }
+
+    const IQ_API* Api()
+    {
+        return g_api;
+    }
+
+    void Suggest(const std::string& line, std::int32_t caretOffset, bool force)
+    {
+        std::vector<std::string> completions;
+        if (force || caretOffset == Utf16Length(WithoutBlood(line))) completions = Recipients::Completions(line);
+        std::vector<const char*> texts;
+        for (const auto& text : completions) texts.push_back(text.c_str());
+        g_api->Suggest(texts.data(), static_cast<std::int32_t>(texts.size()));
     }
 
     void Register()

@@ -1,0 +1,62 @@
+{% set max_earlier_letters = 5 %}
+{% set actor = decnpc(npc.UUID) %}
+{% set reader = decnpc(recipient_UUID) %}
+{% set first_earlier_letter = length(correspondence) - max_earlier_letters %}
+[ system ]
+    You are writing the letter {{ actor.name }} sends to {{ reader.name }} today. Stay true to {{ actor.possessiveAdjective }} personality, background, speech patterns and relationship with {{ reader.name }}.
+
+    {{ render_character_profile("full", npc.UUID) }}
+
+    ## About {{ reader.name }}
+    - Gender: {{ reader.gender }}
+    - Race: {{ reader.race }}
+    {{ render_character_profile("bio_summary", recipient_UUID) }}
+[ end system ]
+
+[ user ]
+    {% if notes != "" %}
+    ## What the Letter Says
+    {{ actor.name }} writes to {{ reader.name }} with this to say:
+    ```
+    {{ notes }}
+    ```
+    {% endif %}
+
+    {% if correspondence and length(correspondence) > 0 %}
+    ## Earlier Letters Between {{ actor.name }} and {{ reader.name }}
+    {% for earlier in correspondence %}
+    {% if loop.index >= first_earlier_letter %}
+    From {{ earlier.from }} to {{ earlier.to }}, {% if earlier.days_ago == 0 %}earlier today{% else if earlier.days_ago == 1 %}a day ago{% else %}{{ earlier.days_ago }} days ago{% endif %}:
+    ```
+    {{ earlier.body }}
+    ```
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% if memories and length(memories) > 0 %}
+    ## What {{ actor.name }} Remembers That May Bear on It
+    {% for memory in memories -%}
+    - {{ memory }}
+    {% endfor %}
+    {% endif %}
+
+    ## Instructions
+
+    {% if notes != "" %}
+    1. **Write the letter** to {{ reader.name }} in {{ actor.possessiveAdjective }} own voice, signed with {{ actor.possessiveAdjective }} name. It says everything under "What the Letter Says", in {{ actor.possessiveAdjective }} words and in the tone their relationship calls for. Keep every fact, name, place and request it gives. Add only what {{ actor.name }} would naturally say around it: a greeting, a word about {{ actor.possessiveAdjective }} own life, how {{ actor.subjectivePronoun }} feels about it. If there are earlier letters, continue the correspondence and stay consistent with it.
+    {% else %}
+    1. **Write the letter** to {{ reader.name }} in {{ actor.possessiveAdjective }} own voice, signed with {{ actor.possessiveAdjective }} name. Choose what {{ actor.subjectivePronoun }} writes about from their connection, what {{ actor.subjectivePronoun }} remembers, the earlier letters and {{ actor.possessiveAdjective }} own life as the profile describes it: news, unfinished business, gratitude, worry, a favour to ask, a grudge, or simply missing someone {{ actor.subjectivePronoun }} is close to. Match the tone to the connection they actually have, and keep professional contact professional. Ground news and events in the supplied context. If there are earlier letters, continue the correspondence and stay consistent with it.
+    {% endif %}
+
+    2. **Write the memory {{ actor.name }} keeps of writing it**, in first person as {{ actor.name }}, one or two sentences: that {{ actor.subjectivePronoun }} wrote to {{ reader.name }} and what about.
+
+{{ render_template("physical_letters/components/letter_format") }}
+
+    **IMPORTANT**: Your whole answer is one valid JSON object, with exactly these fields:
+    - 'letter': the letter
+    - 'memory': the first-person memory described above
+    - 'emotion': {{ actor.name }}'s main feeling while writing, in one word
+    - 'importance': how much the letter matters to {{ actor.name }} (0.0-1.0), scored as SkyrimNet scores memories:
+{{ render_template("physical_letters/components/memory_importance") }}
+[ end user ]

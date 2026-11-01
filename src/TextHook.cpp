@@ -18,6 +18,7 @@
  */
 
 #include "TextHook.h"
+#include "DmLetter.h"
 #include "Letters.h"
 
 #include <MinHook.h>
@@ -70,10 +71,12 @@ namespace
         {
             // Only our letters' CNAM (item card) and DESC (text).  Cheap checks first: this
             // runs for every description.
-            // CNAM: a letter's item card ("A letter to X from Y.").
+            // CNAM: a letter's item card ("A letter to X from Y."), or the DM Letter's in the chosen language.
             if (a_fieldType == 'MANC') {
                 try {
-                    if (const auto card = PhysicalLetters::Letters::CardFor(a_self); !card.empty()) {
+                    auto card = PhysicalLetters::Letters::CardFor(a_self);
+                    if (card.empty()) card = PhysicalLetters::DmLetter::CardFor(a_self);
+                    if (!card.empty()) {
                         a_out = card.c_str();
                         return;
                     }

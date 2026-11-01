@@ -49,6 +49,7 @@ namespace PhysicalLetters {
         std::string signedAddress;
         int forgery = 0;          // a forgery's roll at save: kForgeryNone, kForgeryPasses or kForgerySeen
         bool anonymous = false;   // the player's letter with an empty "From:" line: no name at all
+        bool dispatched = false;  // sent with the DM Letter (docs/DM_LETTER.md): its thread isn't the schedule's
     };
 
     // Letter::forgery (docs/FORGERY.md#the-roll).

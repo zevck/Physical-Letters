@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include "InkAndQuillAPI.h"
+
 // The player writes letters through Ink & Quill - Writing Framework, its client here
 // (docs/WRITING.md): in parchment (a blank), and in their own letters until sent.
 namespace PhysicalLetters::Writing {
@@ -30,5 +32,12 @@ namespace PhysicalLetters::Writing {
 
     // kDataLoaded: registers parchment and the player's letters with Ink & Quill, if its writing is on.
     void Register();
+
+    // Ink & Quill's API (the header's version, 3), or nullptr.
+    const IQ_API* Api();
+
+    // While writing: Ink & Quill's suggestions for a name line (docs/WRITING.md#the-name-as-you-type), with the caret at
+    // its end (counted as Ink & Quill does, without blood markers) unless `force`: a completion goes after it.
+    void Suggest(const std::string& line, std::int32_t caretOffset, bool force);
 
 } // namespace PhysicalLetters::Writing

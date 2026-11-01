@@ -34,7 +34,7 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 
 | Column | Notes |
 |---|---|
-| `author_uuid`, `author_name`, `recipient_uuid`, `recipient_name` | SkyrimNet identities |
+| `author_uuid`, `author_name`, `recipient_uuid`, `recipient_name` | SkyrimNet identities; the author is empty for a DM Letter's with no writer and for its forgeries ([DM_LETTER.md](DM_LETTER.md#sending)) |
 | `body` | The letter's plain text |
 | `written_at`, `delivered_at` | Game days; `delivered_at` is 0 until delivered |
 | `reading`, `memory_id` | The LLM's answer (JSON) and the SkyrimNet memory it became, from the latest reading of the letter (a letter sent again is read again). A record only; see below |
@@ -42,9 +42,10 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `blood` | A letter the player wrote partly in blood: the body with that text between U+E000 and U+E001, for the book to show red; '' otherwise ([WRITING.md](WRITING.md#the-text)) |
 | `address` | A letter the player wrote: the recipient's address after their name on the "To:" line ("6391 Dawnstar", [WRITING.md](WRITING.md#the-recipient)); '' otherwise, and for letters from before addresses |
 | `blood_heading` | 1 when the player began the letter in blood: its "From:" and "To:" lines are red ([WRITING.md](WRITING.md#the-text)); 0 otherwise |
-| `signed_uuid`, `signed_name`, `signed_address` | The player's letter whose "From:" line doesn't name them ([FORGERY.md](FORGERY.md)): a person's UUID, name and address, or only a name that's nobody's; empty when they signed with their own name, and for every other letter |
-| `anonymous` | 1 when the player's letter has an empty "From:" line ([FORGERY.md](FORGERY.md#the-from-line)); 0 otherwise |
-| `forgery` | A forgery's roll at save ([FORGERY.md](FORGERY.md#the-roll)): 0 none (not a forgery), 1 it passes for the named person's, 2 seen through |
+| `signed_uuid`, `signed_name`, `signed_address` | The player's letter whose "From:" line doesn't name them ([FORGERY.md](FORGERY.md)), or a DM Letter's signed or forged one ([DM_LETTER.md](DM_LETTER.md#sending)): a person's UUID, name and address, or only a name that's nobody's; empty for every other letter |
+| `anonymous` | 1 when the player's letter, or a DM Letter's, has an empty "From:" line ([FORGERY.md](FORGERY.md#the-from-line)); 0 otherwise |
+| `forgery` | A forgery's roll at save ([FORGERY.md](FORGERY.md#the-roll)): 0 none (not a forgery), 1 it passes for the named person's, 2 seen through; a DM Letter's forgery is always 1, with no roll |
+| `dispatched` | 1 for a letter sent with the DM Letter ([DM_LETTER.md](DM_LETTER.md)): its thread doesn't count toward `[NpcToNpc] MaxOpenThreads`, and it's never held for the courier in town ([COURIER.md](COURIER.md)); 0 otherwise |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 

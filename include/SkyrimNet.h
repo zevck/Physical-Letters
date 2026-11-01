@@ -78,8 +78,8 @@ namespace PhysicalLetters::SkyrimNet {
     std::string RecentEvents(RE::FormID formId, int maxCount, const std::string& types);
 
     // Registers an event of an existing type (PublicRegisterEvent), perceived by exactly `audience`
-    // plus originator and target; plain text becomes the type's payload.  The actors must be
-    // loaded.  Returns the event id, 0 if nothing was stored or SkyrimNet lacks the export.  Blocks.
+    // plus originator and target; plain text becomes the type's payload.  Actors are looked up by FormID:
+    // in memory, not necessarily 3D-loaded.  Returns the event id, 0 if nothing was stored or SkyrimNet lacks the export.  Blocks.
     int RegisterEvent(const std::string& type, const std::string& content, RE::FormID originator, RE::FormID target,
                       const std::vector<RE::FormID>& audience);
     bool CanRegisterEvents();

@@ -149,6 +149,62 @@ namespace PhysicalLetters::Strings {
     }
     inline constexpr std::string_view kWriteSenderIsRecipient = "A letter can't be from the person it's to.";
 
+    // The DM Letter (docs/DM_LETTER.md): its name and its page's lines, in the locale; its messages, English.
+    inline std::string DmLetterName()
+    {
+        return Locale::Text("DmLetter", "DM Letter");
+    }
+    inline std::string DmLetterCard()
+    {
+        return Locale::Text("DmLetterCard", "Send a letter from anyone to anyone.");
+    }
+    inline std::string DmDeliveryLabel()
+    {
+        return WithLabelSpace(Locale::Text("DmDelivery", "Delivery (hours):"));
+    }
+    inline std::string DmTransformLabel()
+    {
+        return Locale::Text("DmTransform", "Transform");
+    }
+    inline std::string DmForgeryLabel()
+    {
+        return Locale::Text("DmForgery", "Forgery");
+    }
+    inline constexpr std::string_view kDmFromPlayer = "A DM Letter can't be from you. Write your own letters on parchment.";
+    // Which letter a notice is about: "Lydia's letter", "The unsigned letter", "The letter signed "A friend"".
+    inline std::string DmWhichLetter(const std::string& writer, const std::string& signature, bool anonymous, bool forged)
+    {
+        if (anonymous) return "The unsigned letter";
+        if (!signature.empty()) return std::format("The letter signed \"{}\"", signature);
+        return forged ? std::format("The forged letter from {}", writer) : writer + "'s letter";
+    }
+    inline std::string DmWhen(int hours)
+    {
+        return hours == 0 ? std::string{ "delivered now" } : hours == 1 ? std::string{ "delivered in 1 hour" }
+                                                                         : std::format("delivered in {} hours", hours);
+    }
+    inline std::string DmSent(const std::string& letter, const std::string& recipient, int hours)
+    {
+        return std::format("{} to {} is sent: {}.", letter, recipient, DmWhen(hours));
+    }
+    // A DM Letter to the player: due now, or given to the courier after `hours`.
+    inline std::string DmInInventory(const std::string& letter)
+    {
+        return std::format("{} to you is in your inventory.", letter);
+    }
+    inline std::string DmToCourier(const std::string& letter, int hours)
+    {
+        return std::format("{} to you is sent: it reaches the courier in {} hour{}.", letter, hours, hours == 1 ? "" : "s");
+    }
+    inline std::string DmWriting(const std::string& writer, const std::string& recipient)
+    {
+        return std::format("{} is writing to {}. It goes out once written.", writer, recipient);
+    }
+    inline std::string DmFailed(const std::string& letter, const std::string& recipient)
+    {
+        return std::format("{} to {} couldn't be sent. See PhysicalLetters.log.", letter, recipient);
+    }
+
     // An address's place when the recipient's home can't be placed under a hold (docs/WRITING.md#the-recipient).
     inline constexpr std::string_view kNoPlace = "Tamriel";
 

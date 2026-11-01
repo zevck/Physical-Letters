@@ -170,7 +170,8 @@ namespace PhysicalLetters {
                 signed_name     TEXT NOT NULL DEFAULT '',
                 signed_address  TEXT NOT NULL DEFAULT '',
                 forgery         INTEGER NOT NULL DEFAULT 0,
-                anonymous       INTEGER NOT NULL DEFAULT 0
+                anonymous       INTEGER NOT NULL DEFAULT 0,
+                dispatched      INTEGER NOT NULL DEFAULT 0
             );
         )") && AddColumn("ALTER TABLE letters ADD COLUMN in_reply_to TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN blood TEXT NOT NULL DEFAULT '';") &&
@@ -180,7 +181,8 @@ namespace PhysicalLetters {
                AddColumn("ALTER TABLE letters ADD COLUMN signed_name TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN signed_address TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN forgery INTEGER NOT NULL DEFAULT 0;") &&
-               AddColumn("ALTER TABLE letters ADD COLUMN anonymous INTEGER NOT NULL DEFAULT 0;");
+               AddColumn("ALTER TABLE letters ADD COLUMN anonymous INTEGER NOT NULL DEFAULT 0;") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN dispatched INTEGER NOT NULL DEFAULT 0;");
     }
 
     bool LetterDB::AddColumn(const char* sql)
@@ -203,7 +205,7 @@ namespace PhysicalLetters {
         Statement s{ db_,
                      "INSERT OR REPLACE INTO letters (letter_id, author_uuid, author_name, recipient_uuid, "
                      "recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, signed_uuid, signed_name, "
-                     "signed_address, forgery, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "signed_address, forgery, anonymous, dispatched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                      "Insert" };
         return s.Bind(1, letter.id)
             .Bind(2, letter.authorUuid)
@@ -221,13 +223,14 @@ namespace PhysicalLetters {
             .Bind(14, letter.signedAddress)
             .Bind(15, letter.forgery)
             .Bind(16, letter.anonymous ? 1 : 0)
+            .Bind(17, letter.dispatched ? 1 : 0)
             .Run();
     }
 
     namespace {
         constexpr auto kLetterColumns =
             "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, "
-            "signed_uuid, signed_name, signed_address, forgery, anonymous";
+            "signed_uuid, signed_name, signed_address, forgery, anonymous, dispatched";
 
         Letter ReadLetter(const Statement& s)
         {
@@ -246,7 +249,8 @@ namespace PhysicalLetters {
                            .signedName = s.Text(12),
                            .signedAddress = s.Text(13),
                            .forgery = s.Int(14),
-                           .anonymous = s.Int(15) != 0 };
+                           .anonymous = s.Int(15) != 0,
+                           .dispatched = s.Int(16) != 0 };
         }
     }
 

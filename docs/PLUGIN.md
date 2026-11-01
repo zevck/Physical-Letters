@@ -67,8 +67,9 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x8B8` | LeveledItem | `PhysicalLettersLItemParchment` | 3 or 5 parchment; added in memory to every general-goods merchant's chest (those stocking Skyrim.esm `LItemMiscVendorMiscItems75`) |
 | `0x8B9` | Faction | `PhysicalLettersHasLetterFaction` | Hidden from the player; each actor the player carries a letter for is in it (the DLL, `HandIn::RefreshRecipients` and on actor load); the hand-in topic's condition ([HAND_IN.md](HAND_IN.md#the-dialogue)) |
 | `0x8BA` | Keyword | `PhysicalLettersForReader` | On the letters addressed to the NPC the hand-in topic was chosen with, while its gift menu is open (the DLL, `BeginHandIn`); held by the filter list `0x889` |
+| `0x8BB` | Book | `PhysicalLettersDMLetter` | The DM Letter ([DM_LETTER.md](DM_LETTER.md)): the parchment's look, value 0, weight 0, no keywords, an English item card; given from the MCM, never used up |
 
-The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`, `HandIn.cpp`, `Parchment.cpp`).
+The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`, `HandIn.cpp`, `Parchment.cpp`, `DmLetter.h`).
 
 The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 

@@ -21,6 +21,8 @@
 
 #include "LetterDB.h"
 
+#include <nlohmann/json.hpp>
+
 // Letters between NPCs (docs/NPC_TO_NPC.md): every few days an NPC may write to someone in
 // their own life, chosen by the LLM; the recipient reads it and may reply, within a thread
 // of at most MaxLettersPerThread letters.  Delivery and reading are Transit's and Reading's;
@@ -36,6 +38,13 @@ namespace PhysicalLetters::NpcToNpc {
 
     // Whether the recipient of this letter between NPCs may still reply: its thread has room.
     bool CanReply(const std::string& letterId);
+
+    // Worker thread.  The actor's `count` newest memories' text (letters excluded: they come as letters).
+    nlohmann::json Memories(RE::FormID formId, int count);
+
+    // The writer's memory of their letter to another NPC, tagged with it (later readings count it as correspondence).
+    // `answer`: the letter call's JSON (memory, emotion, importance), or empty for "I wrote a letter to X."  Game thread.
+    void RememberWriting(const Letter& letter, RE::FormID writer, RE::FormID recipient, const nlohmann::json& answer);
 
     // The thread this letter belongs to is over (no reply, no room, or undeliverable): the
     // pair doesn't write again for PairCooldownDays.

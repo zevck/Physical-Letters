@@ -21,6 +21,7 @@
 #include "Parchment.h"
 #include "Postage.h"
 #include "NpcLetters.h"
+#include "DmLetter.h"
 #include "NpcToNpc.h"
 #include "RoadCourier.h"
 #include "Config.h"
@@ -56,6 +57,7 @@ namespace {
                         PhysicalLetters::Transit::Tick();
                         PhysicalLetters::NpcLetters::Tick();
                         PhysicalLetters::NpcToNpc::Tick();
+                        PhysicalLetters::DmLetter::Tick();
                         PhysicalLetters::RoadCourier::Tick();
                     } catch (const std::exception& e) {
                         SKSE::log::error("Heartbeat failed: {}", e.what());
@@ -82,6 +84,7 @@ namespace {
             PhysicalLetters::HandIn::Register();
             PhysicalLetters::Parchment::OnDataLoaded();
             PhysicalLetters::Writing::Register();
+            PhysicalLetters::DmLetter::Register();
             StartHeartbeat();
             break;
         case SKSE::MessagingInterface::kPreLoadGame:

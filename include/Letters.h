@@ -58,6 +58,19 @@ namespace PhysicalLetters::Letters {
     std::string Reading(const Letter& letter);
     // `bodyLocked`: only the two lines can be written in (a new letter until it has a recipient).
     std::string Marked(const Letter& letter, bool bodyLocked = false);
+    // The DM Letter's page (docs/DM_LETTER.md#the-sheet), its runs in order: "From:", "To:", the delivery hours, the
+    // Transform box (none while `transformLocked` or `forgery`), the Forgery box (none while `transformLocked`), the text.
+    struct Sheet {
+        std::string from;
+        std::string to;
+        std::string hours;
+        bool rewrite = false;
+        std::string text;
+        bool transformLocked = false;  // "From:" names no writer: the Transform line is greyed out and locked
+        bool forgery = false;
+    };
+    std::string SheetText(const Sheet& sheet, bool marked);
+
     // `text` as a letter's page writes it (typographic marks made plain): what the editor gives back.
     std::string AsWritten(std::string_view text);
 

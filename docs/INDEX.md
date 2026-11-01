@@ -6,13 +6,14 @@ The docs are the source of truth for how the code works. A change that makes a d
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, the session, threading, code shared with SkyrimNet Physical Diaries |
 | [PERSISTENCE.md](PERSISTENCE.md) | Letter forms, the co-save, LetterDB, and what happens on save, load, Keep and Clear |
-| [READING.md](READING.md) | How a recipient reads a letter: the prompt, the memory, retries |
+| [READING.md](READING.md) | How a recipient reads a letter: the prompt, the memory, the event that they received it, retries |
 | [DELIVERY.md](DELIVERY.md) | Travel time (fast travel's navmesh path), the hand-over, undeliverable letters, replies and the courier |
 | [COURIER.md](COURIER.md) | The vanilla courier carrying a letter to an NPC in the player's town: the errand, other courier mods, when it falls back to unseen delivery |
 | [ROAD_COURIER.md](ROAD_COURIER.md) | The courier met on the road with the letters passing there: vanilla's road triggers, detecting a passing letter, the encounter, the dialogue (intimidate, brawl) |
 | [HAND_IN.md](HAND_IN.md) | Handing a letter to its recipient in person: who the topic shows to (the recipients' faction), the dialogue, the gift menu filtered to their letters, delivery |
 | [WRITING.md](WRITING.md) | Writing letters as an Ink & Quill client: parchment, the "From:" and "To:" lines, matching the recipient, saving and editing |
 | [FORGERY.md](FORGERY.md) | Letters in someone else's name: the "From:" line, the roll at save, Special Ink |
+| [DM_LETTER.md](DM_LETTER.md) | The DM Letter: a letter from one NPC to another, sent by the player as the story's dungeon master; the page, the check box, sending as written or rewritten |
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
 | [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
 | [SETTINGS.md](SETTINGS.md) | The INI, the MCM, adding a setting |

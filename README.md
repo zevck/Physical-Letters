@@ -34,6 +34,9 @@ NPCs write to each other too, and their letters are delivered by the courier. In
 ### Forgeries
 Change the "From:" line to someone else's name and address, and the letter goes out in their name. Whether your handwriting passes for theirs depends on your Pickpocket skill; with the Quill of Gemination and Special Ink, it always does. Fooled, they may write back to the person whose name you used. You can also sign with any name that isn't a person's, or leave "From:" empty to send it anonymously.
 
+### DM Letter
+For running the story yourself: take the DM Letter from the MCM and send a letter from any NPC to any other, or to yourself. Choose who it's from (or leave it unsigned, or sign it with any name), who it's to and how many hours until it arrives (0 for now), then write the letter word for word, or write notes and tick Transform to have the writer put them in their own words. Tick Forgery and the letter is a perfect forgery in their name. The recipient reads it and may reply like any other letter. It's never used up and needs no quill or ink.
+
 ### Written in Blood
 With no ink, **Ink & Quill** lets you write in your own blood. The recipient sees which parts are written in blood, and reacts to it.
 

@@ -39,6 +39,10 @@ Who a letter is from, to its reader, is `Letters::SenderOf`: the person a forger
 
 `Transit::CanReplyTo` decides, at the reading and again when its reply comes back.
 
+## The DM Letter's forgeries
+
+The DM Letter's Forgery box ([DM_LETTER.md](DM_LETTER.md#sending)) makes the same kind of letter with no roll: it always passes, and it has no author at all (the player's forgeries are the player's). Everything above that reads the person named, from the reading to the replies, applies to it unchanged.
+
 ## Not done
 
 - A reader guessing who wrote an unsigned or seen-through letter and writing to them (user's idea, 2026-10-13): parked; replies to forgeries have now been seen in game, so it's for the user to take up.

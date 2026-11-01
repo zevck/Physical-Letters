@@ -50,6 +50,23 @@ My reply:
 
 The summary comes first because SkyrimNet embeds only the start of a long memory; the exact texts follow so the NPC can recall what was written. SkyrimNet stores diary entries the same way. Writing a memory makes no LLM request; SkyrimNet embeds it locally.
 
+## The event
+
+A memory is only found when something searches for it. An important letter could sit in it unmentioned, so once the memory is stored the reader also gets an event that they received it (`Reading::Announce`, user, 2026-10-31). It's a `persistent_generic` event: stored in their history, shown as `*line* (time)`, and nobody reacts to it. While it's among their recent events, their conversations see it, and SkyrimNet's memory search, which reads recent events, finds the memory. The line has the letter's text too (user's choice):
+
+```
+<reader> received a letter from <whom it's from>. It reads:    (or: received an unsigned letter)
+<the exact letter>
+
+The handwriting looks off for <name>.    (as in the memory)
+
+It is written in blood.    (as in the memory)
+```
+
+**Its audience is the reader alone** (`PublicRegisterEvent` with an audience of one; they needn't be 3D-loaded, only in memory, which a named NPC usually is). That keeps it out of other NPCs' own history and memories. SkyrimNet still shows it to readers that ignore the audience (its `EVENT_SYSTEM.md`): the GameMaster agent, speaker selection, and the combined history of a conversation the reader is in. So whoever talks with the reader while the event is recent may see the letter's text: accepted with the text in it.
+
+A letter handed over near the player gets none: the narration of them reading it on the spot already carries its text ([HAND_IN.md](HAND_IN.md#reading-it-there); the parcel's `readAloud`, held for the session only, so a load between the hand-over and the reading gives it both). The event is registered once the reading is stored; if SkyrimNet refuses it, a warning is logged and the reading still counts. Saves: a reading found already stored after loading an older save (Keep) adds no second event; after Clear the event went with that history, and comes again with the new reading; work that finishes after a load registers none.
+
 ## Failures and retries
 
 A parcel leaves the queue only when the reading succeeds (or can never succeed: the letter isn't in LetterDB). Everything else is a retry:

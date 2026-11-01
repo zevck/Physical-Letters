@@ -41,6 +41,7 @@ set(sources
     src/RoadCourier.cpp
     src/HandIn.cpp
     src/Parchment.cpp
+    src/DmLetter.cpp
     src/Recipients.cpp
     src/Writing.cpp
     src/Serialization.cpp

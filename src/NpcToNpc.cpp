@@ -215,11 +215,12 @@ namespace PhysicalLetters::NpcToNpc {
             for (const auto& id : Transit::PendingLetterIds()) {
                 const auto letter = db->Get(id);
                 if (!letter || !IsNpcLetter(*letter)) continue;
-                open.npcs.insert(letter->authorUuid);
+                if (!letter->authorUuid.empty()) open.npcs.insert(letter->authorUuid);  // a DM Letter's may have none
                 open.npcs.insert(letter->recipientUuid);
-                // Begun by the player's forgery: busy, but not one of the schedule's threads (docs/FORGERY.md#replies).
+                // Begun by the player's forgery or the DM Letter: busy, but not one of the schedule's threads
+                // (docs/FORGERY.md#replies, docs/DM_LETTER.md).
                 const auto root = Thread(id).first;
-                if (const auto first = db->Get(root); first && !IsNpcLetter(*first)) continue;
+                if (const auto first = db->Get(root); first && (!IsNpcLetter(*first) || first->dispatched)) continue;
                 open.threads.insert(root);
             }
             return open;
@@ -367,20 +368,6 @@ namespace PhysicalLetters::NpcToNpc {
             return std::nullopt;
         }
 
-        // Worker thread.  The actor's newest memories (letters excluded: they come as letters).
-        json Memories(RE::FormID formId, int count)
-        {
-            auto memories = json::array();
-            if (count <= 0) return memories;
-            const auto found = json::parse(SkyrimNet::RecentMemories(formId, count, "physical_letters"), nullptr, false);
-            if (found.is_array()) {
-                for (const auto& m : found) {
-                    if (m.contains("content") && m["content"].is_string()) memories.push_back(m["content"]);
-                }
-            }
-            return memories;
-        }
-
         // Worker thread.  The letters the writer exchanged with other NPCs and remembers, newest
         // first, one line each ("wrote to Nilsine Shatter-Shield, 5 days ago").
         json LetterLines(const Writer& writer, double now)
@@ -392,33 +379,13 @@ namespace PhysicalLetters::NpcToNpc {
                 const int days = static_cast<int>(std::max(0.0, now - letter.writtenAt));
                 const auto when = days == 0 ? std::string{ "today" } : days == 1 ? std::string{ "a day ago" }
                                                                                   : std::format("{} days ago", days);
+                // From whom, to the reader: a DM Letter's may be unsigned or signed with a name that's nobody's.
+                const auto from = Letters::SenderOf(letter).name;
                 lines.push_back(letter.authorUuid == writer.uuid ? std::format("wrote to {}, {}", letter.recipientName, when)
-                                                                 : std::format("had a letter from {}, {}", letter.authorName, when));
+                                : from.empty()                   ? std::format("had an unsigned letter, {}", when)
+                                                                 : std::format("had a letter from {}, {}", from, when));
             }
             return lines;
-        }
-
-        // The writer's memory of the letter, tagged with it: their later readings count it
-        // as correspondence.
-        void Remember(const Pair& pair, const Letter& letter, const json& answer, std::uint32_t generation)
-        {
-            auto memory = LlmJson::GetString(answer, "memory");
-            if (memory.empty()) memory = std::format("I wrote a letter to {}.", pair.recipient.name);
-            const auto content = std::format("{}\n\nMy letter to {}:\n{}", memory, pair.recipient.name, letter.body);
-            const float importance = std::clamp(LlmJson::GetFloat(answer, "importance", kDefaultImportance), 0.0f, 1.0f);
-            const auto emotion = LlmJson::GetString(answer, "emotion");
-            const auto tags = json::array({ "physical_letters", "letter_sent", Reading::LetterTag(letter.id) }).dump();
-            std::thread([formId = pair.writer.formId, related = pair.recipient.formId, content, importance, emotion, tags,
-                         name = pair.writer.name, generation]() {
-                try {
-                    if (generation != Session::Generation()) return;
-                    const int id = SkyrimNet::AddMemory(formId, content, importance, "RELATIONSHIP", emotion, tags,
-                                                        std::format("[{}]", related));
-                    if (id == 0) SKSE::log::error("[NpcToNpc] SkyrimNet didn't store {}'s memory of writing", name);
-                } catch (const std::exception& e) {
-                    SKSE::log::error("[NpcToNpc] Storing {}'s memory failed: {}", name, e.what());
-                }
-            }).detach();
         }
 
         // Game thread.  The letter call's answer: a letter to send, or none.
@@ -477,7 +444,7 @@ namespace PhysicalLetters::NpcToNpc {
                             pair.writer.name, pair.recipient.name, LlmJson::GetString(answer, "tie"),
                             LlmJson::GetString(answer, "purpose"), letter.id, hours);
             Finish();
-            Remember(pair, letter, answer, token.generation);
+            RememberWriting(letter, pair.writer.formId, pair.recipient.formId, answer);
         }
 
         // Worker thread.  The letter call on the default model: it judges the tie and the purpose
@@ -687,8 +654,43 @@ namespace PhysicalLetters::NpcToNpc {
         return Thread(letterId).second < Config::GetSingleton()->Get(Config::kN2nMaxLetters);
     }
 
+    nlohmann::json Memories(RE::FormID formId, int count)
+    {
+        auto memories = json::array();
+        if (count <= 0) return memories;
+        const auto found = json::parse(SkyrimNet::RecentMemories(formId, count, "physical_letters"), nullptr, false);
+        if (found.is_array()) {
+            for (const auto& m : found) {
+                if (m.contains("content") && m["content"].is_string()) memories.push_back(m["content"]);
+            }
+        }
+        return memories;
+    }
+
+    void RememberWriting(const Letter& letter, RE::FormID writer, RE::FormID recipient, const nlohmann::json& answer)
+    {
+        auto memory = LlmJson::GetString(answer, "memory");
+        if (memory.empty()) memory = std::format("I wrote a letter to {}.", letter.recipientName);
+        const auto content = std::format("{}\n\nMy letter to {}:\n{}", memory, letter.recipientName, letter.body);
+        const float importance = std::clamp(LlmJson::GetFloat(answer, "importance", kDefaultImportance), 0.0f, 1.0f);
+        const auto emotion = LlmJson::GetString(answer, "emotion");
+        const auto tags = json::array({ "physical_letters", "letter_sent", Reading::LetterTag(letter.id) }).dump();
+        std::thread([writer, recipient, content, importance, emotion, tags, name = letter.authorName,
+                     generation = Session::Generation()]() {
+            try {
+                if (generation != Session::Generation()) return;
+                const int id = SkyrimNet::AddMemory(writer, content, importance, "RELATIONSHIP", emotion, tags,
+                                                    std::format("[{}]", recipient));
+                if (id == 0) SKSE::log::error("[NpcToNpc] SkyrimNet didn't store {}'s memory of writing", name);
+            } catch (const std::exception& e) {
+                SKSE::log::error("[NpcToNpc] Storing {}'s memory failed: {}", name, e.what());
+            }
+        }).detach();
+    }
+
     void ThreadEnded(const Letter& letter)
     {
+        if (letter.authorUuid.empty()) return;  // a DM Letter's with no writer: no pair (docs/DM_LETTER.md#sending)
         const int days = Config::GetSingleton()->Get(Config::kN2nPairCooldown);
         g_pairUntil[PairKey(letter.authorUuid, letter.recipientUuid)] = Now() + days;
         SKSE::log::info("[NpcToNpc] The letters between {} and {} are over for now ({} letter(s)); they don't write again for "
