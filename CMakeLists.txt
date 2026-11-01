@@ -36,12 +36,14 @@ set(sources
     src/DynamicForms.cpp
     src/LetterDB.cpp
     src/Letters.cpp
-    src/Locale.cpp
+    src/Localization.cpp
     src/Reading.cpp
     src/RoadCourier.cpp
     src/HandIn.cpp
     src/Parchment.cpp
     src/DmLetter.cpp
+    src/Api.cpp
+    src/Package.cpp
     src/Recipients.cpp
     src/Writing.cpp
     src/Serialization.cpp
@@ -77,6 +79,7 @@ target_include_directories(
     ${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/api
         ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 

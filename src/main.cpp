@@ -22,13 +22,14 @@
 #include "Postage.h"
 #include "NpcLetters.h"
 #include "DmLetter.h"
+#include "Package.h"
 #include "NpcToNpc.h"
 #include "RoadCourier.h"
 #include "Config.h"
 #include "Papyrus.h"
 #include "DynamicForms.h"
 #include "Letters.h"
-#include "Locale.h"
+#include "Localization.h"
 #include "Serialization.h"
 #include "Session.h"
 #include "SkyrimNet.h"
@@ -58,6 +59,7 @@ namespace {
                         PhysicalLetters::NpcLetters::Tick();
                         PhysicalLetters::NpcToNpc::Tick();
                         PhysicalLetters::DmLetter::Tick();
+                        PhysicalLetters::Package::Tick();
                         PhysicalLetters::RoadCourier::Tick();
                     } catch (const std::exception& e) {
                         SKSE::log::error("Heartbeat failed: {}", e.what());
@@ -85,6 +87,7 @@ namespace {
             PhysicalLetters::Parchment::OnDataLoaded();
             PhysicalLetters::Writing::Register();
             PhysicalLetters::DmLetter::Register();
+            PhysicalLetters::Package::Register();
             StartHeartbeat();
             break;
         case SKSE::MessagingInterface::kPreLoadGame:

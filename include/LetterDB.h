@@ -50,6 +50,20 @@ namespace PhysicalLetters {
         int forgery = 0;          // a forgery's roll at save: kForgeryNone, kForgeryPasses or kForgerySeen
         bool anonymous = false;   // the player's letter with an empty "From:" line: no name at all
         bool dispatched = false;  // sent with the DM Letter (docs/DM_LETTER.md): its thread isn't the schedule's
+        std::string tag;          // another mod's label for its letter, inherited by replies (docs/API.md#finding-letters)
+    };
+
+    // LetterDB::Query's filter (docs/API.md#finding-letters).  Empty / unset: no constraint.
+    struct LetterQuery {
+        enum class Role { kEither, kWriter, kRecipient };
+        std::string actorUuid;  // the letters this person wrote (the author) or received, as `role` says
+        Role role = Role::kEither;
+        std::string otherUuid;  // ... with this person on the other side
+        std::vector<std::string> includeTags;  // any of these
+        std::vector<std::string> excludeTags;
+        std::optional<double> writtenAfter;  // game days, inclusive
+        std::optional<double> writtenBefore;
+        bool newestFirst = true;
     };
 
     // Letter::forgery (docs/FORGERY.md#the-roll).
@@ -76,6 +90,12 @@ namespace PhysicalLetters {
         std::vector<Letter> Between(const std::string& uuidA, const std::string& uuidB);
         // Every letter the actor wrote or received, newest first, at most `limit`.
         std::vector<Letter> Involving(const std::string& uuid, int limit);
+
+        // Every letter matching `query`, in its order, from every save of the character: the caller decides which belong.
+        std::vector<Letter> Query(const LetterQuery& query);
+
+        // The replies to letter `id`, newest first, from every save of the character: the caller decides which belong.
+        std::vector<std::string> RepliesTo(const std::string& id);
 
         bool MarkDelivered(const std::string& id, double gameDays);
 

@@ -9,6 +9,13 @@ int  Function GetSettingMin(string name)               global native
 int  Function GetSettingMax(string name)               global native
 ; Puts the DM Letter in the player's inventory: 0 added, 1 already carried, 2 can't be used (docs/DM_LETTER.md).
 int  Function AddDmLetter()                            global native
+; The letter actions mods registered this session, and their switches (docs/API.md#actions).
+int    Function GetActionCount()                       global native
+string Function GetActionName(int i)                   global native
+string Function GetActionDisplayName(int i)            global native
+string Function GetActionDisplayDescription(int i)     global native
+bool   Function IsActionEnabled(string name)           global native
+       Function SetActionEnabled(string name, bool on) global native
 
 ; The sliders, in page order: setting, label, tooltip, format, step.
 string[] _names
@@ -32,6 +39,10 @@ string[] _fontChoices
 int _fontOid = -1
 ; The DM Letter's button.
 int _dmOid = -1
+; The letter actions shown, and their toggles.
+string[] _actionNames
+int[] _actionOids
+int _actionsNoneOid = -1
 
 event OnConfigInit()
     ModName = "Physical Letters"
@@ -44,10 +55,11 @@ event OnConfigOpen()
 endevent
 
 function SetPages()
-    Pages = new string[3]
+    Pages = new string[4]
     Pages[0] = "$PL_PageGeneral"
     Pages[1] = "$PL_PageNpcLetters"
     Pages[2] = "$PL_PageDelivery"
+    Pages[3] = "$PL_PageActions"
 endfunction
 
 function Slider(int i, string name, string label, string tip, int step)
@@ -99,10 +111,10 @@ function Setup()
     Slider(23, "Courier.IntimidateSpeech", "$PL_RoadSpeech", "$PL_TipRoadSpeech", 5)
     Slider(24, "Courier.RobberyBounty", "$PL_RoadBounty", "$PL_TipRoadBounty", 5)
 
-    _toggleNames = new string[10]
-    _toggleLabels = new string[10]
-    _toggleTips = new string[10]
-    _toggleOids = new int[10]
+    _toggleNames = new string[11]
+    _toggleLabels = new string[11]
+    _toggleTips = new string[11]
+    _toggleOids = new int[11]
     Toggle(0, "NpcLetters.Enabled", "$PL_NpcLetters", "$PL_TipNpcLetters")
     Toggle(1, "General.DebugLog", "$PL_DebugLog", "$PL_TipDebugLog")
     Toggle(2, "NpcToNpc.Enabled", "$PL_N2n", "$PL_TipN2n")
@@ -113,6 +125,7 @@ function Setup()
     Toggle(7, "NpcLetters.Replies", "$PL_NpcReplies", "$PL_TipNpcReplies")
     Toggle(8, "Writing.Blood", "$PL_Blood", "$PL_TipBlood")
     Toggle(9, "NpcLetters.ForgeryReplies", "$PL_ForgeryReplies", "$PL_TipForgeryReplies")
+    Toggle(10, "General.LetterActions", "$PL_LetterActions", "$PL_TipLetterActions")
     _recipientsOid = -1
 
     _recipientChoices = new string[3]
@@ -122,6 +135,11 @@ function Setup()
 
     _fontOid = -1
     _dmOid = -1
+    _actionsNoneOid = -1
+    ; Another page's action toggles mustn't match this page's options.
+    _actionNames = new string[1]
+    _actionOids = new int[1]
+    _actionOids[0] = -1
     _fontChoices = new string[3]
     _fontChoices[0] = "$PL_FontHandwritten"
     _fontChoices[1] = "$PL_FontEverywhere"
@@ -130,6 +148,29 @@ endfunction
 
 function AddSlider(int i)
     _oids[i] = AddSliderOption(_labels[i], GetSetting(_names[i]), _formats[i])
+endfunction
+
+; One toggle per registered letter action, by its display name; none registered: a line saying so.
+function AddActions()
+    ; 20: Api.cpp's kMaxActions (Papyrus array sizes must be literals).
+    _actionNames = new string[20]
+    _actionsNoneOid = -1
+    _actionOids = new int[20]
+    int count = GetActionCount()
+    if count == 0
+        _actionsNoneOid = AddTextOption("$PL_ActionsNone", "")
+        AddEmptyOption()
+        return
+    endif
+    int i = 0
+    while i < count && i < 20
+        _actionNames[i] = GetActionName(i)
+        _actionOids[i] = AddToggleOption(GetActionDisplayName(i), IsActionEnabled(_actionNames[i]))
+        i += 1
+    endwhile
+    if count % 2 == 1
+        AddEmptyOption()
+    endif
 endfunction
 
 function AddToggle(int i)
@@ -147,7 +188,7 @@ function AddGap()
     AddEmptyOption()
 endfunction
 
-; Three pages, two columns filled left to right (docs/SETTINGS.md#the-mcm).
+; Four pages, two columns filled left to right (docs/SETTINGS.md#the-mcm).
 event OnPageReset(string page)
     Setup()
     SetCursorFillMode(LEFT_TO_RIGHT)
@@ -185,6 +226,12 @@ event OnPageReset(string page)
         AddSlider(22)
         AddSlider(23)
         AddSlider(24)
+    elseif page == "$PL_PageActions"
+        AddHeader("$PL_HeaderActions")
+        AddToggle(10)
+        AddEmptyOption()
+        AddGap()
+        AddActions()
     else
         ; General, and the first open (no page chosen yet).
         AddHeader("$PL_HeaderGeneral")
@@ -225,6 +272,15 @@ event OnOptionSliderAccept(int oid, float value)
 endevent
 
 event OnOptionSelect(int oid)
+    if _actionOids
+        int a = _actionOids.Find(oid)
+        if a >= 0
+            bool on = !IsActionEnabled(_actionNames[a])
+            SetActionEnabled(_actionNames[a], on)
+            SetToggleOptionValue(oid, on)
+            return
+        endif
+    endif
     if oid == _dmOid
         int result = AddDmLetter()
         if result == 0
@@ -290,6 +346,17 @@ event OnOptionDefault(int oid)
 endevent
 
 event OnOptionHighlight(int oid)
+    if oid == _actionsNoneOid
+        SetInfoText("$PL_TipActionsNone")
+        return
+    endif
+    if _actionOids
+        int a = _actionOids.Find(oid)
+        if a >= 0
+            SetInfoText(GetActionDisplayDescription(a))
+            return
+        endif
+    endif
     if oid == _dmOid
         SetInfoText("$PL_TipAddDmLetter")
         return

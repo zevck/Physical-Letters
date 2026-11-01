@@ -18,6 +18,7 @@
  */
 
 #include "Letters.h"
+#include "Package.h"
 #include "Config.h"
 #include "DynamicForms.h"
 #include "MarkedText.h"
@@ -192,8 +193,10 @@ namespace PhysicalLetters::Letters {
         // The item card: whom it's to and the name it's signed with; an anonymous letter's names nobody.
         std::string CardText(const Letter& letter)
         {
-            if (letter.anonymous) return Strings::LetterCardTo(letter.recipientName);
-            return Strings::LetterCard(letter.recipientName, letter.signedName.empty() ? letter.authorName : letter.signedName);
+            auto card = letter.anonymous ? Strings::LetterCardTo(letter.recipientName)
+                                         : Strings::LetterCard(letter.recipientName, letter.signedName.empty() ? letter.authorName : letter.signedName);
+            if (Package::Has(letter.id)) card += "\n" + Strings::LetterCardPackage();  // docs/PACKAGES.md
+            return card;
         }
 
         // Whom a letter says it's from: its "From:" line's name (and address), else its author.
@@ -211,7 +214,12 @@ namespace PhysicalLetters::Letters {
             const auto lock = [marked](std::string_view text) {
                 return marked ? std::format("{}{}{}", kLockOpen, text, kLockClose) : std::string{ text };
             };
-            const std::string body = Paragraphs(letter.blood.empty() ? letter.body : letter.blood, marked);
+            // Read, a letter with a package lists it under its text: what the package holds now (docs/PACKAGES.md).
+            std::string text = letter.blood.empty() ? letter.body : letter.blood;
+            if (const auto enclosed = marked ? std::string{} : Package::Describe(letter.id); !enclosed.empty()) {
+                text += "\n\n" + Strings::Enclosed(enclosed);
+            }
+            const std::string body = Paragraphs(text, marked);
             if (!IsPlayers(letter)) return body + (marked ? lock("") : std::string{});
             // The name run is the name and, on a saved letter, its address.  Typed text takes the format of
             // the text before it (an empty run's too): the break before the body is in the handwriting.
@@ -334,23 +342,25 @@ namespace PhysicalLetters::Letters {
             return marked ? std::format("{}{}{}", kLockOpen, text, kLockClose) : std::string{ text };
         };
         const auto line = [](const std::string& text) { return Escape(Plain(text)); };
-        const std::string transformLabel = "\n" + Escape(Strings::DmTransformLabel()) + " [";
+        const std::string transformLabel = "   " + Escape(Strings::DmTransformLabel()) + " [";
         const std::string forgeryLabel = "   " + Escape(Strings::DmForgeryLabel()) + " [";
         const std::string end = "]" + std::string{ BlankLine(marked) } + "</font>";
         // Greyed out and locked, with no box: the whole line with no writer, Transform alone once Forgery is ticked.
         const auto grey = [](std::string_view text) { return std::format("{}{}</font>", kGreyFont, text); };
+        // One line: Package, then Transform and Forgery.  Each mark is locked and its box the empty run after it; the "]"
+        // closing the Package box opens the next lock, since two locks side by side would make an extra run.
         std::string transform;
         if (sheet.transformLocked) {
-            transform = lock(grey(transformLabel + " ]" + forgeryLabel + " ]") + std::string{ BlankLine(marked) } + "</font>");
+            transform = lock("]" + grey(transformLabel + " ]" + forgeryLabel + " ]") + std::string{ BlankLine(marked) } + "</font>");
         } else if (sheet.forgery) {
-            transform = lock(grey(transformLabel + " ]") + forgeryLabel + "x") + lock(end);
+            transform = lock("]" + grey(transformLabel + " ]") + forgeryLabel + "x") + lock(end);
         } else {
-            // Each mark is locked and its box an empty run: the caret has one place in it, after the mark.
-            transform = lock(transformLabel + (sheet.rewrite ? "x" : " ")) + lock("]" + forgeryLabel + " ") + lock(end);
+            transform = lock("]" + transformLabel + (sheet.rewrite ? "x" : " ")) + lock("]" + forgeryLabel + " ") + lock(end);
         }
         return Font() + lock(Strings::FromLabel()) + line(sheet.from) + lock("\n" + Strings::ToLabel()) + line(sheet.to) +
-               lock("\n" + Strings::DmDeliveryLabel()) + line(sheet.hours) + transform + Paragraphs(sheet.text, marked) +
-               (marked ? lock("") : std::string{});
+               lock("\n" + Strings::DmDeliveryLabel()) + line(sheet.hours) +
+               lock("\n" + Escape(Strings::DmPackageLabel()) + " [" + (sheet.package ? "x" : " ")) + transform +
+               Paragraphs(sheet.text, marked) + (marked ? lock("") : std::string{});
     }
 
     std::string Marked(const Letter& letter, bool bodyLocked)
@@ -460,6 +470,13 @@ namespace PhysicalLetters::Letters {
             }
         }
         SKSE::log::info("[Letters] Attached the text of {} letter(s), {} missing", attached, missing);
+    }
+
+    void Refresh(const std::string& letterId)
+    {
+        auto* book = RE::TESForm::LookupByID<RE::TESObjectBOOK>(FormFor(letterId));
+        const auto letter = LetterDB::GetSingleton()->Get(letterId);
+        if (book && letter) SetEntry(book, letterId, Render(*letter, false), CardText(*letter));
     }
 
     void Revert()

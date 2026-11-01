@@ -10,7 +10,7 @@ Vanilla's own mechanism, documented in `WETriggerScript.psc`: trigger boxes plac
 
 Every letter on its way has a **route**, set when it sets out: the straight line between where it left (whoever held it, the writer, or a dead recipient for a returned letter) and where it goes (the recipient, or the player for a letter to them), on the exterior map (`Travel::PointOf`: an interior counts as its location's marker), and when it set out (a reply, once written: `WritingHours` after the reading). A letter whose two ends are on different maps has none.
 
-Every heartbeat `RoadCourier::Tick` checks the letters in transit (to an NPC, or to the courier for the player) against the player's position, outdoors (no town check: a town's location reaches far past its walls, Whiterun's over most of the road to Riverwood, which hid the letter for a whole run; vanilla's road triggers are only on roads anyway):
+Every heartbeat `RoadCourier::Tick` checks the letters in transit (but replies and API letters only after their first 30 real seconds, so a mod can add to their package: `Transit::kHold`, [API.md](API.md#packages)) (to an NPC, or to the courier for the player) against the player's position, outdoors (no town check: a town's location reaches far past its walls, Whiterun's over most of the road to Riverwood, which hid the letter for a whole run; vanilla's road triggers are only on roads anyway):
 
 - the route is at least 16,384 units long (shorter is within one town);
 - it passes within **16,384 units** of the player (about four exterior cells);

@@ -89,9 +89,11 @@ namespace PhysicalLetters {
         static constexpr Setting kWritingBlood { "Writing", "Blood", 1, 0, 1 };
         // Someone fooled by a forgery may write back to the person it named (docs/FORGERY.md).
         static constexpr Setting kForgeryReplies { "NpcLetters", "ForgeryReplies", 1, 0, 1 };
+        // Letter actions are offered at all (docs/API.md#actions); each one's own switch is in [Actions].
+        static constexpr Setting kLetterActions { "General", "LetterActions", 1, 0, 1 };
         // INI order.
         static constexpr Setting kSettings[] = {
-            kDebugLog, kFontSize, kFont, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
+            kDebugLog, kFontSize, kFont, kLetterActions, kPostage, kWritingHours, kMinHours, kFallbackHours, kReturnAfterDays,
             kNpcLetters, kNpcReplies, kNpcInterval, kNpcCooldown, kNpcMinEvents, kNpcMissDays,
             kNpcMinDaysApart, kNpcCandidates, kN2nEnabled, kN2nInterval, kN2nKnownOnly, kN2nMaxThreads, kN2nMaxLetters, kN2nPairCooldown,
             kN2nWriters, kN2nNames, kN2nMemories, kCourierEnabled, kCourierWaitHours,
@@ -135,6 +137,34 @@ namespace PhysicalLetters {
             std::lock_guard lock(mutex_);
             const auto it = settings_.find("General.Language");
             return it != settings_.end() ? it->second : std::string{};
+        }
+
+        // [Actions] <name> = 0: a letter action switched off in the MCM (docs/API.md#actions); on unless set.  Kept for
+        // actions not registered this session, so a mod's switch survives a session without it.
+        static constexpr std::string_view kActionsPrefix = "Actions.";  // [Actions] keys, held as "Actions.<name>"
+        bool ActionEnabled(std::string_view name) const
+        {
+            std::lock_guard lock(mutex_);
+            const auto it = settings_.find(ActionKey(name));
+            return it == settings_.end() || it->second != "0";
+        }
+
+        void SetActionEnabled(std::string_view name, bool enabled)
+        {
+            std::lock_guard lock(mutex_);
+            settings_[ActionKey(name)] = enabled ? "1" : "0";
+        }
+
+        // The key an action's switch is held under, whatever its case (Papyrus and hand edits change it); a new one if none.
+        std::string ActionKey(std::string_view name) const
+        {
+            for (const auto& [key, value] : settings_) {
+                if (key.size() == kActionsPrefix.size() + name.size() && key.starts_with(kActionsPrefix) &&
+                    _strnicmp(key.c_str() + kActionsPrefix.size(), name.data(), name.size()) == 0) {
+                    return key;
+                }
+            }
+            return std::format("{}{}", kActionsPrefix, name);
         }
 
         void Set(const Setting& s, int value)
@@ -195,6 +225,17 @@ namespace PhysicalLetters {
                     }
                     out << s.key << " = " << Get(s) << "\n";
                 }
+                // The letter actions' switches, sorted: the ones switched off matter, the rest are kept as found.
+                std::vector<std::pair<std::string, std::string>> actions;
+                {
+                    std::lock_guard lock(mutex_);
+                    for (const auto& [key, value] : settings_) {
+                        if (key.starts_with(kActionsPrefix)) actions.emplace_back(key.substr(kActionsPrefix.size()), value);
+                    }
+                }
+                std::ranges::sort(actions);
+                if (!actions.empty()) out << "\n[Actions]\n";
+                for (const auto& [name, value] : actions) out << name << " = " << value << "\n";
                 std::filesystem::create_directories(path_.parent_path());
                 std::ofstream file(path_, std::ios::trunc);
                 if (!file.is_open()) {

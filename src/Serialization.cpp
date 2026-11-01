@@ -18,10 +18,12 @@
  */
 
 #include "Serialization.h"
+#include "DmLetter.h"
 #include "DynamicForms.h"
 #include "Letters.h"
 #include "NpcLetters.h"
 #include "NpcToNpc.h"
+#include "Package.h"
 #include "CourierErrand.h"
 #include "RoadCourier.h"
 #include "HandIn.h"
@@ -36,6 +38,8 @@ namespace PhysicalLetters::Serialization {
         constexpr std::uint32_t kNpcLettersRecord = 'LNPC';
         constexpr std::uint32_t kNpcToNpcRecord = 'LN2N';
         constexpr std::uint32_t kRoadCourierRecord = 'LROD';
+        constexpr std::uint32_t kPackageRecord = 'LPKG';
+        constexpr std::uint32_t kDmLetterRecord = 'LDMA';
 
         void SaveCallback(SKSE::SerializationInterface* a_intfc)
         {
@@ -46,6 +50,8 @@ namespace PhysicalLetters::Serialization {
                 NpcLetters::Save(a_intfc, kNpcLettersRecord);
                 NpcToNpc::Save(a_intfc, kNpcToNpcRecord);
                 RoadCourier::Save(a_intfc, kRoadCourierRecord);
+                Package::Save(a_intfc, kPackageRecord);
+                DmLetter::Save(a_intfc, kDmLetterRecord);
             } catch (const std::exception& e) {
                 SKSE::log::error("SaveCallback exception: {}", e.what());
             }
@@ -61,6 +67,8 @@ namespace PhysicalLetters::Serialization {
             HandIn::Revert();
             NpcLetters::Revert();
             NpcToNpc::Revert();
+            Package::Revert();
+            DmLetter::Revert();
         }
 
         // Inside the load, after the engine has recreated this save's letter forms: their
@@ -75,6 +83,8 @@ namespace PhysicalLetters::Serialization {
                     else if (type == kNpcLettersRecord) NpcLetters::Load(a_intfc, version);
                     else if (type == kNpcToNpcRecord) NpcToNpc::Load(a_intfc, version);
                     else if (type == kRoadCourierRecord) RoadCourier::Load(a_intfc, version);
+                    else if (type == kPackageRecord) Package::Load(a_intfc, version);
+                    else if (type == kDmLetterRecord) DmLetter::Load(a_intfc, version);
                 }
                 Letters::ConfigureLoaded();
             } catch (const std::exception& e) {

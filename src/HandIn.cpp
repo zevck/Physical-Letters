@@ -18,7 +18,10 @@
  */
 
 #include "HandIn.h"
+#include "Api.h"
 #include "Config.h"
+#include "Courier.h"
+#include "CourierErrand.h"
 #include "LetterDB.h"
 #include "Letters.h"
 #include "Postage.h"
@@ -178,7 +181,20 @@ namespace PhysicalLetters::HandIn {
                 // A letter came or went: who the topic shows to (after the hand-over below, tasks run in order).
                 const bool toNpc = a_event->oldContainer == kPlayer && a_event->newContainer != 0 && a_event->newContainer != kPlayer;
                 if (!toNpc) {
-                    SKSE::GetTaskInterface()->AddTask([]() { Guarded("Refreshing the recipients", RefreshRecipients); });
+                    // A letter to the player from the courier (his container, or the courier on the road): delivered
+                    // (docs/API.md#events).  Not from a chest, a follower or a body: that's the same letter again.
+                    const RE::FormID from = a_event->newContainer == kPlayer ? a_event->oldContainer : 0;
+                    SKSE::GetTaskInterface()->AddTask([from, bookId = a_event->baseObj]() {
+                        Guarded("Refreshing the recipients", RefreshRecipients);
+                        if (!from) return;
+                        auto* container = Courier::Container();
+                        auto* courier = CourierErrand::Courier();
+                        if ((!container || container->GetFormID() != from) && (!courier || courier->GetFormID() != from)) return;
+                        Guarded("A letter's delivery event", [bookId]() {
+                            const auto letter = LetterDB::GetSingleton()->Get(Letters::IdFor(bookId));
+                            if (letter && letter->recipientUuid == SkyrimNet::UuidForFormId(kPlayer)) Api::Delivered(letter->id, kPlayer);
+                        });
+                    });
                     return RE::BSEventNotifyControl::kContinue;
                 }
                 // The menus as they are now: by the task, the menu may have closed.

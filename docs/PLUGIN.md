@@ -68,8 +68,10 @@ All written by hand in YAML, modelled on the vanilla dumps, then normalised by a
 | `0x8B9` | Faction | `PhysicalLettersHasLetterFaction` | Hidden from the player; each actor the player carries a letter for is in it (the DLL, `HandIn::RefreshRecipients` and on actor load); the hand-in topic's condition ([HAND_IN.md](HAND_IN.md#the-dialogue)) |
 | `0x8BA` | Keyword | `PhysicalLettersForReader` | On the letters addressed to the NPC the hand-in topic was chosen with, while its gift menu is open (the DLL, `BeginHandIn`); held by the filter list `0x889` |
 | `0x8BB` | Book | `PhysicalLettersDMLetter` | The DM Letter ([DM_LETTER.md](DM_LETTER.md)): the parchment's look, value 0, weight 0, no keywords, an English item card; given from the MCM, never used up |
+| `0x8BC`, `0x8BD` | Container | `PhysicalLettersPackingChest`, `PhysicalLettersPackageStore` | The package chests' bases ([PACKAGES.md](PACKAGES.md#the-chests)): the vanilla courier container's barrel model, "Package" and "Packages in Transit" |
+| `0x8BE`, `0x8BF` | Placed object, persistent | `PhysicalLettersPackingChestRef`, `PhysicalLettersPackageStoreRef` | The two chests, in Skyrim.esm's `WICourierCell` (`039F67`): the ESP's only override of a vanilla record, made to add them, with the cell's own fields copied and nothing else of it changed |
 
-The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`, `HandIn.cpp`, `Parchment.cpp`, `DmLetter.h`).
+The DLL looks records up by these FormIDs; changing one means changing its constant too (`Letters.cpp`, `Postage.cpp`, `CourierErrand.cpp`, `RoadCourier.cpp`, `HandIn.cpp`, `Parchment.cpp`, `DmLetter.h`, `Package.cpp`).
 
 The vanilla masters dumped with Spriggit in the same format (`skyrim-esm-yaml` and the others) are a handy reference when writing or reviewing records.
 
@@ -96,7 +98,7 @@ If a record is easier to make in the Creation Kit or xEdit, edit the deployed `.
 
 ## Papyrus
 
-The scripts' sources (the TIFs, the MCM, the two courier quests and the hand-in quest) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
+The scripts' sources (the TIFs, the MCM, the two courier quests, the hand-in quest and the API's `PhysicalLetters.psc`, [API.md](API.md#papyrus)) are in `Source/Scripts`; `Build_Local.ps1` compiles it with Pyro (`skyrimse.ppj`, gitignored because it holds the path to the vanilla script sources, the same as SNPD's) into `Scripts/`, and deploys both. A Papyrus change is done only when its `.pex` is compiled and shipped.
 
 ## The SEQ file
 

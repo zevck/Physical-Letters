@@ -18,8 +18,11 @@
  */
 
 #include "Reading.h"
+#include "Api.h"
+#include "Package.h"
 #include "LetterDB.h"
 #include "Letters.h"
+#include "NpcToNpc.h"
 #include "Session.h"
 #include "LlmJson.h"
 #include "SkyrimNet.h"
@@ -41,15 +44,35 @@ namespace PhysicalLetters::Reading {
         constexpr RE::FormID kPlayer = 0x14;
         constexpr float kDefaultImportance = 0.7f;
 
-        // A letter the recipient already remembers: its reply, from the reading kept in
-        // LetterDB (the save may predate the reply letter).  No reply if that reading was
-        // never recorded (a load while it was stored).
+        // A letter action chosen (docs/API.md#actions): its name and parameter values, as strings.
+        void ReadAction(const json& reading, Outcome& outcome)
+        {
+            const auto action = GetString(reading, "action");
+            if (action.empty() || action == "none") return;
+            outcome.action = action;
+            if (!reading.contains("action_params") || !reading["action_params"].is_object()) return;
+            for (const auto& [key, value] : reading["action_params"].items()) {
+                outcome.actionValues.emplace_back(key, value.is_string() ? value.get<std::string>() : value.dump());
+            }
+        }
+
+        // What came with it, for the event and the memory: only what reached the reader (docs/PACKAGES.md).
+        std::string PackageSentence(const std::string& letterId)
+        {
+            const auto package = Package::Arrived(letterId);
+            return package.empty() ? std::string{} : "With it came: " + package + ".";
+        }
+
+        // A letter already remembered: its reply and action from the reading kept in LetterDB, again, since the save
+        // may predate what they led to; none if it was never recorded (docs/READING.md#reading-it-again).
         Outcome Remembered(const Letter& letter)
         {
             SKSE::log::info("[Reading] {} already remembers letter {}", letter.recipientName, letter.id);
             const auto reading = json::parse(LetterDB::GetSingleton()->GetReading(letter.id), nullptr, false);
             if (!reading.is_object()) return { Result::kRead, {} };
-            return { Result::kRead, GetBool(reading, "reply") ? GetString(reading, "reply_text") : std::string{} };
+            Outcome outcome{ Result::kRead, GetBool(reading, "reply") ? GetString(reading, "reply_text") : std::string{} };
+            ReadAction(reading, outcome);
+            return outcome;
         }
 
         // That the reader received it, with its text, perceived by them alone: their recent history then brings it up in
@@ -62,6 +85,7 @@ namespace PhysicalLetters::Reading {
                                            letter.body);
             if (const auto forged = Letters::ForgerySentence(letter); !forged.empty()) line += "\n\n" + forged;
             if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) line += "\n\n" + blood;
+            if (const auto package = PackageSentence(letter.id); !package.empty()) line += "\n\n" + package;
             const int id = SkyrimNet::RegisterEvent("persistent_generic", line, readerFormId, 0, { readerFormId });
             if (id > 0) SKSE::log::info("[Reading] {} received letter {}: event {}", readerName, letter.id, id);
             else SKSE::log::warn("[Reading] SkyrimNet didn't store the event that {} received letter {}", readerName, letter.id);
@@ -106,6 +130,7 @@ namespace PhysicalLetters::Reading {
                                                       : std::format("{}\n\nThe letter from {}:\n{}", memory, sender.name, letter.body);
             if (const auto forged = Letters::ForgerySentence(letter); !forged.empty()) content += "\n\n" + forged;
             if (const auto blood = Letters::BloodSentence(letter); !blood.empty()) content += "\n\n" + blood;
+            if (const auto package = PackageSentence(letter.id); !package.empty()) content += "\n\n" + package;
             if (replies && !replyText.empty()) content += std::format("\n\nMy reply:\n{}", replyText);
 
             const auto tags = json::array({ "physical_letters", "letter_received", LetterTag(letter.id), tag }).dump();
@@ -130,12 +155,15 @@ namespace PhysicalLetters::Reading {
                 SKSE::log::info("[Reading] A load happened while memory {} was stored: LetterDB not updated", memoryId);
             }
 
+            Outcome outcome{ Result::kRead };
+            ReadAction(reading, outcome);
             if (replies && !replyText.empty()) {
                 SKSE::log::info("[Reading] {} replies: {}", readerName, replyText);
-                return { Result::kRead, replyText };
+                outcome.reply = replyText;
+                return outcome;
             }
             SKSE::log::info("[Reading] {} doesn't reply", readerName);
-            return { Result::kRead };
+            return outcome;
         }
 
         void Report(const std::function<void(Outcome)>& done, Outcome outcome)
@@ -237,6 +265,7 @@ namespace PhysicalLetters::Reading {
                         { "read_before", readBefore },
                         { "can_reply", canReply } } },
                     { "memories", memories },
+                    { "actions", Api::ActionsForPrompt(!NpcToNpc::IsNpcLetter(letter)) },  // the player's letter, or an NPC's
                 };
                 // Written in blood: "all" or "part" (with the passages), else "".
                 const auto blood = Letters::BloodOf(letter);
@@ -244,6 +273,7 @@ namespace PhysicalLetters::Reading {
                                              : blood.amount == Letters::Blood::kPart ? "part"
                                                                                      : "";
                 context["letter"]["blood_text"] = blood.passages;
+                context["letter"]["package"] = Package::Arrived(letter.id);  // what reached them (docs/PACKAGES.md)
                 // Whom it's from, and to whom: their public profile for the prompt (docs/READING.md#the-prompt); a
                 // forgery seen through says so; a signature or an anonymous letter has nobody behind it.
                 context["letter"]["named"] = !sender.uuid.empty();
@@ -256,7 +286,7 @@ namespace PhysicalLetters::Reading {
                                                                                  letter.id, readBefore);
 
                 const bool queued = SkyrimNet::SendPrompt(
-                    kPrompt, context.dump(),
+                    kPrompt, context.dump(-1, ' ', false, json::error_handler_t::replace),
                     [letter, deliveryId, readerFormId, canReply, announce, generation, done](std::string response, bool success) {
                         if (!success) {
                             SKSE::log::error("[Reading] The LLM call for letter {} failed: {}", letter.id, response);

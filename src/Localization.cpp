@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "Locale.h"
+#include "Localization.h"
 
 #include "Config.h"
 #include "MarkedText.h"

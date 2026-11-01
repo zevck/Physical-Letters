@@ -9,6 +9,8 @@ Three places hold a letter's state, each for a reason:
 | Letters in transit, waiting for or with the courier in town, awaiting reading, or on their way to the courier; which of the player's letters came back and why | Co-save record `LTRN` | Must revert with the save |
 | When the next NPC letter is due; NPCs on cooldown | Co-save record `LNPC` ([NPC_LETTERS.md](NPC_LETTERS.md#saves)) | Must revert with the save |
 | When the courier was last met on the road | Co-save record `LROD` ([ROAD_COURIER.md](ROAD_COURIER.md#saves)) | Must revert with the save |
+| Packages on their way, and what delivered ones held | Co-save record `LPKG` (version 3; 1 and 2, dev builds' only, are skipped: per package the letter id, where its items are (the store, a courier carrying them, his FormID resolved on load, or 0 delivered), whether the player packed it, and per item the base FormID, count, enchantment FormID, tempering, custom name and the name shown; FormIDs resolved on load, an item whose plugin is gone dropped) ([PACKAGES.md](PACKAGES.md#the-manifest)); the items themselves are in the store chest, saved with the game | Must revert with the save: the chest's contents do |
+| DM Letters and API letters still being written at the save | Co-save record `LDMA` (version 1): per letter its id, which letter it is and to whom (for the notice), and whether it came from the DM Letter's page. After a load their writers' answers are gone with the old session, so the first tick fails them: the API's `Failed` event, the DM's notice, the package back ([API.md](API.md#packages)) | Must revert with the save: an ask made after it never happened there |
 | When NPCs next start writing to each other; pairs on cooldown | Co-save record `LN2N` ([NPC_TO_NPC.md](NPC_TO_NPC.md#saves)); the letters are `LTRN` parcels | Must revert with the save |
 | A reply the courier holds | The courier's container (`WICourierContainerRef`) | The engine saves it like any other inventory |
 | Each letter's text, author, recipient, reading | LetterDB | The text is written once, so one row serves every save of the character |
@@ -46,6 +48,7 @@ Strings are a `uint32` length and the bytes, at most 4096 (`include/CoSave.h`). 
 | `anonymous` | 1 when the player's letter, or a DM Letter's, has an empty "From:" line ([FORGERY.md](FORGERY.md#the-from-line)); 0 otherwise |
 | `forgery` | A forgery's roll at save ([FORGERY.md](FORGERY.md#the-roll)): 0 none (not a forgery), 1 it passes for the named person's, 2 seen through; a DM Letter's forgery is always 1, with no roll |
 | `dispatched` | 1 for a letter sent with the DM Letter ([DM_LETTER.md](DM_LETTER.md)): its thread doesn't count toward `[NpcToNpc] MaxOpenThreads`, and it's never held for the courier in town ([COURIER.md](COURIER.md)); 0 otherwise |
+| `tag` | Another mod's label for a letter it sent, inherited by replies ([API.md](API.md#finding-letters)); "" otherwise |
 
 New columns are added with `ALTER TABLE … ADD COLUMN … DEFAULT`, as in SNPD.
 
@@ -65,7 +68,7 @@ A letter an NPC writes first carries its letter tag on the **writer's** memory o
 | Reload without saving | Forms made after the loaded save aren't in it; parcels are the save's. A letter sent after it is back in the player's inventory and never arrives. |
 | Load a save from before a delivery, **Keep** | Delivered again (the same delivery, from the save's parcel); the reading finds its memory and stops: no second memory |
 | Load a save from before a delivery, **Clear** | Delivered again; the memory went with Clear, so the recipient reads it again |
-| Load a save made between delivery and reading | The parcel is awaiting reading and is read (or found read); a reply comes from LetterDB's stored reading if the memory already exists |
+| Load a save made between delivery and reading | The parcel is awaiting reading and is read (or found read); a reply and the chosen letter action come from LetterDB's stored reading if the memory already exists ([READING.md](READING.md#reading-it-again)) |
 | Load a save from before a reply reached the courier | The reply's parcel is in that save and goes to the courier when due |
 | A load while a reading is running | The result is dropped; the loaded save's own parcels decide what is read |
 | Second character | Another SkyrimNet save id, so another LetterDB |

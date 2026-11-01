@@ -26,6 +26,7 @@ namespace PhysicalLetters::Courier {
         constexpr RE::FormID kCourierQuestId = 0x039F82;
         constexpr std::string_view kCourierQuestPlugin = "Skyrim.esm";
         constexpr RE::FormID kItemCountId = 0x039FBB;  // WICourierItemCount
+        constexpr RE::FormID kContainerId = 0x039FB9;  // WICourierContainerRef, in WICourierCell
 
         // Another mod can leave the count below 0, and then the courier never comes again (docs/DELIVERY.md).
         void RepairItemCount(RE::TESDataHandler* a_data)
@@ -36,6 +37,12 @@ namespace PhysicalLetters::Courier {
                 count->value = 0.0f;
             }
         }
+    }
+
+    RE::TESObjectREFR* Container()
+    {
+        auto* data = RE::TESDataHandler::GetSingleton();
+        return data ? data->LookupForm<RE::TESObjectREFR>(kContainerId, kCourierQuestPlugin) : nullptr;
     }
 
     bool Give(RE::TESBoundObject* a_item)

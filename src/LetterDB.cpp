@@ -21,6 +21,7 @@
 
 #include <sqlite3.h>
 #include <filesystem>
+#include <variant>
 
 namespace PhysicalLetters {
 
@@ -171,7 +172,8 @@ namespace PhysicalLetters {
                 signed_address  TEXT NOT NULL DEFAULT '',
                 forgery         INTEGER NOT NULL DEFAULT 0,
                 anonymous       INTEGER NOT NULL DEFAULT 0,
-                dispatched      INTEGER NOT NULL DEFAULT 0
+                dispatched      INTEGER NOT NULL DEFAULT 0,
+                tag             TEXT NOT NULL DEFAULT ''
             );
         )") && AddColumn("ALTER TABLE letters ADD COLUMN in_reply_to TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN blood TEXT NOT NULL DEFAULT '';") &&
@@ -182,7 +184,8 @@ namespace PhysicalLetters {
                AddColumn("ALTER TABLE letters ADD COLUMN signed_address TEXT NOT NULL DEFAULT '';") &&
                AddColumn("ALTER TABLE letters ADD COLUMN forgery INTEGER NOT NULL DEFAULT 0;") &&
                AddColumn("ALTER TABLE letters ADD COLUMN anonymous INTEGER NOT NULL DEFAULT 0;") &&
-               AddColumn("ALTER TABLE letters ADD COLUMN dispatched INTEGER NOT NULL DEFAULT 0;");
+               AddColumn("ALTER TABLE letters ADD COLUMN dispatched INTEGER NOT NULL DEFAULT 0;") &&
+               AddColumn("ALTER TABLE letters ADD COLUMN tag TEXT NOT NULL DEFAULT '';");
     }
 
     bool LetterDB::AddColumn(const char* sql)
@@ -205,7 +208,7 @@ namespace PhysicalLetters {
         Statement s{ db_,
                      "INSERT OR REPLACE INTO letters (letter_id, author_uuid, author_name, recipient_uuid, "
                      "recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, signed_uuid, signed_name, "
-                     "signed_address, forgery, anonymous, dispatched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                     "signed_address, forgery, anonymous, dispatched, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
                      "Insert" };
         return s.Bind(1, letter.id)
             .Bind(2, letter.authorUuid)
@@ -224,13 +227,14 @@ namespace PhysicalLetters {
             .Bind(15, letter.forgery)
             .Bind(16, letter.anonymous ? 1 : 0)
             .Bind(17, letter.dispatched ? 1 : 0)
+            .Bind(18, letter.tag)
             .Run();
     }
 
     namespace {
         constexpr auto kLetterColumns =
             "letter_id, author_uuid, author_name, recipient_uuid, recipient_name, body, written_at, in_reply_to, blood, address, blood_heading, "
-            "signed_uuid, signed_name, signed_address, forgery, anonymous, dispatched";
+            "signed_uuid, signed_name, signed_address, forgery, anonymous, dispatched, tag";
 
         Letter ReadLetter(const Statement& s)
         {
@@ -250,7 +254,8 @@ namespace PhysicalLetters {
                            .signedAddress = s.Text(13),
                            .forgery = s.Int(14),
                            .anonymous = s.Int(15) != 0,
-                           .dispatched = s.Int(16) != 0 };
+                           .dispatched = s.Int(16) != 0,
+                           .tag = s.Text(17) };
         }
     }
 
@@ -294,6 +299,57 @@ namespace PhysicalLetters {
         std::vector<Letter> letters;
         while (s.Next()) letters.push_back(ReadLetter(s));
         return letters;
+    }
+
+    std::vector<Letter> LetterDB::Query(const LetterQuery& query)
+    {
+        std::lock_guard lock{ mutex_ };
+        if (!db_) return {};
+        // Built from fixed pieces, every value bound: nothing from the caller goes into the SQL text.
+        std::vector<std::string> where;
+        std::vector<std::variant<std::string, double>> values;
+        const auto bind = [&](std::variant<std::string, double> value) {
+            values.push_back(std::move(value));
+            return std::format("?{}", values.size());
+        };
+        using Role = LetterQuery::Role;
+        if (!query.actorUuid.empty()) {
+            const auto me = bind(query.actorUuid);
+            const auto other = query.otherUuid.empty() ? std::string{} : bind(query.otherUuid);
+            const auto wrote = std::format("(author_uuid = {}{})", me, other.empty() ? "" : " AND recipient_uuid = " + other);
+            const auto got = std::format("(recipient_uuid = {}{})", me, other.empty() ? "" : " AND author_uuid = " + other);
+            where.push_back(query.role == Role::kWriter ? wrote : query.role == Role::kRecipient ? got : "(" + wrote + " OR " + got + ")");
+        }
+        const auto list = [&](const std::vector<std::string>& tags) {
+            std::string out;
+            for (const auto& tag : tags) out += (out.empty() ? "" : ", ") + bind(tag);
+            return out;
+        };
+        if (!query.includeTags.empty()) where.push_back("tag IN (" + list(query.includeTags) + ")");
+        if (!query.excludeTags.empty()) where.push_back("tag NOT IN (" + list(query.excludeTags) + ")");
+        if (query.writtenAfter) where.push_back("written_at >= " + bind(*query.writtenAfter));
+        if (query.writtenBefore) where.push_back("written_at <= " + bind(*query.writtenBefore));
+        std::string sql = std::format("SELECT {} FROM letters", kLetterColumns);
+        for (std::size_t i = 0; i < where.size(); ++i) sql += (i ? " AND " : " WHERE ") + where[i];
+        sql += query.newestFirst ? " ORDER BY written_at DESC, rowid DESC;" : " ORDER BY written_at ASC, rowid ASC;";
+        Statement s{ db_, sql.c_str(), "Query" };
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            std::visit([&](const auto& value) { s.Bind(static_cast<int>(i + 1), value); }, values[i]);
+        }
+        std::vector<Letter> letters;
+        while (s.Next()) letters.push_back(ReadLetter(s));
+        return letters;
+    }
+
+    std::vector<std::string> LetterDB::RepliesTo(const std::string& id)
+    {
+        std::lock_guard lock{ mutex_ };
+        if (!db_ || id.empty()) return {};
+        Statement s{ db_, "SELECT letter_id FROM letters WHERE in_reply_to = ?1 ORDER BY written_at DESC, rowid DESC;", "RepliesTo" };
+        s.Bind(1, id);
+        std::vector<std::string> ids;
+        while (s.Next()) ids.push_back(s.Text(0));
+        return ids;
     }
 
     bool LetterDB::MarkDelivered(const std::string& id, double gameDays)

@@ -27,4 +27,7 @@ namespace PhysicalLetters::Courier {
     // so mods that change the courier see it too.  False if the courier quest is missing.
     bool Give(RE::TESBoundObject* a_item);
 
+    // WICourierContainerRef: what he carries for the player, handed over together (packages go straight in).
+    RE::TESObjectREFR* Container();
+
 } // namespace PhysicalLetters::Courier

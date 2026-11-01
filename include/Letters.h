@@ -58,8 +58,7 @@ namespace PhysicalLetters::Letters {
     std::string Reading(const Letter& letter);
     // `bodyLocked`: only the two lines can be written in (a new letter until it has a recipient).
     std::string Marked(const Letter& letter, bool bodyLocked = false);
-    // The DM Letter's page (docs/DM_LETTER.md#the-sheet), its runs in order: "From:", "To:", the delivery hours, the
-    // Transform box (none while `transformLocked` or `forgery`), the Forgery box (none while `transformLocked`), the text.
+    // The DM Letter's page (docs/DM_LETTER.md#the-sheet): From, To, hours, Package, the boxes it has, the text.
     struct Sheet {
         std::string from;
         std::string to;
@@ -68,6 +67,7 @@ namespace PhysicalLetters::Letters {
         std::string text;
         bool transformLocked = false;  // "From:" names no writer: the Transform line is greyed out and locked
         bool forgery = false;
+        bool package = false;  // the Package box, always there (docs/PACKAGES.md#packing)
     };
     std::string SheetText(const Sheet& sheet, bool marked);
 
@@ -105,6 +105,9 @@ namespace PhysicalLetters::Letters {
     // Once LetterDB is open: the text and name of every letter form in this save.  Again when the
     // font size changes.  Game thread.
     void AttachTexts();
+    // The letter's text and item card again, as they are now (a package attached after it was made).  Game thread.
+    void Refresh(const std::string& letterId);
+
     // A new game or a load.
     void Revert();
 

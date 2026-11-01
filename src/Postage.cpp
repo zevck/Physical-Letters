@@ -18,6 +18,8 @@
  */
 
 #include "Postage.h"
+#include "Package.h"
+#include "Strings.h"
 #include "Config.h"
 #include "LetterDB.h"
 #include "Letters.h"
@@ -81,6 +83,10 @@ namespace PhysicalLetters::Postage {
         RE::SendHUDMessage::ShowInventoryChangeMessage(gold, postage, false, true);
         SKSE::log::info("[Postage] {} took letter {} to {} for {} gold", a_holder->GetName(), letter.id, letter.recipientName,
                         postage);
+        // At once, over the menu: a package to go with it? (docs/PACKAGES.md#packing).
+        Package::Ask(Strings::PackageQuestionTo(letter.recipientName), [letter](Package::Manifest manifest) {
+            Package::Attach(letter.id, std::move(manifest));
+        });
 
         // One letter per postage: done.
         if (auto* queue = RE::UIMessageQueue::GetSingleton()) {

@@ -19,6 +19,7 @@
 
 #include "Papyrus.h"
 #include "Config.h"
+#include "Api.h"
 #include "CourierErrand.h"
 #include "DmLetter.h"
 #include "HandIn.h"
@@ -95,7 +96,7 @@ namespace PhysicalLetters::Papyrus {
             vm->RegisterFunction("GetSettingMin", kScript, GetSettingMin);
             vm->RegisterFunction("GetSettingMax", kScript, GetSettingMax);
             return CourierErrand::RegisterFunctions(vm) && RoadCourier::RegisterFunctions(vm) && HandIn::RegisterFunctions(vm) &&
-                   DmLetter::RegisterFunctions(vm);
+                   DmLetter::RegisterFunctions(vm) && Api::RegisterFunctions(vm);
         }
     }
 

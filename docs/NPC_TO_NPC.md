@@ -59,7 +59,7 @@ Then it's Transit's and Reading's, as for any letter to an NPC:
 
 - **Delivered** into the recipient's inventory when due, off-screen. It can be pickpocketed and read.
 - **Read** by the recipient ([READING.md](READING.md)): their memory of it (related actor: the writer), and a reply if the thread has room.
-- **A reply** goes to the other NPC after `WritingHours` plus the travel time, as a new letter in the same thread.
+- **A reply** goes to the other NPC after `WritingHours` plus the travel time (and not within 30 real seconds, so a mod can add to its package: [API.md](API.md#packages)), as a new letter in the same thread.
 - **Undeliverable** (the recipient dead, or not found for `ReturnAfterDays`): dropped, and the thread ends. It doesn't come to the player.
 
 ## Saves

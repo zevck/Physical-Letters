@@ -3,7 +3,7 @@
 Two kinds of text, in two places:
 
 - **The MCM** (labels, tooltips): `$PL_…` keys in `Interface/Translations/Physical Letters_<LANGUAGE>.txt`, which the game picks by its own language ([SETTINGS.md](SETTINGS.md#the-mcm)).
-- **Letter text**: what's written into letter items. Locale files, `SKSE/Plugins/PhysicalLetters/Locales/<LANGUAGE>.ini`, as SkyrimNet Physical Diaries' (SNPD `docs/LOCALIZATION.md`). Code: `src/Locale.cpp`, read through `include/Strings.h`.
+- **Letter text**: what's written into letter items. Locale files, `SKSE/Plugins/PhysicalLetters/Locales/<LANGUAGE>.ini`, as SkyrimNet Physical Diaries' (SNPD `docs/LOCALIZATION.md`). Code: `src/Localization.cpp`, read through `include/Strings.h`.
 
 ## Which language
 
@@ -27,13 +27,17 @@ All in `[Letters]`, UTF-8. A line starting with `;` is a comment; a `;` later in
 | `LetterFrom` | `Letter from {Name}` | The item name of letters to the player; `{Name}` is whom it's from (`Letters::SenderOf`: the author, or a DM Letter's signature or forged name; an unsigned one is plain `Letter`) |
 | `Card` | `A letter to {Recipient} from {Author}.` | The item card under the model in the inventory |
 | `CardTo` | `A letter to {Recipient}.` | An anonymous letter's item card: `Card` without its author ([FORGERY.md](FORGERY.md#the-from-line)). |
+| `CardPackage` | `With a package.` | Added to the item card of a letter sent with a package ([PACKAGES.md](PACKAGES.md)) |
+| `Enclosed` | `Enclosed: {Items}` | Under the text of a letter sent with a package: what it holds (`{Items}`: "50 Gold, Steel Sword") ([PACKAGES.md](PACKAGES.md#on-the-letter)) |
 | `ReturnDeceased`, `ReturnNotFound` | `Return to sender (deceased)`, `(not found)` | Added to a returned letter's item card ([DELIVERY.md](DELIVERY.md#undeliverable-letters)) |
 | `Unreadable` | `The ink has run; the letter can't be read.` | The page of a letter LetterDB has no text for |
 | `Parchment` | `Parchment` | The blank letter's item name; the ESP's is English, so it's set at `kDataLoaded` |
+| `PackingChest` | `Package` | The packing chest's name, the container menu's title when packing ([PACKAGES.md](PACKAGES.md#the-chests)), set at `kDataLoaded` like parchment's |
 | `DmLetter` | `DM Letter` | The DM Letter's item name ([DM_LETTER.md](DM_LETTER.md)), set at `kDataLoaded` like parchment's |
 | `DmLetterCard` | `Send a letter from anyone to anyone.` | The DM Letter's item card; the ESP's is English, so the DLL answers it (`DmLetter::CardFor`, through TextHook) |
 | `DmDelivery` | `Delivery (hours):` | The DM Letter's third line, before the hours until delivery. A space follows it, unless it ends in a full-width colon. |
 | `DmForgery` | `Forgery` | The DM Letter's second box, after Transform's on the same line ([DM_LETTER.md](DM_LETTER.md#sending)) |
+| `DmPackage` | `Package` | The DM Letter's package box line, before `[x]` or `[ ]` ([DM_LETTER.md](DM_LETTER.md#the-sheet)) |
 | `DmTransform` | `Transform` | The DM Letter's check box line, before `[x]` or `[ ]` (until 2026-10-31 `DmRewrite`, "Rewrite in the writer's own words", after the box) |
 
 Placeholders let a language put the name where it needs it ("{Name}への手紙"). The code knows nothing about a name: not its gender, its case or its first letter. So a text has to read right for **any** name, a man's or a woman's, starting with a vowel or a consonant:
@@ -50,6 +54,6 @@ Nothing language-dependent is stored for the text: the "From:" and "To:" labels,
 
 ## Not localized yet
 
-The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`), the DM Letter's messages (`Strings::Dm…`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`, `Letters::ForgerySentence`), the memory's "The letter from …" / "The unsigned letter:", the hand-over narration's "… a letter from …" / ", unsigned", and the event that a reader received a letter ("… received a letter from …. It reads:" / "received an unsigned letter", [READING.md](READING.md#the-event)).
+The messages shown when a letter can't be saved (`Strings::Write…`, `kWriteNotReady`), the DM Letter's messages (`Strings::Dm…`), the package question when posting (`Strings::PackageQuestionTo`, buttons `kPackageYes`, `kPackageNo`) and the parchment's way-of-writing box (its question `kWriteHow` and buttons `kWriteSpecialInk`, `kWriteInk`, `kWriteBlood`, `kWriteCancel`) are English. So is what goes into prompts: SkyrimNet's prompts are English, and so are the sentences Physical Letters adds to them (`Letters::BloodSentence`, `Letters::ForgerySentence`), the memory's "The letter from …" / "The unsigned letter:", the hand-over narration's "… a letter from …" / ", unsigned", the event that a reader received a letter ("… received a letter from …. It reads:" / "received an unsigned letter", [READING.md](READING.md#the-event)), and "With it came: …" in that event and the memory ([PACKAGES.md](PACKAGES.md)).
 
 The eight non-English files were written by Claude (2026-10-04); they ship until native speakers correct them.

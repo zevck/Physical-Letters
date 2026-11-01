@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "Locale.h"
+#include "Localization.h"
 
 // Every piece of text the player sees, in one place so localization can replace it.
 // Letter text (names, cards, the "From:" and "To:" labels) comes from Locale; the messages are English only for now.
@@ -154,6 +154,25 @@ namespace PhysicalLetters::Strings {
     {
         return Locale::Text("DmLetter", "DM Letter");
     }
+    // Packages (docs/PACKAGES.md): the question, its buttons (English), and the item card's line (the locale's).
+    inline constexpr std::string_view kPackageYes = "Yes";
+    inline constexpr std::string_view kPackageNo = "No";
+    // The packing chest's name: the container menu's title when packing.
+    inline std::string PackingChestName() { return Locale::Text("PackingChest", "Package"); }
+
+    // A letter with a package lists it under its text (docs/PACKAGES.md): "Enclosed: 50 Gold, Steel Sword".
+    inline std::string Enclosed(const std::string& items)
+    {
+        return Fill(Locale::Text("Enclosed", "Enclosed: {Items}"), { { "Items", items } });
+    }
+    inline std::string PackageQuestionTo(const std::string& recipient)
+    {
+        return std::format("Add a package to your letter to {}?", recipient);
+    }
+    inline std::string LetterCardPackage()
+    {
+        return Locale::Text("CardPackage", "With a package.");
+    }
     inline std::string DmLetterCard()
     {
         return Locale::Text("DmLetterCard", "Send a letter from anyone to anyone.");
@@ -161,6 +180,10 @@ namespace PhysicalLetters::Strings {
     inline std::string DmDeliveryLabel()
     {
         return WithLabelSpace(Locale::Text("DmDelivery", "Delivery (hours):"));
+    }
+    inline std::string DmPackageLabel()
+    {
+        return Locale::Text("DmPackage", "Package");
     }
     inline std::string DmTransformLabel()
     {

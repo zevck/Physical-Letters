@@ -37,6 +37,9 @@ namespace PhysicalLetters::Reading {
     struct Outcome {
         Result      result = Result::kRetry;
         std::string reply;  // kRead: the recipient's reply letter, "" if they don't write back
+        // kRead: the letter action the reader chose, with its parameters' values (docs/API.md#actions); "" for none.
+        std::string action;
+        std::vector<std::pair<std::string, std::string>> actionValues;
     };
 
     // The tags on the memory of a reading.  The letter tag names the letter (the

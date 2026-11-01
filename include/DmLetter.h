@@ -28,6 +28,23 @@ namespace PhysicalLetters::DmLetter {
 
     RE::TESObjectBOOK* Form();
 
+    // A letter sent by another mod (docs/API.md), as the page would send it.  `writer` nullptr: unsigned, or signed with
+    // `signature`.  `hours` -1: the travel time.  Returns the letter id at once ("" and a log line if refused).
+    struct Request {
+        RE::Actor* writer = nullptr;
+        std::string signature;
+        RE::Actor* recipient = nullptr;  // may be the player
+        std::string text;                // empty with a writer: they choose the subject
+        bool transform = false;
+        bool forgery = false;
+        int hours = -1;
+        std::string tag;  // the mod's label (docs/API.md#finding-letters), at most 64 bytes
+    };
+    std::string Send(const Request& request);
+
+    // Whether the letter is still being written (Transform, or the writer's choice): its id is known, the letter isn't.
+    bool IsBeingWritten(const std::string& letterId);
+
     // Any thread: its item card's text in the chosen language if `description` is its card, else "" (TextHook).
     std::string CardFor(const RE::TESDescription* description);
 
@@ -36,6 +53,12 @@ namespace PhysicalLetters::DmLetter {
 
     // Heartbeat: a writer asked for their letter and silent for 5 minutes has failed (SkyrimNet drops such calls).
     void Tick();
+
+    // Letters still being written when the game is saved: after loading that save they never come, so Tick fails them
+    // (the API's Failed event, the DM's notice, the package back).
+    void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type);
+    void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version);
+    void Revert();
 
     // The MCM's AddDmLetter.
     bool RegisterFunctions(RE::BSScript::IVirtualMachine* vm);

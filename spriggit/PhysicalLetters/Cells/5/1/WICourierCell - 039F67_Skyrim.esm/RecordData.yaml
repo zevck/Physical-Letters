@@ -1,0 +1,52 @@
+FormKey: 039F67:Skyrim.esm
+VersionControl: 5072661
+EditorID: WICourierCell
+FormVersion: 39
+Version2: 5
+Flags:
+- IsInteriorCell
+Lighting:
+  AmbientColor: '#00FFFFFF'
+  DirectionalColor: '#00000000'
+  FogNearColor: '#00000000'
+  FogPower: 1
+  AmbientColors:
+    DirectionalXPlus: '#0018FF0A'
+    DirectionalXMinus: '#00E5FFF3'
+    DirectionalYPlus: '#00FF0AFF'
+    DirectionalYMinus: '#00FFF3FF'
+    DirectionalZPlus: '#00797973'
+    DirectionalZMinus: '#0084848A'
+    Specular: '#00000000'
+    Scale: 1
+  FogFarColor: '#00000000'
+  FogMax: 1
+  Inherits:
+  - AmbientColor
+  - DirectionalColor
+  - FogColor
+  - FogNear
+  - FogFar
+  - ClipDistance
+WaterHeight: 0
+Location: 10D4BA:Skyrim.esm
+ImageSpace: 0A2687:Skyrim.esm
+Persistent:
+- MutagenObjectType: PlacedObject
+  FormKey: 0008BE:Physical Letters.esp
+  MajorRecordFlagsRaw: 1024
+  EditorID: PhysicalLettersPackingChestRef
+  SkyrimMajorRecordFlags:
+  - 0x400
+  Base: 0008BC:Physical Letters.esp
+  Placement:
+    Position: 1729.3597, 80, 0
+- MutagenObjectType: PlacedObject
+  FormKey: 0008BF:Physical Letters.esp
+  MajorRecordFlagsRaw: 1024
+  EditorID: PhysicalLettersPackageStoreRef
+  SkyrimMajorRecordFlags:
+  - 0x400
+  Base: 0008BD:Physical Letters.esp
+  Placement:
+    Position: 1729.3597, 180, 0

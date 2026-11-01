@@ -18,13 +18,16 @@
  */
 
 #include "DmLetter.h"
+#include "Api.h"
 #include "Config.h"
+#include "CoSave.h"
 #include "GameTime.h"
 #include "IqClient.h"
 #include "Letters.h"
 #include "LlmJson.h"
 #include "MarkedText.h"
 #include "NpcToNpc.h"
+#include "Package.h"
 #include "Parchment.h"
 #include "Reading.h"
 #include "Recipients.h"
@@ -32,6 +35,7 @@
 #include "SkyrimNet.h"
 #include "Strings.h"
 #include "Transit.h"
+#include "Travel.h"
 #include "Writing.h"
 
 #include <charconv>
@@ -50,7 +54,7 @@ namespace PhysicalLetters::DmLetter {
         constexpr auto kPrompt = "physical_letters\\dm_letter";
         constexpr auto kScript = "PhysicalLetters_MCM";
         // The page's runs (docs/DM_LETTER.md#the-sheet): these three, then the boxes there are, then the text.
-        constexpr std::int32_t kFrom = 0, kTo = 1, kHours = 2, kFirstBox = 3;
+        constexpr std::int32_t kFrom = 0, kTo = 1, kHours = 2, kPackage = 3, kFirstBox = 4;
         constexpr int kMaxHours = 9999;
         constexpr std::size_t kMaxHourDigits = 4;  // kMaxHours's
         constexpr RE::FormID kPlayer = 0x14;
@@ -64,6 +68,7 @@ namespace PhysicalLetters::DmLetter {
         std::uint32_t g_sessions = 0;
         bool g_rewriteShown = false;  // the Transform box as the open page shows it
         bool g_forgeryShown = false;  // the Forgery box
+        bool g_packageShown = false;  // the Package box
 
         // Which boxes a page has: both while "From:" names a writer, Forgery alone once it's ticked, none without one.
         struct Layout {
@@ -106,9 +111,16 @@ namespace PhysicalLetters::DmLetter {
             std::string which;
             std::string recipient;
             std::string notes;  // logged if it fails: the page was cleared at the save
+            std::string letterId;
+            std::string tag;
+            bool notify = true;  // the DM Letter's HUD notices; an API send has none (docs/API.md)
         };
         std::vector<Asked> g_asked;
         std::uint64_t g_lastAsk = 0;
+        // Loaded: asked for before the save, their answers gone with that session (Tick fails them).
+        std::vector<Asked> g_unwritten;
+        constexpr std::uint32_t kRecordVersion = 1;
+        constexpr std::size_t kMaxTagLength = 64;  // a tag's bytes (docs/API.md#sending)
 
         // Its item card, set once at kDataLoaded: the text before the pointer, which the hook reads from any thread.
         std::string g_cardText;
@@ -174,7 +186,7 @@ namespace PhysicalLetters::DmLetter {
             const std::string reading = Letters::SheetText(kBlank, false);
             // Each new run is the run it was (Ink & Quill's from); a box that wasn't there is new (-1).
             const Layout next = LayoutOf(sheet);
-            std::vector<std::int32_t> from{ kFrom, kTo, kHours };
+            std::vector<std::int32_t> from{ kFrom, kTo, kHours, kPackage };
             if (next.transform) from.push_back(g_layout.TransformRun());
             if (next.forgery) from.push_back(g_layout.ForgeryRun());
             from.push_back(g_layout.TextRun());
@@ -190,11 +202,17 @@ namespace PhysicalLetters::DmLetter {
 
         // The letter goes out: written, unsigned, signed or forged, and nobody remembers writing the last three
         // (docs/DM_LETTER.md#sending).  False: not made.
-        bool Dispatch(const From& from, const Party& recipient, int hours, const std::string& body, const json& answer)
+        bool Dispatch(const std::string& id, const From& from, const Party& recipient, int hours, const std::string& body,
+                      const json& answer, bool notify, const std::string& tag = {})
         {
             const bool forged = from.forged;
             const bool written = from.writer && !forged;
-            const Letter letter{ .id = Letters::NewId(),
+            // Hours given, or -1: the travel time from the writer (nobody: the fallback) to the recipient (docs/API.md).
+            auto* writerActor = from.writer ? RE::TESForm::LookupByID<RE::Actor>(from.writer->formId) : nullptr;
+            auto* recipientActor = RE::TESForm::LookupByID<RE::Actor>(recipient.formId);
+            const double due = hours < 0 ? Travel::Hours(writerActor, recipientActor) : hours;
+            const int shown = static_cast<int>(std::lround(due));
+            const Letter letter{ .id = id,
                                  .authorUuid = written ? from.writer->uuid : std::string{},
                                  .authorName = written ? from.writer->name : std::string{},
                                  .recipientUuid = recipient.uuid,
@@ -206,25 +224,36 @@ namespace PhysicalLetters::DmLetter {
                                  .signedAddress = forged ? from.writer->address : std::string{},
                                  .forgery = forged ? kForgeryPasses : kForgeryNone,
                                  .anonymous = from.anonymous,
-                                 .dispatched = true };
+                                 .dispatched = true,
+                                 .tag = tag };
             auto* book = Letters::Create(letter);
             if (!book) return false;
             if (written) NpcToNpc::RememberWriting(letter, from.writer->formId, recipient.formId, answer);
             if (recipient.formId != kPlayer) {
-                Transit::QueueToNpc(letter, hours);
-                SKSE::log::info("[DmLetter] {} to {}: letter {}, due in {} game hours", from.Which(), recipient.name, letter.id, hours);
-                Notify(Strings::DmSent(from.Which(), recipient.name, hours));
+                Transit::QueueToNpc(letter, due, !notify);  // an API letter: held for the mod's package
+                SKSE::log::info("[DmLetter] {} to {}: letter {}, due in {:.1f} game hours", from.Which(), recipient.name, letter.id, due);
+                if (notify) Notify(Strings::DmSent(from.Which(), recipient.name, shown));
             } else if (hours == 0) {
                 // To the player: the courier brings it, unless it's due now.
                 RE::PlayerCharacter::GetSingleton()->AddObjectToContainer(book, nullptr, 1, nullptr);
+                Package::Deliver(letter.id, RE::PlayerCharacter::GetSingleton());
                 SKSE::log::info("[DmLetter] {} to the player: letter {}, in their inventory", from.Which(), letter.id);
-                Notify(Strings::DmInInventory(from.Which()));
+                if (notify) Notify(Strings::DmInInventory(from.Which()));
+                Api::Delivered(letter.id, kPlayer);
             } else {
-                Transit::QueueToPlayer(letter, hours);
-                SKSE::log::info("[DmLetter] {} to the player: letter {}, to the courier in {} game hours", from.Which(), letter.id, hours);
-                Notify(Strings::DmToCourier(from.Which(), hours));
+                Transit::QueueToPlayer(letter, due, !notify);
+                SKSE::log::info("[DmLetter] {} to the player: letter {}, to the courier in {:.1f} game hours", from.Which(), letter.id, due);
+                if (notify) Notify(Strings::DmToCourier(from.Which(), shown));
             }
             return true;
+        }
+
+        // Game thread.  A letter asked for and never made: the DM's notice, or the API's event.
+        void Failed(const Asked& asked)
+        {
+            if (asked.notify) Notify(Strings::DmFailed(asked.which, asked.recipient));
+            Package::Return(asked.letterId);  // the DM's items back to them; a mod's are gone (docs/API.md#packages)
+            Api::Failed(asked.letterId);
         }
 
         // Game thread.  The writer's letter from the notes, if it's still awaited.
@@ -243,14 +272,15 @@ namespace PhysicalLetters::DmLetter {
             if (text.empty()) {
                 SKSE::log::error("[DmLetter] {} to {} wasn't written ({}): {}\nThe notes were:\n{}", from.Which(), recipient.name,
                                  success ? "no letter in the answer" : "the call failed", response.substr(0, 300), asked->notes);
-                Notify(Strings::DmFailed(from.Which(), recipient.name));
+                Failed(*asked);
                 return;
             }
-            if (!Dispatch(from, recipient, hours, text, answer)) Notify(Strings::DmFailed(from.Which(), recipient.name));
+            if (!Dispatch(asked->letterId, from, recipient, hours, text, answer, asked->notify, asked->tag)) Failed(*asked);
         }
 
         // One call on the default model: the writer writes the letter from the notes, in their own voice.
-        void Rewrite(const Party& writer, const Party& recipient, int hours, const std::string& notes)
+        void Rewrite(const std::string& letterId, const Party& writer, const Party& recipient, int hours, const std::string& notes,
+                     bool notify, const std::string& tag = {})
         {
             const std::uint64_t askId = ++g_lastAsk;
             g_asked.push_back({ .id = askId,
@@ -258,7 +288,10 @@ namespace PhysicalLetters::DmLetter {
                                 .since = std::chrono::steady_clock::now(),
                                 .which = From{ .writer = writer }.Which(),
                                 .recipient = recipient.name,
-                                .notes = notes });
+                                .notes = notes,
+                                .letterId = letterId,
+                                .tag = tag,
+                                .notify = notify });
             std::thread([askId, writer, recipient, hours, notes, now = GameTime::Now(),
                          memoryCount = Config::GetSingleton()->Get(Config::kN2nMemories)]() {
                 try {
@@ -287,7 +320,7 @@ namespace PhysicalLetters::DmLetter {
                         try {
                             if (const auto asked = TakeAsked(askId)) {
                                 SKSE::log::error("[DmLetter] The notes were:\n{}", asked->notes);
-                                Notify(Strings::DmFailed(asked->which, asked->recipient));
+                                Failed(*asked);
                             }
                         } catch (const std::exception& e) {
                             SKSE::log::error("[DmLetter] Reporting a failed letter failed: {}", e.what());
@@ -308,7 +341,7 @@ namespace PhysicalLetters::DmLetter {
             const Layout layout{ .transform = count == Layout{ true, true }.Count(), .forgery = count > Layout{}.Count() };
             if (count != layout.Count() || count > Layout{ true, true }.Count() ||
                 std::any_of(runs, runs + count, [](const char* run) { return !run; })) {
-                SKSE::log::error("[DmLetter] {} runs to save, not 4 to 6", count);
+                SKSE::log::error("[DmLetter] {} runs to save, not 5 to 7", count);
                 return Refuse(reply, Strings::kWriteFailed);
             }
             if (!Session::IsReady()) return Refuse(reply, Strings::kWriteNotReady);
@@ -339,13 +372,22 @@ namespace PhysicalLetters::DmLetter {
             SKSE::log::info("[DmLetter] {} to {}, {} game hours, {} ({} bytes)", from.Which(), recipient.name, hours,
                             text.empty() ? "the writer's choice" : rewrite ? "transformed" : "as written", text.size());
 
-            if (rewrite) {
-                Notify(Strings::DmWriting(from.writer->name, recipient.name));
-                Rewrite(*from.writer, recipient, hours, text);
-            } else if (!Dispatch(from, recipient, hours, text, json::object())) {
-                return Refuse(reply, Strings::kWriteFailed);  // the text stays on the page
-            }
             Writing::Api()->ReplySave(reply, true, "", Letters::SheetText(kBlank, false).c_str());
+            // The letter goes out now, or with a package once the chest is closed (docs/PACKAGES.md#packing).
+            const std::string id = Letters::NewId();
+            const auto send = [=](Package::Manifest manifest) {
+                Package::Attach(id, std::move(manifest));
+                if (rewrite) {
+                    Notify(Strings::DmWriting(from.writer->name, recipient.name));
+                    Rewrite(id, *from.writer, recipient, hours, text, true);
+                } else if (!Dispatch(id, from, recipient, hours, text, json::object(), true)) {
+                    Package::Deliver(id, RE::PlayerCharacter::GetSingleton());  // back to the DM
+                    Notify(Strings::DmFailed(from.Which(), recipient.name));
+                }
+            };
+            // Ticked: the book closes and the packing chest opens; the letter goes once it's closed (docs/PACKAGES.md).
+            if (g_packageShown) Package::Pack(send);
+            else send({});
         }
 
         void OnEnd(void* user)
@@ -369,7 +411,13 @@ namespace PhysicalLetters::DmLetter {
                                   .rewrite = g_rewriteShown,
                                   .text = runs[g_layout.TextRun()],
                                   .transformLocked = !g_layout.forgery,
-                                  .forgery = g_forgeryShown };
+                                  .forgery = g_forgeryShown,
+                                  .package = g_packageShown };
+            if (run == kPackage) {
+                sheet.package = g_packageShown = !g_packageShown;
+                Reload(sheet, kPackage, 0);
+                return;
+            }
             if (run == g_layout.TransformRun()) {
                 sheet.rewrite = g_rewriteShown = !g_rewriteShown;
                 Reload(sheet, run, 0);
@@ -417,6 +465,7 @@ namespace PhysicalLetters::DmLetter {
             g_session = ++g_sessions;
             g_rewriteShown = kBlank.rewrite;
             g_forgeryShown = kBlank.forgery;
+            g_packageShown = kBlank.package;
             g_layout = LayoutOf(kBlank);
             const std::string marked = Letters::SheetText(kBlank, true);
             IQ_Session session{};
@@ -460,6 +509,54 @@ namespace PhysicalLetters::DmLetter {
         }
     }
 
+    std::string Send(const Request& request)
+    {
+        const auto fail = [&](std::string why) {
+            SKSE::log::warn("[DmLetter] A letter from the API wasn't sent: {}", why);
+            return std::string{};
+        };
+        if (!Session::IsReady()) return fail("letters aren't ready yet");
+        if (!request.recipient) return fail("no recipient");
+        const auto party = [](RE::Actor* actor) {
+            return Party{ .uuid = SkyrimNet::UuidForFormId(actor->GetFormID()), .name = actor->GetName(), .formId = actor->GetFormID() };
+        };
+        const Party recipient = party(request.recipient);
+        if (recipient.uuid.empty()) return fail(std::format("SkyrimNet doesn't know {} (0x{:X})", recipient.name, recipient.formId));
+        From from;
+        if (request.writer) {
+            if (request.writer == request.recipient) return fail("the writer is the recipient");
+            if (request.writer->GetFormID() == kPlayer) return fail("the writer is the player: their letters are written on parchment");
+            if (request.writer->IsDead()) return fail(std::format("{} is dead", request.writer->GetName()));
+            from.writer = party(request.writer);
+            if (from.writer->uuid.empty()) return fail(std::format("SkyrimNet doesn't know {} (0x{:X})", from.writer->name, from.writer->formId));
+            from.forged = request.forgery;
+        } else if (!Trim(request.signature).empty()) {
+            from.signature = Trim(request.signature);
+        } else {
+            from.anonymous = true;
+        }
+        const std::string text = TrimRight(request.text);
+        if (Trim(text).empty() && (!from.writer || from.forged)) return fail("no text, and nobody to write it");
+        if (request.tag.size() > kMaxTagLength) return fail(std::format("a tag is at most {} bytes", kMaxTagLength));
+        const int hours = std::clamp(request.hours, -1, kMaxHours);
+        const bool rewrite = from.writer && !from.forged && (Trim(text).empty() || request.transform);
+        const std::string id = Letters::NewId();
+        SKSE::log::info("[DmLetter] From the API: {} to {}, {} game hours, {} ({} bytes): letter {}", from.Which(), recipient.name,
+                        hours < 0 ? std::string{ "travel-time" } : std::to_string(hours),
+                        Trim(text).empty() ? "the writer's choice" : rewrite ? "transformed" : "as written", text.size(), id);
+        if (rewrite) {
+            Rewrite(id, *from.writer, recipient, hours, Trim(text).empty() ? std::string{} : text, false, request.tag);
+        } else if (!Dispatch(id, from, recipient, hours, text, json::object(), false, request.tag)) {
+            return fail("the letter couldn't be made");
+        }
+        return id;
+    }
+
+    bool IsBeingWritten(const std::string& letterId)
+    {
+        return std::ranges::any_of(g_asked, [&](const Asked& a) { return a.letterId == letterId && a.generation == Session::Generation(); });
+    }
+
     RE::TESObjectBOOK* Form()
     {
         auto* data = RE::TESDataHandler::GetSingleton();
@@ -494,15 +591,67 @@ namespace PhysicalLetters::DmLetter {
 
     void Tick()
     {
+        if (!g_unwritten.empty() && Session::IsReady()) {
+            for (const auto& asked : std::exchange(g_unwritten, {})) {
+                SKSE::log::warn("[DmLetter] {} to {} was being written when the game was saved: it never comes", asked.which,
+                                asked.recipient);
+                Failed(asked);
+            }
+        }
         const auto now = std::chrono::steady_clock::now();
         std::erase_if(g_asked, [now](const Asked& asked) {
             if (asked.generation != Session::Generation()) return true;  // asked before a load: its answer is dropped
             if (now - asked.since < kAnswerTimeout) return false;
             SKSE::log::warn("[DmLetter] No answer for {} to {} after {} minutes: given up.  The notes were:\n{}", asked.which,
                             asked.recipient, std::chrono::duration_cast<std::chrono::minutes>(kAnswerTimeout).count(), asked.notes);
-            Notify(Strings::DmFailed(asked.which, asked.recipient));
+            Failed(asked);
             return true;
         });
+    }
+
+    void Save(SKSE::SerializationInterface* a_intfc, std::uint32_t a_type)
+    {
+        if (!a_intfc->OpenRecord(a_type, kRecordVersion)) {
+            SKSE::log::error("[DmLetter] Couldn't open the co-save record");
+            return;
+        }
+        std::vector<const Asked*> current;
+        for (const auto& asked : g_asked) {
+            if (asked.generation == Session::Generation()) current.push_back(&asked);
+        }
+        for (const auto& asked : g_unwritten) current.push_back(&asked);
+        a_intfc->WriteRecordData(static_cast<std::uint32_t>(current.size()));
+        for (const auto* asked : current) {
+            CoSave::WriteString(a_intfc, asked->letterId);
+            CoSave::WriteString(a_intfc, asked->which);
+            CoSave::WriteString(a_intfc, asked->recipient);
+            a_intfc->WriteRecordData(static_cast<std::uint8_t>(asked->notify));
+        }
+    }
+
+    void Load(SKSE::SerializationInterface* a_intfc, std::uint32_t a_version)
+    {
+        if (a_version != kRecordVersion) {
+            SKSE::log::error("[DmLetter] Co-save record version {} is unknown — skipped", a_version);
+            return;
+        }
+        std::uint32_t count = 0;
+        if (a_intfc->ReadRecordData(count) != sizeof(count)) return;
+        for (std::uint32_t i = 0; i < count; ++i) {
+            Asked asked;
+            std::uint8_t notify = 0;
+            if (!CoSave::ReadString(a_intfc, asked.letterId) || !CoSave::ReadString(a_intfc, asked.which) ||
+                !CoSave::ReadString(a_intfc, asked.recipient) || a_intfc->ReadRecordData(notify) != sizeof(notify)) {
+                return;
+            }
+            asked.notify = notify != 0;
+            g_unwritten.push_back(std::move(asked));
+        }
+    }
+
+    void Revert()
+    {
+        g_unwritten.clear();
     }
 
     bool RegisterFunctions(RE::BSScript::IVirtualMachine* vm)

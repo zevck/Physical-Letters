@@ -52,10 +52,14 @@ namespace PhysicalLetters::Transit {
     void HandIn(const Letter& letter, RE::Actor* reader);
 
     // An NPC's letter to the player (already created): it goes to the courier after `hours`.
-    void QueueToPlayer(const Letter& letter, double hours);
+    // `hold`: another mod's letter, held kHold before it moves so the mod can add to its package (docs/API.md#packages).
+    void QueueToPlayer(const Letter& letter, double hours, bool hold = false);
 
     // An NPC's letter to another NPC (already created): delivered after `hours`, then read.
-    void QueueToNpc(const Letter& letter, double hours);
+    void QueueToNpc(const Letter& letter, double hours, bool hold = false);
+
+    // Whether the letter is on its way and no courier has it yet: off-screen to an NPC, or waiting for the courier.
+    bool NotYetCarried(const std::string& letterId);
 
     // The letters on their way to an NPC or delivered and not yet read.
     std::vector<std::string> PendingLetterIds();

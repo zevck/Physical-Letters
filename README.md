@@ -35,7 +35,10 @@ NPCs write to each other too, and their letters are delivered by the courier. In
 Change the "From:" line to someone else's name and address, and the letter goes out in their name. Whether your handwriting passes for theirs depends on your Pickpocket skill; with the Quill of Gemination and Special Ink, it always does. Fooled, they may write back to the person whose name you used. You can also sign with any name that isn't a person's, or leave "From:" empty to send it anonymously.
 
 ### DM Letter
-For running the story yourself: take the DM Letter from the MCM and send a letter from any NPC to any other, or to yourself. Choose who it's from (or leave it unsigned, or sign it with any name), who it's to and how many hours until it arrives (0 for now), then write the letter word for word, or write notes and tick Transform to have the writer put them in their own words. Tick Forgery and the letter is a perfect forgery in their name. The recipient reads it and may reply like any other letter. It's never used up and needs no quill or ink.
+For running the story yourself: take the DM Letter from the MCM and send a letter from any NPC to any other, or to yourself. Choose who it's from (or leave it unsigned, or sign it with any name), who it's to and how many hours until it arrives (0 for now), then write the letter word for word, or write notes and tick Transform to have the writer put them in their own words. Tick Forgery and the letter is a perfect forgery in their name. Tick Package to send items with it. The recipient reads it and may reply like any other letter. It's never used up and needs no quill or ink.
+
+### Packages
+When you post a letter, you can send a package with it: anything you can put in a chest, gold included. The courier carries it, so a courier who's robbed loses it, and the letter lists what was enclosed.
 
 ### Written in Blood
 With no ink, **Ink & Quill** lets you write in your own blood. The recipient sees which parts are written in blood, and reacts to it.
@@ -104,6 +107,7 @@ This translates the in-game settings menu. Use the English file as a template. I
 **Messenger Birds** - a perk to mail letters from anywhere in the world with a power.
 
 ## 🗒️ Notes
+- **Mod authors:** other mods can send letters, hear when they're delivered and read, and offer a letter's reader actions to choose (a meeting to go to). See [docs/API.md](docs/API.md).
 - Every letter an NPC reads or writes is an LLM call through SkyrimNet. How often NPCs write to you and to each other can be changed or turned off in the MCM. Higher letter counts make the world more lively, but also increase costs.
 - On default settings, each letter dispatch is around $0.0018, though it depends on your configured LLMs. This runs about once an in game week, so costs are quite low.
 - Letter replies are roughly the same as dialogue output, maybe a little higher depending on letter length.
@@ -112,3 +116,6 @@ This translates the in-game settings menu. Use the English file as a template. I
 
 ## 🔑 License
 Physical Letters is released under the GNU General Public License v3.0 or later (GPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
+
+### Client API Exception
+As an additional permission under GPLv3 section 7, you may copy, include, compile against, dynamically load, link to, and communicate with Physical Letters through its public APIs, the C API declared in `api/PhysicalLettersAPI.h` and the Papyrus script `Source/Scripts/PhysicalLetters.psc`, and you may distribute such client mods under terms of your choice.

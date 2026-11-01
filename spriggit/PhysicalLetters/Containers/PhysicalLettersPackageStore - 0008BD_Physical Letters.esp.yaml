@@ -1,0 +1,13 @@
+FormKey: 0008BD:Physical Letters.esp
+EditorID: PhysicalLettersPackageStore
+ObjectBounds:
+  First: -27, -27, 0
+  Second: 27, 27, 80
+Name:
+  TargetLanguage: English
+  Value: Packages in Transit
+Model:
+  File: Clutter\Barrel01.NIF
+  Data: 0x0200000002000000000000004EFC5AB964647300BFFA25DA2268D84D64647300BFFA25DA
+OpenSound: 03C86D:Skyrim.esm
+CloseSound: 03C870:Skyrim.esm

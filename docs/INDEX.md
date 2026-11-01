@@ -14,6 +14,8 @@ The docs are the source of truth for how the code works. A change that makes a d
 | [WRITING.md](WRITING.md) | Writing letters as an Ink & Quill client: parchment, the "From:" and "To:" lines, matching the recipient, saving and editing |
 | [FORGERY.md](FORGERY.md) | Letters in someone else's name: the "From:" line, the roll at save, Special Ink |
 | [DM_LETTER.md](DM_LETTER.md) | The DM Letter: a letter from one NPC to another, sent by the player as the story's dungeon master; the page, the check box, sending as written or rewritten |
+| [PACKAGES.md](PACKAGES.md) | Items sent with letters: the package chests in the courier's cell, packing, manifests, where a package goes |
+| [API.md](API.md) | The API for other mods: sending letters (Papyrus and C), the delivered/read/failed events, letter actions a reader may choose |
 | [NPC_LETTERS.md](NPC_LETTERS.md) | NPCs writing to the player first: who, when, the prompt, cooldowns |
 | [NPC_TO_NPC.md](NPC_TO_NPC.md) | Letters between NPCs: the limits, an attempt (a cheap call proposes recipients, code checks them, the letter), threads |
 | [SETTINGS.md](SETTINGS.md) | The INI, the MCM, adding a setting |
