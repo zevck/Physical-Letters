@@ -1,30 +1,30 @@
 [ system ]
-    You decide which of these people in Skyrim, if any, would write a letter to {{ player }} now, unprompted. Use what their profiles, memories and talks with {{ player }} say. Your whole answer is one compact JSON object.
+Choose which person, if any, has the strongest reason to write to {{ player }} now. Use their profiles, memories and conversations.
 [ end system ]
 
 [ user ]
-    {% for c in candidates %}
-    ## {{ c.number }}. {{ c.name }}, {{ c.place }}
-    {{ render_character_profile("short_inline", c.UUID) }}
-    {% if c.never_met %}Has never met {{ player }}.{% endif %}
-    {% if c.days_since_seen == 0 %}Dealt with {{ player }} earlier today.{% else if c.days_since_seen == 1 %}Last dealt with {{ player }} a day ago.{% else if c.days_since_seen > 1 %}Last dealt with {{ player }} {{ c.days_since_seen }} days ago.{% endif %}
-    {% if c.dialogue and length(c.dialogue) > 0 %}
-    The last time they spoke:
-    {% for line in c.dialogue -%}
-    {{ line.speaker }}: {{ line.text }}
-    {% endfor %}
-    {% endif %}
-    {% if c.memories and length(c.memories) > 0 %}
-    What {{ c.name }} remembers of {{ player }}:
-    {% for memory in c.memories -%}
-    - {{ memory }}
-    {% endfor %}
-    {% endif %}
+{% for c in candidates %}
+## {{ c.number }}. {{ c.name }}, {{ c.place }}
+{{ render_character_profile("short_inline", c.UUID) }}
+{% if c.never_met %}Has never met {{ player }}.{% endif %}
+{% if c.days_since_seen == 0 %}Dealt with {{ player }} earlier today.{% else if c.days_since_seen == 1 %}Last dealt with {{ player }} a day ago.{% else if c.days_since_seen > 1 %}Last dealt with {{ player }} {{ c.days_since_seen }} days ago.{% endif %}
+{% if c.dialogue and length(c.dialogue) > 0 %}
+The last time they spoke:
+{% for line in c.dialogue -%}
+{{ line.speaker }}: {{ line.text }}
+{% endfor %}
+{% endif %}
+{% if c.memories and length(c.memories) > 0 %}
+What {{ c.name }} remembers of {{ player }}:
+{% for memory in c.memories -%}
+- {{ memory }}
+{% endfor %}
+{% endif %}
 
-    {% endfor %}
-    {{ player }} is in {{ player_place }} now. Use this location to judge whether they could talk in person. Ground each candidate's knowledge of {{ player }}'s whereabouts in their conversations and memories.
+{% endfor %}
+{{ player }} is in {{ player_place }}. Prefer speaking in person when they can easily meet. Candidates only know {{ player }}'s whereabouts if they learned them through conversation or memories.
 
-    People write when they have a reason: news of their own, something unfinished with {{ player }}, gratitude, worry, a favour to ask, a grudge, or missing someone they are close to. A personal or practical connection can support a letter: shared work or business is enough for professional correspondence. Ground personal familiarity in their established relationship and shared experiences. A first contact needs a reason to approach {{ player }} specifically. Someone close enough to walk over and talk to {{ player }} prefers speaking in person.
+A personal connection or practical business can support a letter. Match familiarity to their established relationship. Use a subject from the context when available, or ordinary news that fits their life and relationship. A first contact needs a reason to approach {{ player }} specifically.
 
-    Pick the person with the strongest reason, by their number, or 0 if nobody has one, with the reason in a few words: {"pick": <number>, "why": "<reason>"}
+Return only a JSON object with the chosen person's number (0 if nobody has a reason) and a brief reason: {"pick": <number>, "why": "<reason>"}
 [ end user ]

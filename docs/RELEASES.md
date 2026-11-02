@@ -25,4 +25,4 @@
    - no prompt has a comment ([ARCHITECTURE.md](ARCHITECTURE.md#writing-the-prompts)).
 5. **The zip.** The outcome is printed and written to `%TEMP%\pl-release-result.json`.
 
-**Before a release:** set the version in `CMakeLists.txt`, `vcpkg.json` and the SkyrimNet manifest, and `min_skyrimnet_version` in the manifest to the oldest SkyrimNet it needs (public API v11: [ARCHITECTURE.md](ARCHITECTURE.md)).
+**Before a release:** set the version in `CMakeLists.txt`, `vcpkg.json` and the SkyrimNet manifest, and `min_skyrimnet_version` in the manifest to the oldest SkyrimNet it needs: 0.29.1 (Beta 29.1) for the prompts' cache layout ([READING.md](READING.md#the-prompt)), above public API v11 ([ARCHITECTURE.md](ARCHITECTURE.md)). The DLL only checks the API version, so the README's requirement is what tells players.

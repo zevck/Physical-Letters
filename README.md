@@ -46,7 +46,7 @@ With no ink, **Ink & Quill** lets you write in your own blood. The recipient see
 ## 📋 Requirements
 > [!NOTE]
 > Physical Letters supports all versions of Skyrim. VR and 1.7.104 are currently untested.
-- [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) Beta 26+
+- [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) Beta 29.1+
 - [SkyUI](https://www.nexusmods.com/skyrimspecialedition/mods/12604) (for MCM)
 - [SKSE](https://skse.silverlock.org/)
 - [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444) or [VR Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/58101)
