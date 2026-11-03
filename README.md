@@ -3,54 +3,38 @@ A companion mod for [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) t
 
 ## ✉️ Features
 ### Writing Letters
-Write a letter by hand on a sheet of parchment. Every letter starts with a "From:" heading, already filled in with your name, and a "To:" heading that requires the recipient's name and address (e.g. Lydia, 7890 Whiterun). 
+Write a letter by hand by using parchment. Parchment can be purchased from a general goods merchant or crafted from rolls of paper at a tanning rack. Every letter starts with a "From:" heading, prefilled with your character's name, and a "To:" heading that requires the recipient's name and address (e.g. Lydia, 7890 Whiterun). You may replace your name on the "From:" line with anything to remain anonymous. When you are done writing, press **F3** (default) to save.
 
-The address is comprised of the last 4 digits of the NPCs SkyrimNet UUID and home location. While writing, matching NPC's will autocomplete. If there are multiple NPCs sharing a name, pressing Tab will cycle through them.
+The address is comprised of the last 4 digits of the NPC's SkyrimNet UUID and home location. While writing, matching NPCs will show a preview of their address so you don't actually need to know it. Pressing **Right Arrow** will autocomplete. If there are multiple NPCs sharing a name, pressing **Tab** will cycle through them.
 
-This feature requires **Ink & Quill**.
-
-### Crafting
-Craft **3** parchment from **1** roll of paper at a tanning rack, or buy it from general goods merchants.
+This feature requires [Ink & Quill](https://github.com/zevck/Ink-and-Quill). By default, writing requires a quill and inkwell in your inventory. Alternatively, **Ink & Quill** allows you to write in your own blood if you don't have any ink, which the reader will notice.
 
 ### Mailing Letters
-Give a letter to an innkeeper or courier to mail it (20 gold default). Delivery time follows the same speed as fast travel and can be configured in the MCM. A letter to someone who has died or can't be found is returned to sender.
+Give a letter to an innkeeper or courier to mail it (20 gold default). Delivery time follows the same speed as the time that passes from fast travel and can be configured in the MCM. A letter to someone who has died or can't be found is returned to sender. Alternatively, you can hand an NPC the letter in person. When mailing a letter you have the option to attach a package and add items to be delivered to the recipient.
 
-Alternatively, you can hand an NPC the letter in person.
+When a letter is scheduled to be delivered to an NPC and you are nearby, the courier will approach the NPC and deliver the letter in person. Distant deliveries are handled off-screen. While traveling the roads of Skyrim, you may encounter the courier out on a delivery. He carries real letters that can be intercepted and read. Pick his pocket, shake him down, or hand him a letter you need delivered.
 
-### Replies
-The recipient reads your letter through SkyrimNet, remembers it, and may write back. NPCs remember your earlier letters, so a correspondence builds over time. Their reply is delivered by the courier.
+### NPCs Write
+NPCs you write to read your letters through SkyrimNet, remember them, and may write back. NPCs remember your earlier letters, so a correspondence builds over time. Their reply is delivered by the courier. About once a week, someone you know may write to you if they have a reason to: news, gratitude, worry, a favor to ask, or simply missing you. Former followers, your spouse and your children grow more likely to write the longer you've been apart.
 
-### The Courier
-When a letter is scheduled to be delivered to an NPC and you are nearby, the courier will approach the NPC and deliver the letter in person. Distant deliveries are handled off-screen.
-
-While traveling the roads of Skyrim, you may encounter the courier out on a delivery. He carries real letters that can be intercepted and read. Pick his pocket, shake him down, or hand him a letter you need delivered.
-
-### NPCs Write to You
-About once a week, someone you know may write to you if they have a reason to: news, gratitude, worry, a favor to ask, or simply missing you. Former followers, your spouse and your children grow more likely to write the longer you've been apart.
-
-### Letters Between NPCs
-NPCs write to each other too, and their letters are delivered by the courier. Intercept one and you can read it, or hand it to its recipient yourself.
+NPCs write to each other as well, and their letters are delivered by the courier. Intercept one and you can read it, or hand it to its recipient yourself. The frequency at which NPCs write can be configured in the MCM.
 
 ### Forgeries
-Change the "From:" line to someone else's name and address, and the letter goes out in their name. Whether your handwriting passes for theirs depends on your Pickpocket skill; with the Quill of Gemination and Special Ink, it always does. Fooled, they may write back to the person whose name you used. You can also sign with any name that isn't a person's, or leave "From:" empty to send it anonymously.
+You can forge letters by replacing your name on the "From:" line with someone else's. Frame someone you don't like, impersonate someone to learn secrets, or just sow chaos. NPCs have a chance to detect that the handwriting does not match the alleged writer, based on your pickpocket skill. They won't know who sent it.
+
+**Ink & Quill** allows you to use the Quill of Gemination, an enchanted quill that requires special ink which can perfectly replicate any handwriting. Forgeries written using this special ink and quill are undetectable. The Quill of Gemination can be obtained during the quest Vald's Debt as part of the Thieves Guild quest-line.
 
 ### DM Letter
-For running the story yourself: take the DM Letter from the MCM and send a letter from any NPC to any other, or to yourself. Choose who it's from (or leave it unsigned, or sign it with any name), who it's to and how many hours until it arrives (0 for now), then write the letter word for word, or write notes and tick Transform to have the writer put them in their own words. Tick Forgery and the letter is a perfect forgery in their name. Tick Package to send items with it. The recipient reads it and may reply like any other letter. It's never used up and needs no quill or ink.
-
-### Packages
-When you post a letter, you can send a package with it: anything you can put in a chest, gold included. The courier carries it, so a courier who's robbed loses it, and the letter lists what was enclosed.
-
-### Written in Blood
-With no ink, **Ink & Quill** lets you write in your own blood. The recipient sees which parts are written in blood, and reacts to it.
+The DM Letter is an item that can be spawned from the MCM to dispatch legitimate letters between any actors. This can be used to seed stories in your world or just experiment with Physical Letters. NPCs that you write letters for on their behalf remember them as if they wrote them themselves. It includes options to assign the sender and recipient, the delivery time (in hours), and whether its a forgery or to include a package. Leave the contents of the letter blank to have the LLM decide on a subject, write the letter yourself, or check Transform to have the LLM convert your prompt into a full letter.
 
 ## 📋 Requirements
 > [!NOTE]
-> Physical Letters supports all versions of Skyrim. VR and 1.7.104 are currently untested.
+> Physical Letters supports all versions of Skyrim.
 - [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) Beta 29.1+
-- [SkyUI](https://www.nexusmods.com/skyrimspecialedition/mods/12604) (for MCM)
+- [SkyUI](https://www.nexusmods.com/skyrimspecialedition/mods/12604) for the MCM
 - [SKSE](https://skse.silverlock.org/)
 - [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444) or [VR Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/58101)
-- [Ink & Quill](https://github.com/zevck/Ink-and-Quill) 0.2 or later to write your own letters
+- [Ink & Quill](https://github.com/zevck/Ink-and-Quill) v0.2 or later to write your own letters
 
 ## 🌐 Localization
 The mod supports all 9 official Skyrim languages: English, French, German, Italian, Spanish, Polish, Russian, Traditional Chinese, and Japanese. Letter names, item descriptions, the "From:" and "To:" lines, parchment and MCM menus are all localized automatically based on your game language.
@@ -106,8 +90,9 @@ This translates the in-game settings menu. Use the English file as a template. I
 
 **Messenger Birds** - a perk to mail letters from anywhere in the world with a power.
 
+**Better VR Support** - a way for VR users to compose a letter without a keyboard.
+
 ## 🗒️ Notes
-- **Mod authors:** other mods can send letters, hear when they're delivered and read, and offer a letter's reader actions to choose (a meeting to go to). See [docs/API.md](docs/API.md).
 - Every letter an NPC reads or writes is an LLM call through SkyrimNet. How often NPCs write to you and to each other can be changed or turned off in the MCM. Higher letter counts make the world more lively, but also increase costs.
 - On default settings, each letter dispatch is around $0.0018, though it depends on your configured LLMs. This runs about once an in game week, so costs are quite low.
 - Letter replies are roughly the same as dialogue output, maybe a little higher depending on letter length.
