@@ -1,6 +1,8 @@
 # Physical Letters
 A companion mod for [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin) that lets you write letters to NPCs and have them delivered. The recipient reads your letter, remembers it, and replies. NPCs also write to you, and to each other, on their own.
 
+<div align="center"><h3>💾 <a href="https://github.com/zevck/Physical-Letters/releases/latest">DOWNLOAD HERE</a> 💾</h3></div>
+
 ## ✉️ Features
 ### Writing Letters
 Write a letter by hand by using parchment. Parchment can be purchased from a general goods merchant or crafted from rolls of paper at a tanning rack. Every letter starts with a "From:" heading, prefilled with your character's name, and a "To:" heading that requires the recipient's name and address (e.g. Lydia, 7890 Whiterun). You may replace your name on the "From:" line with anything to remain anonymous. When you are done writing, press **F3** (default) to save.
