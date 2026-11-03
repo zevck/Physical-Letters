@@ -101,6 +101,8 @@ This translates the in-game settings menu. Use the English file as a template. I
 - Physical Letters currently uses SkyrimNet's meta variant for selection, and default/dialogue for writing.
 - By default you can only write to unique NPCs. The MCM can also allow generic NPCs SkyrimNet has memories for, or any named NPC.
 
+<div align="center"><h3>💾 <a href="https://github.com/zevck/Physical-Letters/releases/latest">DOWNLOAD HERE</a> 💾</h3></div>
+
 ## 🔑 License
 Physical Letters is released under the GNU General Public License v3.0 or later (GPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
 
