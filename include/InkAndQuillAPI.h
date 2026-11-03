@@ -45,7 +45,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define IQ_API_VERSION 3  /* docs/API.md#versions */
+#define IQ_API_VERSION 2  /* docs/API.md#versions */
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,7 +68,7 @@ typedef enum IQ_WriteWay
     IQ_WRITE_INK = 1,
     IQ_WRITE_BLOOD = 2,
     IQ_WRITE_SPECIAL_INK = 3,  /* the Quill of Gemination with Special Ink: one bottle per save.  docs/API.md#special-ink */
-    IQ_WRITE_FREE = 4,         /* version 3: no quill, ink or blood, whatever the settings (a client's tool, not a letter) */
+    IQ_WRITE_FREE = 4,         /* no quill, ink or blood, whatever the settings (a client's tool, not a letter) */
 } IQ_WriteWay;
 
 /* One book open for writing.  Ink & Quill copies it; user is handed back to every callback. */

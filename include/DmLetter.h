@@ -48,7 +48,7 @@ namespace PhysicalLetters::DmLetter {
     // Any thread: its item card's text in the chosen language if `description` is its card, else "" (TextHook).
     std::string CardFor(const RE::TESDescription* description);
 
-    // kDataLoaded, after Writing::Register: names it in the chosen language and registers it with Ink & Quill (version 3).
+    // kDataLoaded, after Writing::Register: names it in the chosen language and registers it with Ink & Quill (API version 2).
     void Register();
 
     // Heartbeat: a writer asked for their letter and silent for 5 minutes has failed (SkyrimNet drops such calls).

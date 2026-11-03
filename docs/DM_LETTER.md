@@ -2,7 +2,7 @@
 
 A tool for a player running the story as its dungeon master: a letter from one NPC to another, sent when they choose, with what they choose. It goes out as an ordinary letter between NPCs. It's delivered off-screen, can be stolen and read, and its recipient reads it and may reply like any other ([NPC_TO_NPC.md](NPC_TO_NPC.md)). Code: `src/DmLetter.cpp`, the page in `Letters::SheetText`, the prompt `physical_letters/dm_letter.prompt`. Other mods send the same letters through `DmLetter::Send` ([API.md](API.md#sending)): no HUD notices, and -1 hours for the travel time.
 
-**Status:** built 2026-10-29 (user's design), not yet run in game. Needs Ink & Quill's API **version 3** (`IQ_WRITE_FREE`), which all of Physical Letters now requires (user, 2026-10-31: no fallback to version 2).
+**Status:** built 2026-10-29 (user's design), not yet run in game. Needs Ink & Quill's API **version 2** (`IQ_WRITE_FREE`), which all of Physical Letters now requires (user, 2026-10-31: no fallback to an older version).
 
 ## The item
 
