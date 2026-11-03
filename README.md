@@ -9,7 +9,7 @@ Write a letter by hand by using parchment. Parchment can be purchased from a gen
 
 The address is comprised of the last 4 digits of the NPC's SkyrimNet UUID and home location. While writing, matching NPCs will show a preview of their address so you don't actually need to know it. Pressing **Right Arrow** will autocomplete. If there are multiple NPCs sharing a name, pressing **Tab** will cycle through them.
 
-This feature requires [Ink & Quill](https://github.com/zevck/Ink-and-Quill). By default, writing requires a quill and inkwell in your inventory. Alternatively, **Ink & Quill** allows you to write in your own blood if you don't have any ink, which the reader will notice.
+This feature requires [Ink & Quill](https://github.com/zevck/Ink-and-Quill/blob/main/README.md). By default, writing requires a quill and inkwell in your inventory. Alternatively, **Ink & Quill** allows you to write in your own blood if you don't have any ink, which the reader will notice.
 
 ### Mailing Letters
 Give a letter to an innkeeper or courier to mail it (20 gold default). Delivery time follows the same speed as the time that passes from fast travel and can be configured in the MCM. A letter to someone who has died or can't be found is returned to sender. Alternatively, you can hand an NPC the letter in person. When mailing a letter you have the option to attach a package and add items to be delivered to the recipient.
@@ -36,7 +36,7 @@ The DM Letter is an item that can be spawned from the MCM to dispatch legitimate
 - [SkyUI](https://www.nexusmods.com/skyrimspecialedition/mods/12604) for the MCM
 - [SKSE](https://skse.silverlock.org/)
 - [Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/32444) or [VR Address Library](https://www.nexusmods.com/skyrimspecialedition/mods/58101)
-- [Ink & Quill](https://github.com/zevck/Ink-and-Quill) v0.2 or later to write your own letters
+- [Ink & Quill](https://github.com/zevck/Ink-and-Quill/blob/main/README.md) v0.2 or later to write your own letters
 
 ## 🌐 Localization
 The mod supports all 9 official Skyrim languages: English, French, German, Italian, Spanish, Polish, Russian, Traditional Chinese, and Japanese. Letter names, item descriptions, the "From:" and "To:" lines, parchment and MCM menus are all localized automatically based on your game language.
