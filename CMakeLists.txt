@@ -5,7 +5,7 @@ set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "" FORCE)
 
 project(
     PhysicalLetters
-    VERSION 1.1.0
+    VERSION 1.1.1
     LANGUAGES CXX
 )
 
