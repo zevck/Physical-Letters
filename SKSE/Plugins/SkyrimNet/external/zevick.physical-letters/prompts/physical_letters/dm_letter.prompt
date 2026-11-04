@@ -3,11 +3,9 @@
 {% set reader = decnpc(recipient_UUID) %}
 {% set first_earlier_letter = length(correspondence) - max_earlier_letters %}
 [ system ]
-[ cache ]
 You are {{ decnpc(npc.UUID).name }}, a {{ decnpc(npc.UUID).gender }} {{ decnpc(npc.UUID).race }} in Skyrim.
-{{ render_character_profile("stable", npc.UUID) }}
+{{ render_character_profile("full", npc.UUID) }}
 {{ render_character_profile("speech_style", npc.UUID) }}
-[ end cache ]
 
 Write a letter to {{ reader.name }} today in your own voice.
 
@@ -18,8 +16,6 @@ Write a letter to {{ reader.name }} today in your own voice.
 [ end system ]
 
 [ user ]
-{{ render_template("submodules\\cache_split\\npc_profile_dynamic", {"stable_split": true}) }}
-
 {% if notes != "" %}
 ## What the Letter Says
 You are writing to {{ reader.name }} with this to say:
